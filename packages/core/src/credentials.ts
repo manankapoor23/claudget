@@ -1,4 +1,11 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { readJsonSafe } from './util/fs';
+
+const execFileAsync = promisify(execFile);
+
+/** Keychain service name Claude Code uses to store its OAuth credentials on macOS. */
+const MACOS_KEYCHAIN_SERVICE = 'Claude Code-credentials';
 
 export interface ClaudeCredentials {
   accessToken: string;
@@ -24,11 +31,36 @@ interface RawCredentials {
 }
 
 /**
- * Reads `~/.claude/.credentials.json`. Returns null if missing/unreadable or if
- * no access token is present. The raw token is never logged by this module.
+ * Reads the raw credentials JSON from the macOS login Keychain, where Claude
+ * Code stores its OAuth token instead of a file. Returns null off macOS or if
+ * the entry is missing/unreadable. The secret is never logged by this module.
+ */
+async function readMacKeychainCredentials(): Promise<RawCredentials | null> {
+  if (process.platform !== 'darwin') return null;
+  try {
+    const { stdout } = await execFileAsync('security', [
+      'find-generic-password',
+      '-s',
+      MACOS_KEYCHAIN_SERVICE,
+      '-w',
+    ]);
+    const trimmed = stdout.trim();
+    if (!trimmed) return null;
+    return JSON.parse(trimmed) as RawCredentials;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reads Claude Code's OAuth credentials. Prefers `~/.claude/.credentials.json`,
+ * falling back to the macOS login Keychain (where Claude Code stores them on
+ * macOS). Returns null if missing/unreadable or if no access token is present.
+ * The raw token is never logged by this module.
  */
 export async function readCredentials(credentialsPath: string): Promise<ClaudeCredentials | null> {
-  const raw = await readJsonSafe<RawCredentials>(credentialsPath);
+  const raw =
+    (await readJsonSafe<RawCredentials>(credentialsPath)) ?? (await readMacKeychainCredentials());
   const oauth = raw?.claudeAiOauth;
   if (!oauth || typeof oauth.accessToken !== 'string' || oauth.accessToken.length === 0) {
     return null;

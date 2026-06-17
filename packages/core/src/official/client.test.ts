@@ -5,6 +5,17 @@ import { describe, expect, it, vi } from 'vitest';
 import { createNoopLogger } from '../logger';
 import { OfficialUsageClient } from './client';
 
+// Keep tests hermetic: never consult the host machine's real macOS Keychain.
+// readCredentials falls back to `security find-generic-password` when the file
+// is absent; stubbing execFile to error makes that fallback yield no creds.
+vi.mock('node:child_process', () => ({
+  execFile: (
+    _file: string,
+    _args: string[],
+    cb: (err: Error | null, stdout: string, stderr: string) => void,
+  ) => cb(new Error('keychain disabled in tests'), '', ''),
+}));
+
 function writeTempCreds(expiresAt: number): string {
   const p = path.join(
     os.tmpdir(),
