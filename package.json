@@ -1,0 +1,36 @@
+{
+  "name": "claude-widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A lightweight, always-on-top desktop widget for monitoring Claude Code usage in real time.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:core": "npm run build -w @claude-widget/core",
+    "build": "npm run build:core && npm run build -w @claude-widget/desktop",
+    "dev": "npm run build:core && npm run dev -w @claude-widget/desktop",
+    "start": "electron packages/desktop",
+    "dev:core": "npm run dev -w @claude-widget/core",
+    "package": "npm run build:core && npm run package -w @claude-widget/desktop",
+    "package:dir": "npm run build:core && npm run package:dir -w @claude-widget/desktop",
+    "typecheck": "npm run typecheck -w @claude-widget/core && npm run typecheck -w @claude-widget/desktop",
+    "test": "npm run test -w @claude-widget/core",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,md}\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1"
+  }
+}

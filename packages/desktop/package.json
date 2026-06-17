@@ -1,0 +1,36 @@
+{
+  "name": "@claude-widget/desktop",
+  "version": "0.1.2",
+  "description": "Always-on-top desktop widget for monitoring Claude Code usage.",
+  "license": "MIT",
+  "author": "Claude Widget contributors",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "start": "electron-vite preview",
+    "icon": "node scripts/generate-icon.mjs",
+    "typecheck": "tsc --noEmit --composite false -p tsconfig.node.json && tsc --noEmit --composite false -p tsconfig.web.json",
+    "package": "node scripts/generate-icon.mjs && electron-vite build && electron-builder",
+    "package:dir": "node scripts/generate-icon.mjs && electron-vite build && electron-builder --dir",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@claude-widget/core": "*",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "vite": "^5.4.11",
+    "zustand": "^5.0.2"
+  }
+}

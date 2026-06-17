@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "tsBuildInfoFile": "node_modules/.tmp/tsconfig.web.tsbuildinfo",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "@renderer/*": ["src/renderer/*"],
+      "@shared/*": ["src/shared/*"]
+    }
+  },
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx", "src/shared/**/*.ts"]
+}

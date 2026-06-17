@@ -1,0 +1,36 @@
+{
+  "name": "@claude-widget/core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic data layer for the Claude usage widget (transcript parsing, aggregation, official usage client).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src"
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "vitest": "^2.1.8"
+  }
+}

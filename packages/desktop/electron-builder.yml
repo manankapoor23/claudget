@@ -1,0 +1,58 @@
+appId: com.claudewidget.app
+productName: Claude Usage Widget
+copyright: Copyright © 2026 Claude Widget contributors
+
+# Pinned because npm workspaces hoist `electron` to the root node_modules, where
+# electron-builder's auto-detection can't find it. Keep in sync with the electron devDep.
+electronVersion: 33.4.11
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**/*
+  - package.json
+
+extraResources:
+  - from: resources
+    to: .
+    filter:
+      - '**/*'
+
+# Don't pull the whole symlinked workspace into the asar — core is bundled.
+removePackageScripts: true
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon.png
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Claude Usage Widget
+  artifactName: ${productName}-${version}-Setup-${arch}.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-Portable-${arch}.${ext}
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+
+linux:
+  target:
+    - AppImage
+  category: Utility
+  icon: build/icon.png
+  maintainer: Claude Widget contributors
