@@ -78,39 +78,39 @@
 
 /* ---- Light glass ---- */
 :root[data-theme="light"] {
-  --glass: rgba(252, 248, 244, 0.65);
-  --glass-2: rgba(255, 255, 255, 0.55);
-  --glass-3: rgba(255, 255, 255, 0.3);
+  --glass: rgba(255, 252, 248, 0.74); /* crisper frost */
+  --glass-2: rgba(255, 255, 255, 0.62);
+  --glass-3: rgba(255, 255, 255, 0.36);
 
-  --paper: #ece6dc; /* warm light base (page) */
+  --paper: #efe9df; /* warm light base, lifted a touch */
   --paper-2: var(--glass-2);
-  --paper-border-bg: rgba(255, 255, 255, 0.5);
+  --paper-border-bg: rgba(255, 255, 255, 0.55);
 
-  --header-yellow: rgba(255, 255, 255, 0.5);
-  --action-orange: #ff7f57;
-  --accent: #ff7f57;
-  --accent-dim: rgba(255, 127, 87, 0.14);
+  --header-yellow: rgba(255, 255, 255, 0.55);
+  --action-orange: #f56a3c; /* slightly deeper coral — reads better on light */
+  --accent: #f56a3c;
+  --accent-dim: rgba(245, 106, 60, 0.16);
   --sage: #5e7e6b;
 
-  --ink: rgba(18, 12, 8, 0.88);
-  --muted: rgba(18, 12, 8, 0.46);
-  --border-col: rgba(0, 0, 0, 0.1);
+  --ink: rgba(20, 13, 8, 0.92); /* crisper text */
+  --muted: rgba(20, 13, 8, 0.5);
+  --border-col: rgba(0, 0, 0, 0.12);
 
-  --rim: 1px solid rgba(0, 0, 0, 0.1);
-  --rim-top: 1px solid rgba(255, 255, 255, 0.7);
-  --rim-dim: 1px solid rgba(0, 0, 0, 0.06);
+  --rim: 1px solid rgba(0, 0, 0, 0.12);
+  --rim-top: 1px solid rgba(255, 255, 255, 0.85);
+  --rim-dim: 1px solid rgba(0, 0, 0, 0.07);
 
   --success: #3f7a5a;
   --warning: #a9722a;
   --danger: #c0503a;
 
-  --glow-coral: rgba(255, 127, 87, 0.28);
-  --glow-cool: rgba(120, 150, 210, 0.22);
-  --grid: rgba(33, 30, 26, 0.03);
+  --glow-coral: rgba(255, 127, 87, 0.34); /* livelier backdrop */
+  --glow-cool: rgba(120, 150, 210, 0.28);
+  --grid: rgba(33, 30, 26, 0.035);
 
-  --shadow-soft: 0 12px 32px -18px rgba(40, 30, 20, 0.35);
-  --shadow-float: 0 18px 44px -20px rgba(40, 30, 20, 0.4);
-  --hi-top: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --shadow-soft: 0 14px 36px -18px rgba(40, 30, 20, 0.42);
+  --shadow-float: 0 22px 50px -20px rgba(40, 30, 20, 0.5);
+  --hi-top: inset 0 1px 0 rgba(255, 255, 255, 0.85);
 
   color-scheme: light;
 }
