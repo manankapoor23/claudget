@@ -22,8 +22,9 @@ const DESCRIPTION =
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "claudget — real-time Claude Code usage on your desktop",
+  title: "claudget — Claude Code usage widget for your desktop",
   description: DESCRIPTION,
+  alternates: { canonical: "/" },
   keywords: [
     "claudget",
     "Claude Code",
@@ -69,6 +70,23 @@ export const viewport: Viewport = {
 // Applied before paint so a saved light-theme choice doesn't flash dark.
 const THEME_BOOT = `(function(){try{var t=localStorage.getItem('claudget-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
+// Structured data — tells Google this is a free, cross-platform downloadable app.
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "claudget",
+  alternateName: "Claude Code usage widget",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "macOS, Windows, Linux",
+  description: DESCRIPTION,
+  url: SITE_URL,
+  downloadUrl: "https://github.com/manankapoor23/claudget/releases/latest",
+  softwareVersion: "0.2.2",
+  license: "https://github.com/manankapoor23/claudget/blob/main/LICENSE",
+  author: { "@type": "Person", name: "Manan Kapoor", url: "https://github.com/manankapoor23" },
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -82,6 +100,10 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        />
       </head>
       <body>{children}</body>
     </html>
