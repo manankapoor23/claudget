@@ -10,6 +10,7 @@ import {
   RefreshIcon,
   SettingsIcon,
 } from './icons';
+import logoUrl from '../assets/claudget-logo.png';
 
 export function TitleBar(): JSX.Element {
   const view = useStore((s) => s.view);
@@ -26,8 +27,8 @@ export function TitleBar(): JSX.Element {
   return (
     <div className="titlebar" data-ct-interactive>
       <div className="titlebar__brand">
-        <span className="titlebar__logo" />
-        <span>Claude Usage</span>
+        <img className="titlebar__logo" src={logoUrl} alt="" />
+        <span>claudget</span>
         {subscription ? <span className="titlebar__sub">{subscription}</span> : null}
       </div>
       <div className="titlebar__spacer" />

@@ -10,10 +10,9 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
-    "icon": "node scripts/generate-icon.mjs",
     "typecheck": "tsc --noEmit --composite false -p tsconfig.node.json && tsc --noEmit --composite false -p tsconfig.web.json",
-    "package": "node scripts/generate-icon.mjs && electron-vite build && electron-builder",
-    "package:dir": "node scripts/generate-icon.mjs && electron-vite build && electron-builder --dir",
+    "package": "electron-vite build && electron-builder",
+    "package:dir": "electron-vite build && electron-builder --dir",
     "lint": "eslint src"
   },
   "dependencies": {
