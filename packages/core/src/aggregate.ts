@@ -4,6 +4,7 @@ import type {
   ActiveSession,
   LocalUsage,
   ModelBreakdown,
+  ProjectBreakdown,
   SessionStat,
   TimeBucket,
   TokenAndCost,
@@ -11,7 +12,7 @@ import type {
   UsageBlock,
   UsageEntry,
 } from './types';
-import { DAY, HOUR, MINUTE, clamp, safeDiv, startOfDay, startOfHour } from './util/time';
+import { DAY, HOUR, MINUTE, clamp, safeDiv, startOfDay, startOfHour, startOfMonth } from './util/time';
 
 export function emptyTokens(): TokenCounts {
   return { input: 0, output: 0, cacheCreation: 0, cacheRead: 0, total: 0 };
@@ -56,19 +57,30 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
 
   const allTime = emptyTAC();
   const today = emptyTAC();
+  const thisMonth = emptyTAC();
   const last24h = emptyTAC();
   const dayStart = startOfDay(now);
+  const monthStart = startOfMonth(now);
   const since24 = now - DAY;
   const historyStart = startOfHour(now - opts.historyWindowHours * HOUR);
 
   const perModelMap = new Map<string, ModelBreakdown>();
+  const perProjectMap = new Map<string, ProjectBreakdown>();
   const sessionMap = new Map<string, SessionStat>();
   const hourlyMap = new Map<number, TimeBucket>();
 
   for (const e of sorted) {
     accumulate(allTime, e, pricing);
     if (e.timestamp >= dayStart) accumulate(today, e, pricing);
+    if (e.timestamp >= monthStart) accumulate(thisMonth, e, pricing);
     if (e.timestamp >= since24) accumulate(last24h, e, pricing);
+
+    let pb = perProjectMap.get(e.projectSlug);
+    if (!pb) {
+      pb = { projectPath: e.projectPath, projectSlug: e.projectSlug, ...emptyTAC() };
+      perProjectMap.set(e.projectSlug, pb);
+    }
+    accumulate(pb, e, pricing);
 
     const norm = normalizeModelId(e.model) || e.model;
     let mb = perModelMap.get(norm);
@@ -115,6 +127,7 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
   }
 
   const perModel = [...perModelMap.values()].sort((a, b) => b.tokens.total - a.tokens.total);
+  const perProject = [...perProjectMap.values()].sort((a, b) => b.costUSD - a.costUSD);
   const sessions = [...sessionMap.values()]
     .sort((a, b) => b.lastAt - a.lastAt)
     .slice(0, opts.recentSessionLimit);
@@ -122,8 +135,10 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
   return {
     allTime,
     today,
+    thisMonth,
     last24h,
     perModel,
+    perProject,
     sessions,
     blocks: [...blocks].reverse(),
     activeBlock,

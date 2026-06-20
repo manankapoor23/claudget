@@ -10,6 +10,14 @@ export function startOfDay(ts: number): number {
   return d.getTime();
 }
 
+/** Epoch ms at the start of the local calendar month containing `ts`. */
+export function startOfMonth(ts: number): number {
+  const d = new Date(ts);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 /** Epoch ms at the start of the local hour containing `ts`. */
 export function startOfHour(ts: number): number {
   const d = new Date(ts);

@@ -7,6 +7,7 @@ import {
   type WidgetConfig,
 } from '@claude-widget/core';
 import { detectCliVersion, resolveIconPath } from './app-paths';
+import { BudgetAlerter } from './budget-alerts';
 import { ConfigStore } from './config-store';
 import { registerIpc } from './ipc';
 import { createAppLogger } from './logger';
@@ -51,6 +52,12 @@ if (!singleInstanceLock) {
     const cliVersion = detectCliVersion(config.claudeDir);
     logger.info('Detected Claude CLI version', { cliVersion });
 
+    // macOS: run as a menu-bar accessory (no Dock icon). This is what lets the
+    // window follow you onto every Space and over fullscreen apps — a regular
+    // foreground app pins its windows to the Space they were opened on. The
+    // tray menu is the control surface; the Dock icon would just be clutter.
+    if (process.platform === 'darwin') app.setActivationPolicy('accessory');
+
     const engine = new UsageEngine({ config, logger, cliVersion });
 
     widgetWindow = new WidgetWindow({
@@ -64,14 +71,23 @@ if (!singleInstanceLock) {
     const win = widgetWindow.browser;
     let trayHandle: TrayHandle | null = null;
 
-    const sendSnapshot = (snapshot: UsageSnapshot): void => {
-      if (!win.isDestroyed()) win.webContents.send(IPC.SnapshotPush, snapshot);
+    // The render frame can be disposed between the guard and the send (dev
+    // reload, window close), so the try/catch is load-bearing, not paranoia.
+    const push = (channel: string, payload: unknown): void => {
+      if (win.isDestroyed() || win.webContents.isDestroyed() || win.webContents.isLoading()) return;
+      try {
+        win.webContents.send(channel, payload);
+      } catch {
+        // frame went away mid-send — next snapshot will reach the new frame
+      }
     };
-    const sendConfig = (cfg: WidgetConfig): void => {
-      if (!win.isDestroyed()) win.webContents.send(IPC.ConfigPush, cfg);
-    };
+    const sendSnapshot = (snapshot: UsageSnapshot): void => push(IPC.SnapshotPush, snapshot);
+    const sendConfig = (cfg: WidgetConfig): void => push(IPC.ConfigPush, cfg);
+
+    const budgetAlerter = new BudgetAlerter(logger);
 
     engine.on('snapshot', sendSnapshot);
+    engine.on('snapshot', (s) => budgetAlerter.check(s, config));
     engine.on('error', (err) => logger.error('Engine error', err));
 
     const applyConfig = (patch: Partial<WidgetConfig>): WidgetConfig => {

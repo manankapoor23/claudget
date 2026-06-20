@@ -10,7 +10,12 @@ import { z } from 'zod';
  */
 export const WIDGET_CONFIG_SCHEMA = z.object({
   // ── Data ─────────────────────────────────────────────────────────────────
-  /** Poll the official OAuth usage endpoint. When false, the widget is 100% local. */
+  /**
+   * Poll the official OAuth usage endpoint for plan limits — this drives the
+   * 5-hour / weekly usage-% gauges. On by default: it works with zero setup
+   * using the token Claude Code already stored (macOS Keychain or
+   * `~/.claude/.credentials.json`). Turn it off in Settings to go 100% local.
+   */
   enableOfficial: z.boolean().default(true),
   /** Milliseconds between official polls. Hard floor of 180s. */
   officialPollIntervalMs: z.number().int().min(180_000).max(3_600_000).default(300_000),
@@ -30,6 +35,10 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   claudeDir: z.string().nullable().default(null),
   /** Path to a JSON pricing override file. null = bundled defaults. */
   pricingOverridePath: z.string().nullable().default(null),
+  /** Daily spend budget in USD. null/0 = off. Drives the budget panel & alerts. */
+  dailyBudgetUSD: z.number().min(0).nullable().default(null),
+  /** Monthly spend budget in USD. null/0 = off. */
+  monthlyBudgetUSD: z.number().min(0).nullable().default(null),
 
   // ── UI / Window (consumed by the desktop shell) ───────────────────────────
   theme: z.enum(['system', 'dark', 'light']).default('system'),

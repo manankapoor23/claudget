@@ -4,7 +4,11 @@ import { getBridge } from './lib/api';
 import { TitleBar } from './components/TitleBar';
 import { Footer } from './components/Footer';
 import { OfficialPanel } from './components/OfficialPanel';
+import { PaceBadge } from './components/PaceBadge';
+import { BudgetPanel } from './components/BudgetPanel';
 import { LocalPanel } from './components/LocalPanel';
+import { Forecast } from './components/Forecast';
+import { Insights } from './components/Insights';
 import { SessionList } from './components/SessionList';
 import { CompactView } from './components/CompactView';
 import { Settings } from './components/Settings';
@@ -98,12 +102,21 @@ export function App(): JSX.Element {
   } else {
     body = (
       <div className="body">
-        <OfficialPanel official={snapshot.official} />
+        {config.enableOfficial ? <OfficialPanel official={snapshot.official} /> : null}
+        {config.enableOfficial ? <PaceBadge snapshot={snapshot} /> : null}
+        <BudgetPanel
+          local={snapshot.local}
+          dailyBudgetUSD={config.dailyBudgetUSD}
+          monthlyBudgetUSD={config.monthlyBudgetUSD}
+          currency={config.currency}
+        />
         <LocalPanel
           local={snapshot.local}
           currency={config.currency}
           historyWindowHours={config.historyWindowHours}
         />
+        <Forecast local={snapshot.local} currency={config.currency} />
+        <Insights local={snapshot.local} currency={config.currency} />
         <SessionList
           sessions={snapshot.local.sessions}
           activeSessions={snapshot.local.activeSessions}

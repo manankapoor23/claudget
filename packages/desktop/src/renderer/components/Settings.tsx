@@ -107,6 +107,33 @@ function NumberSelect({
   );
 }
 
+function MoneyInput({
+  value,
+  onChange,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+}): JSX.Element {
+  const handle = (e: ChangeEvent<HTMLInputElement>): void => {
+    const raw = e.target.value.trim();
+    if (raw === '') return onChange(null);
+    const n = Number(raw);
+    onChange(Number.isFinite(n) && n >= 0 ? n : null);
+  };
+  return (
+    <input
+      className="select"
+      type="number"
+      min={0}
+      step={1}
+      placeholder="off"
+      value={value ?? ''}
+      onChange={handle}
+      style={{ width: 90 }}
+    />
+  );
+}
+
 function Kv({ k, v }: { k: string; v: string }): JSX.Element {
   return (
     <div className="kv">
@@ -182,20 +209,25 @@ export function Settings({ config, appInfo, onChange }: SettingsProps): JSX.Elem
 
         <div className="field__group-title">Data</div>
 
-        <Field label="Track plan limits" hint="Poll Anthropic for your 5-hour and weekly limits.">
+        <Field
+          label="Track plan limits"
+          hint="Optional. Adds 5-hour & weekly plan gauges by polling Anthropic. Off by default — everything else is fully local."
+        >
           <Toggle
             on={config.enableOfficial}
             onClick={() => onChange({ enableOfficial: !config.enableOfficial })}
           />
         </Field>
 
-        <Field label="Refresh limits" hint="Minimum 3 min — the endpoint is rate-limited.">
-          <NumberSelect
-            value={config.officialPollIntervalMs}
-            options={POLL_OPTIONS}
-            onChange={(v) => onChange({ officialPollIntervalMs: v })}
-          />
-        </Field>
+        {config.enableOfficial ? (
+          <Field label="Refresh limits" hint="Minimum 3 min — the endpoint is rate-limited.">
+            <NumberSelect
+              value={config.officialPollIntervalMs}
+              options={POLL_OPTIONS}
+              onChange={(v) => onChange({ officialPollIntervalMs: v })}
+            />
+          </Field>
+        ) : null}
 
         <Field label="Activity window" hint="Span shown in the activity sparkline.">
           <NumberSelect
@@ -210,6 +242,28 @@ export function Settings({ config, appInfo, onChange }: SettingsProps): JSX.Elem
             value={config.recentSessionLimit}
             options={SESSION_OPTIONS}
             onChange={(v) => onChange({ recentSessionLimit: v })}
+          />
+        </Field>
+
+        <div className="field__group-title">Budgets</div>
+
+        <Field
+          label="Daily budget (USD)"
+          hint="Get a notification at 80% and 100% of today's spend. Empty = off."
+        >
+          <MoneyInput
+            value={config.dailyBudgetUSD}
+            onChange={(v) => onChange({ dailyBudgetUSD: v })}
+          />
+        </Field>
+
+        <Field
+          label="Monthly budget (USD)"
+          hint="Get a notification at 80% and 100% of this month's spend. Empty = off."
+        >
+          <MoneyInput
+            value={config.monthlyBudgetUSD}
+            onChange={(v) => onChange({ monthlyBudgetUSD: v })}
           />
         </Field>
 

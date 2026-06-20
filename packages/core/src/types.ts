@@ -60,6 +60,12 @@ export interface SessionStat extends TokenAndCost {
   lastAt: number;
 }
 
+/** Per-project rollup across the full history (not sliced). */
+export interface ProjectBreakdown extends TokenAndCost {
+  projectPath: string;
+  projectSlug: string;
+}
+
 /** A rolling usage window (Claude's ~5-hour session blocks, approximated locally). */
 export interface UsageBlock extends TokenAndCost {
   startAt: number;
@@ -97,8 +103,12 @@ export interface ActiveSession {
 export interface LocalUsage {
   allTime: TokenAndCost;
   today: TokenAndCost;
+  /** Month-to-date (current calendar month, local time). */
+  thisMonth: TokenAndCost;
   last24h: TokenAndCost;
   perModel: ModelBreakdown[];
+  /** Per-project rollup across all history, sorted by cost desc. */
+  perProject: ProjectBreakdown[];
   sessions: SessionStat[];
   blocks: UsageBlock[];
   activeBlock: ActiveBlockStat | null;
