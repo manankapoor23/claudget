@@ -1,5 +1,5 @@
 /* Minimal, stroke-based SVG icons — no fills, no glow, engineering-drawing feel. */
-import type { SVGProps } from "react";
+import type { SVGProps, CSSProperties } from "react";
 
 type P = SVGProps<SVGSVGElement>;
 
@@ -12,14 +12,17 @@ const base: P = {
   strokeLinejoin: "miter",
 };
 
-/* Brand mark — the widget's bar-chart, drawn as solid bars */
-export function LogoMark(props: P) {
+/* Brand mark — the claudget logo image. Keeps the old call signature
+   (width/height via style); `color` is ignored since the logo is full-color. */
+export function LogoMark({ style, className }: { style?: CSSProperties; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
-      <rect x="3" y="14" width="4" height="7" />
-      <rect x="9" y="9" width="4" height="12" />
-      <rect x="15" y="5" width="4" height="16" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="/claudget-logo.png"
+      alt="claudget"
+      className={className}
+      style={{ objectFit: "contain", display: "block", ...style }}
+    />
   );
 }
 

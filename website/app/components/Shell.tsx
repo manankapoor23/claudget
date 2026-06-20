@@ -72,7 +72,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* Toolbar header — minimal: brand left, actions right */}
       <header className="header">
         <a href="#overview" className="header__brand">
-          <LogoMark style={{ width: 16, height: 16, color: "var(--accent)" }} />
+          <LogoMark style={{ width: 30, height: 30 }} />
           claudget
         </a>
         <span className="header__spacer" />

@@ -275,31 +275,29 @@ ul {
 }
 
 .sidebar__logo {
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-3);
-  background: var(--accent);
+  width: 60px;
+  height: 60px;
   display: grid;
   place-items: center;
-  margin-bottom: var(--s5);
-  color: #1a0f0a; /* dark mark on the coral chip — visible, not a blob */
-  box-shadow:
-    0 0 14px rgba(255, 127, 87, 0.28),
-    var(--hi-top);
+  margin-bottom: var(--s4);
   transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
   animation: logo-breathe 5s ease-in-out infinite;
 }
-.sidebar__logo:hover {
-  transform: translateY(-2px) scale(1.04);
+.sidebar__logo img {
+  width: 58px;
+  height: 58px;
 }
-/* god-tier minimal: the mark gently breathes its glow */
+.sidebar__logo:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+/* god-tier minimal: the mark's glow gently breathes */
 @keyframes logo-breathe {
   0%,
   100% {
-    box-shadow: 0 0 12px rgba(255, 127, 87, 0.22), var(--hi-top);
+    filter: drop-shadow(0 0 5px rgba(255, 127, 87, 0.3));
   }
   50% {
-    box-shadow: 0 0 22px rgba(255, 127, 87, 0.42), var(--hi-top);
+    filter: drop-shadow(0 0 11px rgba(255, 127, 87, 0.55));
   }
 }
 

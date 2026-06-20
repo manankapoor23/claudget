@@ -36,14 +36,17 @@ export const metadata: Metadata = {
     url: SITE_URL,
     siteName: "claudget",
     type: "website",
+    images: [{ url: "/claudget-logo.png", width: 512, height: 512, alt: "claudget" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "claudget — real-time Claude Code usage",
     description: DESCRIPTION,
+    images: ["/claudget-logo.png"],
   },
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [{ url: "/claudget-logo.png", type: "image/png" }],
+    apple: [{ url: "/claudget-logo.png" }],
   },
 };
 

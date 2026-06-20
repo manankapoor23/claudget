@@ -122,7 +122,7 @@ export default function Home() {
         <section id="overview" className="hero">
           <div>
             <span className="hero__eyebrow">
-              <LogoMark style={{ width: 14, height: 14 }} />
+              <LogoMark style={{ width: 22, height: 22 }} />
               claudget · open source · MIT · macOS / Windows / Linux
             </span>
             <h1>
@@ -395,7 +395,7 @@ export default function Home() {
         <div className="footer__inner">
           <div className="footer__brand">
             <div className="header__title" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <LogoMark style={{ width: 18, height: 18, color: "var(--action-orange)" }} />
+              <LogoMark style={{ width: 32, height: 32 }} />
               claudget
             </div>
             <p>

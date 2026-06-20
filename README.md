@@ -1,4 +1,8 @@
-# claudget
+<p align="center">
+  <img src="claudget-logo.png" alt="claudget" width="120" height="120" />
+</p>
+
+<h1 align="center">claudget</h1>
 
 A lightweight, always-on-top desktop widget that shows your **Claude Code** usage in
 real time — current and remaining plan limits, time until reset, token spend, estimated
