@@ -1,0 +1,45 @@
+name: Release
+
+# Push a version tag to build installers for all three OSes and publish them
+# to a GitHub Release. No paid certs — macOS builds are unsigned/ad-hoc signed.
+#
+#   npm version patch        # bumps package.json + creates the tag
+#   git push --follow-tags   # triggers this workflow
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+permissions:
+  contents: write # needed to create the Release and upload assets
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Bundle core, then build the Electron main/preload/renderer into out/.
+      - run: npm run build:core
+      - run: npm run build -w @claude-widget/desktop
+
+      # Package + publish. electron-builder reads packages/desktop/electron-builder.yml
+      # and uploads to the GitHub Release for this tag.
+      - name: Package and publish
+        working-directory: packages/desktop
+        run: npx electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false' # don't hunt for a signing cert

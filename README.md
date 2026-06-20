@@ -5,19 +5,20 @@ real time — current and remaining plan limits, time until reset, token spend, 
 cost, burn rate, and recent sessions. Built with Electron + React + TypeScript.
 
 > **Zero setup.** The widget reads the data the Claude Code CLI already stores on your
-> machine. There is nothing to paste, no API key to manage. If you're signed in to
-> Claude Code, the widget just works.
+> machine — including the OAuth token it keeps in the macOS Keychain (or
+> `~/.claude/.credentials.json` elsewhere). There is nothing to paste, no API key to manage.
+> If you're signed in to Claude Code, the widget just works.
 
 ---
 
 ## Highlights
 
-- **Live plan limits** — your 5-hour and weekly windows as % consumed / % remaining with
-  a live countdown to reset, fetched from Anthropic's official usage endpoint using the
-  OAuth token Claude Code already stored.
-- **Fully local fallback** — token counts, cost estimates, per-model breakdown, session
-  blocks, burn rate, and an activity sparkline are all derived from your local transcripts
-  and work **100% offline**, even with plan-limit polling turned off.
+- **Live usage %** — your 5-hour and weekly windows as % consumed / % remaining with a live
+  countdown to reset, fetched from Anthropic's official usage endpoint using the OAuth token
+  Claude Code already stored. On by default; flip it off in Settings to go fully local.
+- **Fully local data** — token counts, cost estimates, per-model breakdown, session blocks,
+  burn rate, and an activity sparkline are all derived from your local transcripts and work
+  **100% offline**, even with plan-limit polling turned off.
 - **Stays out of the way** — frameless, translucent, always-on-top, draggable. Toggle
   **compact mode**, **click-through**, opacity, and taskbar visibility. Hides to the system
   tray; global hotkeys to show/hide.
@@ -32,7 +33,22 @@ panel. (Run it to see them — see [Quick start](#quick-start).)
 
 ---
 
-## Quick start
+## Download & install
+
+Grab the latest build from the [**Releases page**](https://github.com/manankapoor23/claudget/releases/latest) — macOS `.dmg`, Windows `Setup.exe`/`Portable.exe`, Linux `.AppImage`.
+
+claudget is free and open source, so the builds aren't paid-signed by Apple/Microsoft. Your OS shows a one-time warning the first time you open it — that's expected for unsigned open-source apps, not a problem with the app:
+
+- **macOS** — right-click the app → **Open** (then **Open** again). If you see *"is damaged and can't be opened"*, clear the download quarantine once:
+  ```bash
+  xattr -cr "/Applications/Claude Usage Widget.app"
+  ```
+- **Windows** — on the SmartScreen prompt, click **More info → Run anyway**.
+- **Linux** — `chmod +x` the AppImage and run it. No prompt.
+
+> Auto-update works on Windows and Linux. On macOS (unsigned) you re-download new versions from Releases manually.
+
+## Quick start (build from source)
 
 **Requirements:** Node.js ≥ 20, npm ≥ 9, and the Claude Code CLI installed and signed in
 (run `claude` once if you haven't). Windows, macOS, and Linux are supported.
@@ -97,7 +113,7 @@ widget). Full schema:
 
 | Key                      | Type / range                           | Default    | Meaning                                                                       |
 | ------------------------ | -------------------------------------- | ---------- | ----------------------------------------------------------------------------- |
-| `enableOfficial`         | boolean                                | `true`     | Poll Anthropic for plan limits. When `false`, the widget is 100% local.       |
+| `enableOfficial`         | boolean                                | `true`     | Poll Anthropic for plan limits (the usage-% gauges). When `false`, the widget is 100% local. |
 | `officialPollIntervalMs` | int, 180 000–3 600 000                 | `300000`   | Time between plan-limit polls. **Floor is 180 s** (endpoint is rate-limited). |
 | `localDebounceMs`        | int, 200–10 000                        | `1000`     | Debounce for coalescing transcript file-change events.                        |
 | `fullRescanIntervalMs`   | int, 10 000–3 600 000                  | `120000`   | Periodic full rescan to catch new projects / missed FS events.                |

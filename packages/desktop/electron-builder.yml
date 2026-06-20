@@ -4,7 +4,13 @@ copyright: Copyright © 2026 Claude Widget contributors
 
 # Pinned because npm workspaces hoist `electron` to the root node_modules, where
 # electron-builder's auto-detection can't find it. Keep in sync with the electron devDep.
-electronVersion: 33.4.11
+electronVersion: 42.4.1
+
+# Free distribution, no paid certs. Releases are published to GitHub Releases.
+publish:
+  provider: github
+  owner: manankapoor23
+  repo: claudget
 
 directories:
   output: release
@@ -46,9 +52,15 @@ portable:
 
 mac:
   target:
-    - dmg
+    - target: dmg
+      arch: [universal]
   category: public.app-category.developer-tools
-  icon: build/icon.png
+  icon: build/icon.icns
+  # Unsigned + ad-hoc signed (no paid Apple cert). The app launches on Apple
+  # Silicon; users clear Gatekeeper quarantine once on first open
+  # (right-click → Open, or `xattr -cr "/Applications/Claude Usage Widget.app"`).
+  identity: null
+  notarize: false
 
 linux:
   target:
