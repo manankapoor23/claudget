@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title: "claudget — Claude Code usage widget for your desktop",
   description: DESCRIPTION,
   alternates: { canonical: "/" },
-  verification: { google: "YN2s8SXBlPGxVGxS5PJjzZ9Yt1jZC29P-cuGL7KCz2s" },
+  verification: { google: "hisrb3hbv1S2oTt03-oC5inr18nAOWq47tRmBq02tNQ" },
   keywords: [
     "claudget",
     "Claude Code",
