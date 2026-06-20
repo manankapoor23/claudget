@@ -8,7 +8,6 @@ import {
   IconFlow,
   IconDownload,
   IconGitHub,
-  IconSearch,
 } from "../icons";
 import { REPO_URL } from "../constants";
 import ThemeToggle from "./ThemeToggle";
@@ -45,7 +44,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       {/* Fixed sidebar */}
       <aside className="sidebar">
         <a href="#overview" className="sidebar__logo" aria-label="Top">
-          <LogoMark style={{ width: 22, height: 22, color: "var(--action-orange)" }} />
+          <LogoMark style={{ width: 22, height: 22 }} />
         </a>
         <nav className="sidebar__nav">
           {NAV.map(({ id, label, Icon }) => (
@@ -70,14 +69,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </a>
       </aside>
 
-      {/* Toolbar header */}
+      {/* Toolbar header — minimal: brand left, actions right */}
       <header className="header">
-        <span className="header__title">claudget</span>
-        <span className="header__tag">Claude Code usage</span>
-        <span className="header__search">
-          <IconSearch style={{ width: 14, height: 14, marginRight: 8, verticalAlign: "-2px" }} />
-          tokens · cost · burn rate · plan limits…
-        </span>
+        <a href="#overview" className="header__brand">
+          <LogoMark style={{ width: 16, height: 16, color: "var(--accent)" }} />
+          claudget
+        </a>
         <span className="header__spacer" />
         <div className="header__right">
           <ThemeToggle />

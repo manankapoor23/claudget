@@ -148,7 +148,7 @@ body {
 body::before {
   content: "";
   position: fixed;
-  inset: 0;
+  inset: -12%; /* overscan so the slow drift never reveals an edge */
   z-index: -2;
   pointer-events: none;
   background:
@@ -156,6 +156,16 @@ body::before {
     radial-gradient(55% 50% at 12% 30%, var(--glow-cool), transparent 60%),
     radial-gradient(70% 60% at 50% 110%, var(--glow-coral), transparent 55%),
     radial-gradient(120% 120% at 50% 0%, #14121a 0%, var(--paper) 60%);
+  /* ambient: the glows drift + breathe almost imperceptibly */
+  animation: backdrop-drift 32s ease-in-out infinite alternate;
+}
+@keyframes backdrop-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    transform: translate3d(-2.5%, 1.5%, 0) scale(1.06);
+  }
 }
 :root[data-theme="light"] body::before {
   background:
@@ -265,21 +275,53 @@ ul {
 }
 
 .sidebar__logo {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: var(--radius-3);
   background: var(--accent);
   display: grid;
   place-items: center;
   margin-bottom: var(--s5);
-  color: #1a0f0a;
+  color: #1a0f0a; /* dark mark on the coral chip — visible, not a blob */
   box-shadow:
-    0 0 18px rgba(255, 127, 87, 0.45),
+    0 0 14px rgba(255, 127, 87, 0.28),
     var(--hi-top);
-  transition: transform 0.15s ease;
+  transition: transform 0.2s cubic-bezier(0.2, 0.7, 0.2, 1);
+  animation: logo-breathe 5s ease-in-out infinite;
 }
 .sidebar__logo:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.04);
+}
+/* god-tier minimal: the mark gently breathes its glow */
+@keyframes logo-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 12px rgba(255, 127, 87, 0.22), var(--hi-top);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(255, 127, 87, 0.42), var(--hi-top);
+  }
+}
+
+/* ---- Minimal header brand (replaces the cluttered title/tag/search) ---- */
+.header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--ink);
+  transition: opacity 0.18s ease;
+}
+.header__brand:hover {
+  opacity: 0.65;
+}
+.header__brand svg {
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.header__brand:hover svg {
+  transform: rotate(-6deg) scale(1.08);
 }
 
 .sidebar__nav {
@@ -1324,6 +1366,65 @@ ul {
 }
 
 /* Respect reduce-motion: kill transitions & animations. */
+/* =========================================================================
+   Motion — restrained, premium. Same palette/type; only opacity + transform.
+   All of it is gated behind no-preference, so reduce-motion users get none.
+   ========================================================================= */
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero rises in on load, gently staggered. */
+  .hero__eyebrow {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  .hero h1 {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.08s both;
+  }
+  .hero__lede {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.16s both;
+  }
+  .hero__actions {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.24s both;
+  }
+  .hero__stats {
+    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.32s both;
+  }
+  .mock {
+    animation: rise 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(18px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Sections reveal as they scroll into view. Scroll-driven CSS — no JS, no
+     FOUC. Browsers without support simply show content normally. */
+  @supports (animation-timeline: view()) {
+    .rule,
+    .cards,
+    .box,
+    .callout {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 38%;
+    }
+    @keyframes reveal-in {
+      from {
+        opacity: 0;
+        transform: translateY(26px);
+      }
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
