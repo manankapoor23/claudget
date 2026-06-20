@@ -42,18 +42,18 @@ I built it because I kept alt-tabbing to a terminal just to run a usage command 
 
 ## Contents
 
-- [What it does](#-what-it-does)
-- [Download &amp; install](#-download--install)
-- [Screenshots](#-screenshots)
-- [Configuration](#-configuration)
-- [Keyboard shortcuts](#-keyboard-shortcuts)
-- [How it works](#-how-it-works)
-- [Security &amp; privacy](#-security--privacy)
-- [Contributing](#-contributing)
-- [Building from source](#-building-from-source)
-- [Troubleshooting](#-troubleshooting)
-- [Project layout](#-project-layout)
-- [License](#-license)
+- [What it does](#what-it-does)
+- [Download &amp; install](#download--install)
+- [Screenshots](#screenshots)
+- [Configuration](#configuration)
+- [Keyboard shortcuts](#keyboard-shortcuts)
+- [How it works](#how-it-works)
+- [Security &amp; privacy](#security--privacy)
+- [Contributing](#contributing)
+- [Building from source](#building-from-source)
+- [Troubleshooting](#troubleshooting)
+- [Project layout](#project-layout)
+- [License](#license)
 
 ---
 
@@ -65,7 +65,7 @@ I built it because I kept alt-tabbing to a terminal just to run a usage command 
 - **Forecast, pace &amp; insights** — "at this rate" projected spend, an on-track / burning-fast badge vs your plan window, and a quick read on your top project, model split, and busiest hour.
 - **Stays out of your way** — frameless, translucent, draggable, always-on-top (and it follows you across every macOS Space / over fullscreen apps). Compact mode when you just want the number; click-through when it's in the way; lives in the tray with global hotkeys.
 - **Dark / light / system** theme.
-- **Read-only &amp; private** — never writes to `~/.claude`, never logs your token, never phones home anywhere except `api.anthropic.com`. ([details](#-security--privacy))
+- **Read-only &amp; private** — never writes to `~/.claude`, never logs your token, never phones home anywhere except `api.anthropic.com`. ([details](#security--privacy))
 
 ## Download &amp; install
 
@@ -84,7 +84,7 @@ Grab the latest build from the **[Releases page →](https://github.com/manankap
 
 ### First launch — the "unverified" warning
 
-I'm not paying Apple/Microsoft to sign an open-source side project, so your OS will complain the first time. **This is about the missing signature, not malware** ([here's how to verify that for yourself](#-security--privacy)):
+I'm not paying Apple/Microsoft to sign an open-source side project, so your OS will complain the first time. **This is about the missing signature, not malware** ([here's how to verify that for yourself](#security--privacy)):
 
 - **macOS** — modern macOS (Sequoia) hard-blocks unsigned apps and may move them straight to Trash. The reliable fix: drag **claudget** into Applications (restore from Trash first if needed), then run:
   ```bash
@@ -109,9 +109,9 @@ There are three views — the full dashboard, compact mode, and settings.
   </p>
 -->
 
-_(Until screenshots land here, the fastest way to see it is [downloading a build](#-download--install) or [running from source](#-building-from-source).)_
+_(Until screenshots land here, the fastest way to see it is [downloading a build](#download--install) or [running from source](#building-from-source).)_
 
-##  Configuration
+## Configuration
 
 Settings live in a JSON file in the app's user-data dir. Easiest way to edit: the in-app **Settings** screen. You can also open the raw file from **Settings → About → Config file**, or find it yourself:
 
@@ -148,7 +148,7 @@ Hand-edit and mess up a field? That one field falls back to its default — a ba
 
 **Env override:** `CLAUDE_CONFIG_DIR` sets the Claude data dir if you keep it somewhere nonstandard (the `claudeDir` config field wins if both are set).
 
-## ⌨️ Keyboard shortcuts
+## Keyboard shortcuts
 
 | Shortcut | Action |
 | --- | --- |
@@ -157,7 +157,7 @@ Hand-edit and mess up a field? That one field falls back to its default — a ba
 
 The tray icon has the same toggles plus Refresh, Open logs, Open config, and Quit.
 
-##  How it works
+## How it works
 
 Two data sources, combined into one snapshot the UI renders:
 
@@ -166,7 +166,7 @@ Two data sources, combined into one snapshot the UI renders:
 
 If the endpoint is unreachable (offline, expired login, rate-limited), it shows the last known numbers tagged **Cached** and keeps local data flowing. Long version in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-##  Security &amp; privacy
+## Security &amp; privacy
 
 The whole point is that it's boring and trustworthy. It's also open source, so you don't have to take my word — you can check:
 
@@ -175,19 +175,19 @@ The whole point is that it's boring and trustworthy. It's also open source, so y
 - **Strictly read-only** on `~/.claude` — it never writes there. App state (config, window position, logs) stays in the app's own user-data dir.
 - **The binary matches the source:** every release is built by GitHub Actions from the tagged public commit, not hand-uploaded.
 
-Want to verify yourself? Read the source, [build it](#-building-from-source), or watch its traffic with Little Snitch / `lsof` — you'll see only `api.anthropic.com` (and GitHub on update checks). (Unsigned Electron apps sometimes trip 1–2 generic false positives on VirusTotal — that's the missing signature, not malware.)
+Want to verify yourself? Read the source, [build it](#building-from-source), or watch its traffic with Little Snitch / `lsof` — you'll see only `api.anthropic.com` (and GitHub on update checks). (Unsigned Electron apps sometimes trip 1–2 generic false positives on VirusTotal — that's the missing signature, not malware.)
 
-##  Contributing
+## Contributing
 
 Contributions are genuinely welcome — this is built in the open and PRs, issues, and ideas all help.
 
 ### Ways to help
 
--  **Report a bug** — [open an issue](https://github.com/manankapoor23/claudget/issues/new) with your OS, what you did, and what happened (logs help: **Settings → Logs**, or set `logLevel: "debug"`).
--  **Suggest a feature** — open an issue and describe the use case.
--  **Test on your platform** — Windows and Linux especially need real-world eyes on tray + always-on-top behavior.
--  **Improve docs** — typos, unclear steps, missing screenshots.
--  **Send a PR** — see below.
+- **Report a bug** — [open an issue](https://github.com/manankapoor23/claudget/issues/new) with your OS, what you did, and what happened (logs help: **Settings → Logs**, or set `logLevel: "debug"`).
+- **Suggest a feature** — open an issue and describe the use case.
+- **Test on your platform** — Windows and Linux especially need real-world eyes on tray + always-on-top behavior.
+- **Improve docs** — typos, unclear steps, missing screenshots.
+- **Send a PR** — see below.
 
 ### Good first contributions
 
@@ -207,7 +207,7 @@ npm install          # installs both workspaces
 npm run dev          # hot-reloading renderer + main
 ```
 
-Architecture overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the layout is in [Project layout](#-project-layout). The data layer (`packages/core`) is framework-agnostic and unit-tested; the Electron + React app is `packages/desktop`.
+Architecture overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the layout is in [Project layout](#project-layout). The data layer (`packages/core`) is framework-agnostic and unit-tested; the Electron + React app is `packages/desktop`.
 
 ### Before you open a PR
 
@@ -230,7 +230,7 @@ Then:
 
 > Working against Electron/React/Vite/Zod/Vitest/tsup/chokidar APIs? Check the current docs — these shift between versions.
 
-##  Building from source
+## Building from source
 
 Requires Node ≥ 20, npm ≥ 9, and the Claude Code CLI installed and logged in (run `claude` once if you haven't). Works on macOS, Windows, Linux.
 
@@ -266,7 +266,7 @@ npx electron packages/desktop
 
 > **Windows gotcha:** electron-builder pulls a `winCodeSign` bundle containing macOS symlinks; extracting it can fail with "A required privilege is not held by the client" unless Developer Mode is on (Settings → System → For developers) or you run from an elevated shell. The macOS bits don't matter for a Windows build.
 
-##  Troubleshooting
+## Troubleshooting
 
 - **"No usage data is available yet."** — You haven't used Claude Code on this machine yet, or `~/.claude/projects` is empty. Run a session and give it a second.
 - **Plan limits stuck on "Sign in…" / "login expired".** — Run `claude` once to refresh credentials; the widget picks it up on the next poll.
@@ -275,7 +275,7 @@ npx electron packages/desktop
 - **"Electron failed to install correctly."** — The Electron binary download got interrupted. Run `node node_modules/electron/install.js`, or delete `node_modules` and `npm install` again.
 - **Logs** — tray menu or **Settings → Logs**. Set `logLevel: "debug"` for more.
 
-##  Project layout
+## Project layout
 
 ```
 packages/
@@ -288,7 +288,7 @@ docs/
 website/       the marketing site (Next.js) → claudget.vercel.app
 ```
 
-##  License
+## License
 
 MIT — see [LICENSE](LICENSE). Do what you like with it.
 
@@ -296,5 +296,5 @@ MIT — see [LICENSE](LICENSE). Do what you like with it.
 
 <p align="center">
   <sub>Built by <a href="https://github.com/manankapoor23">Manan Kapoor</a>. Not affiliated with Anthropic — claudget only reads what Claude Code already stores on your machine.</sub><br/>
-  <sub>If it's useful, a ⭐ on the repo genuinely helps it reach other people.</sub>
+  <sub>If it's useful, a star on the repo genuinely helps it reach other people.</sub>
 </p>
