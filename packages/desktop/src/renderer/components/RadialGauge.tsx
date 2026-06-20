@@ -1,4 +1,4 @@
-import { useId, type JSX, type ReactNode } from 'react';
+import { type JSX, type ReactNode } from 'react';
 
 interface RadialGaugeProps {
   /** 0..1 consumed fraction. */
@@ -11,7 +11,6 @@ interface RadialGaugeProps {
 const SWEEP_DEG = 270;
 
 export function RadialGauge({ value, size = 96, label, sub }: RadialGaugeProps): JSX.Element {
-  const gradientId = useId();
   const stroke = 8;
   const radius = (size - stroke) / 2;
   const center = size / 2;
@@ -24,20 +23,15 @@ export function RadialGauge({ value, size = 96, label, sub }: RadialGaugeProps):
     <div className="gauge" style={{ width: size }}>
       <div style={{ position: 'relative', width: size, height: size }}>
         <svg width={size} height={size}>
-          <defs>
-            <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#38bdf8" />
-              <stop offset="100%" stopColor="#818cf8" />
-            </linearGradient>
-          </defs>
+          {/* Flat engineering dial: ink track, orange fill, butt caps, no glow. */}
           <circle
             cx={center}
             cy={center}
             r={radius}
             fill="none"
-            stroke="var(--track)"
+            stroke="var(--paper-3)"
             strokeWidth={stroke}
-            strokeLinecap="round"
+            strokeLinecap="butt"
             strokeDasharray={`${arc} ${circumference}`}
             transform={rotate}
           />
@@ -46,15 +40,12 @@ export function RadialGauge({ value, size = 96, label, sub }: RadialGaugeProps):
             cy={center}
             r={radius}
             fill="none"
-            stroke={`url(#${gradientId})`}
+            stroke="var(--orange)"
             strokeWidth={stroke}
-            strokeLinecap="round"
+            strokeLinecap="butt"
             strokeDasharray={`${arc * v} ${circumference}`}
             transform={rotate}
-            style={{
-              transition: 'stroke-dasharray 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-              filter: 'drop-shadow(0 0 5px rgba(56, 189, 248, 0.55))',
-            }}
+            style={{ transition: 'stroke-dasharray 0.3s linear' }}
           />
         </svg>
         <div className="gauge__center" style={{ height: size }}>

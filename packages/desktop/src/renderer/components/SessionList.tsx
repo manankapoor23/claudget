@@ -34,7 +34,7 @@ export function SessionList({
           const live = liveIds.has(s.sessionId);
           return (
             <div className="session" key={s.sessionId} title={s.projectPath}>
-              <span className={live ? 'session__dot session__dot--live' : 'session__dot'} />
+              <span className="session__dot" />
               <span className="session__name">{projectName(s)}</span>
               <span className="session__val">{formatCompact(s.tokens.total)}</span>
               <span className="session__time">{live ? 'live' : formatRelative(s.lastAt)}</span>

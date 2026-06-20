@@ -14,7 +14,7 @@ interface ProgressBarProps {
 }
 
 const TONE_FILL: Record<Tone, string> = {
-  default: 'var(--grad)',
+  default: 'var(--orange)',
   good: 'var(--good)',
   warn: 'var(--warn)',
   bad: 'var(--bad)',
