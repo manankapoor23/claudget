@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/*.config.*',
       '**/coverage/**',
+      'website/**', // the marketing site has its own Next.js lint setup
     ],
   },
   js.configs.recommended,

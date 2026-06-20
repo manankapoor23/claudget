@@ -6,6 +6,7 @@ import {
   type UsageSnapshot,
   type WidgetConfig,
 } from '@claude-widget/core';
+import { autoUpdater } from 'electron-updater';
 import { detectCliVersion, resolveIconPath } from './app-paths';
 import { BudgetAlerter } from './budget-alerts';
 import { ConfigStore } from './config-store';
@@ -159,5 +160,18 @@ if (!singleInstanceLock) {
 
     await engine.start();
     logger.info('Engine started');
+
+    // Auto-update from GitHub Releases (config comes from electron-builder's
+    // publish block). Windows/Linux only: macOS builds are unsigned and
+    // Squirrel.Mac refuses to update without a valid signature. Packaged only.
+    if (app.isPackaged && process.platform !== 'darwin') {
+      const check = (): void => {
+        autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+          logger.warn('Update check failed', { err: String(err) });
+        });
+      };
+      check();
+      setInterval(check, 6 * 60 * 60 * 1000); // re-check every 6h
+    }
   }
 }
