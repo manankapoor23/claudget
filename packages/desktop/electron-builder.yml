@@ -1,6 +1,6 @@
-appId: com.claudewidget.app
-productName: Claude Usage Widget
-copyright: Copyright © 2026 Claude Widget contributors
+appId: com.claudget.app
+productName: claudget
+copyright: Copyright © 2026 claudget contributors
 
 # Pinned because npm workspaces hoist `electron` to the root node_modules, where
 # electron-builder's auto-detection can't find it. Keep in sync with the electron devDep.
@@ -44,7 +44,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Claude Usage Widget
+  shortcutName: claudget
   artifactName: ${productName}-${version}-Setup-${arch}.${ext}
 
 portable:
@@ -58,7 +58,7 @@ mac:
   icon: build/icon.icns
   # Unsigned + ad-hoc signed (no paid Apple cert). The app launches on Apple
   # Silicon; users clear Gatekeeper quarantine once on first open
-  # (right-click → Open, or `xattr -cr "/Applications/Claude Usage Widget.app"`).
+  # (right-click → Open, or `xattr -cr "/Applications/claudget.app"`).
   identity: null
   notarize: false
 

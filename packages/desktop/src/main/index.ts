@@ -45,7 +45,7 @@ if (!singleInstanceLock) {
     let config = configStore.get();
 
     const { logger, logFilePath } = createAppLogger(path.join(userData, 'logs'), config.logLevel);
-    logger.info('Claude Usage Widget starting', {
+    logger.info('claudget starting', {
       version: app.getVersion(),
       platform: process.platform,
     });

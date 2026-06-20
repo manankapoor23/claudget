@@ -35,7 +35,7 @@ export const useStore = create<WidgetState>()((set, get) => ({
 
     const api = getBridge();
     if (!api) {
-      set({ loading: false, error: 'This window must run inside the Claude Usage Widget app.' });
+      set({ loading: false, error: 'This window must run inside the claudget app.' });
       return;
     }
 

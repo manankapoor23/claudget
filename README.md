@@ -1,4 +1,4 @@
-# Claude Usage Widget
+# claudget
 
 A lightweight, always-on-top desktop widget that shows your **Claude Code** usage in
 real time — current and remaining plan limits, time until reset, token spend, estimated
@@ -41,7 +41,7 @@ claudget is free and open source, so the builds aren't paid-signed by Apple/Micr
 
 - **macOS** — right-click the app → **Open** (then **Open** again). If you see *"is damaged and can't be opened"*, clear the download quarantine once:
   ```bash
-  xattr -cr "/Applications/Claude Usage Widget.app"
+  xattr -cr "/Applications/claudget.app"
   ```
 - **Windows** — on the SmartScreen prompt, click **More info → Run anyway**.
 - **Linux** — `chmod +x` the AppImage and run it. No prompt.
@@ -102,11 +102,11 @@ Settings live in a JSON file in the app's user-data directory and can be edited 
 in-app **Settings** screen (recommended) or by hand. Open the file via
 **Settings → About → Config file**. Locations:
 
-| OS      | Path                                                               |
-| ------- | ------------------------------------------------------------------ |
-| Windows | `%APPDATA%\@claude-widget\desktop\config.json`                     |
-| macOS   | `~/Library/Application Support/@claude-widget/desktop/config.json` |
-| Linux   | `~/.config/@claude-widget/desktop/config.json`                     |
+| OS      | Path                                                |
+| ------- | --------------------------------------------------- |
+| Windows | `%APPDATA%\claudget\config.json`                    |
+| macOS   | `~/Library/Application Support/claudget/config.json` |
+| Linux   | `~/.config/claudget/config.json`                    |
 
 Invalid individual fields fall back to their default (a single bad value never bricks the
 widget). Full schema:

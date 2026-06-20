@@ -99,7 +99,7 @@ export class WidgetWindow {
       hasShadow: true,
       show: false,
       icon: deps.iconPath,
-      title: 'Claude Usage Widget',
+      title: 'claudget',
       webPreferences: {
         preload: deps.preloadPath,
         contextIsolation: true,

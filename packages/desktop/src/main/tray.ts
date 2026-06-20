@@ -24,7 +24,7 @@ export function createTray(deps: TrayDeps): TrayHandle {
     ? nativeImage.createEmpty()
     : image.resize({ width: 16, height: 16 });
   const tray = new Tray(trayImage);
-  tray.setToolTip('Claude Usage Widget');
+  tray.setToolTip('claudget');
 
   const syncMenu = (): void => {
     const cfg = deps.getConfig();
