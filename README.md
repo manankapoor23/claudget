@@ -4,221 +4,179 @@
 
 <h1 align="center">claudget</h1>
 
-A lightweight, always-on-top desktop widget that shows your **Claude Code** usage in
-real time — current and remaining plan limits, time until reset, token spend, estimated
-cost, burn rate, and recent sessions. Built with Electron + React + TypeScript.
+A little always-on-top desktop widget for keeping an eye on your Claude Code usage — plan limits, time till reset, tokens burned, rough cost, burn rate, recent sessions. Electron + React + TS.
 
-> **Zero setup.** The widget reads the data the Claude Code CLI already stores on your
-> machine — including the OAuth token it keeps in the macOS Keychain (or
-> `~/.claude/.credentials.json` elsewhere). There is nothing to paste, no API key to manage.
-> If you're signed in to Claude Code, the widget just works.
+> No setup. It just reads what the Claude Code CLI already has sitting on your machine — the OAuth token from the macOS Keychain (or `~/.claude/.credentials.json` on other OSes). Nothing to paste in, no key to generate. If `claude` already works for you, this will too.
+
+I built this because I kept alt-tabbing to a terminal just to run a usage command. Now it's just... there.
 
 ---
 
-## Highlights
+## What it does
 
-- **Live usage %** — your 5-hour and weekly windows as % consumed / % remaining with a live
-  countdown to reset, fetched from Anthropic's official usage endpoint using the OAuth token
-  Claude Code already stored. On by default; flip it off in Settings to go fully local.
-- **Fully local data** — token counts, cost estimates, per-model breakdown, session blocks,
-  burn rate, and an activity sparkline are all derived from your local transcripts and work
-  **100% offline**, even with plan-limit polling turned off.
-- **Stays out of the way** — frameless, translucent, always-on-top, draggable. Toggle
-  **compact mode**, **click-through**, opacity, and taskbar visibility. Hides to the system
-  tray; global hotkeys to show/hide.
-- **Dark / light / system** theming with a clean, modern dashboard aesthetic.
-- **Private by design** — the widget is strictly read-only to `~/.claude`, never writes
-  there, and never transmits your OAuth token anywhere except `api.anthropic.com`.
+- **Live usage %** for both the 5-hour and weekly windows, with a countdown to reset. Pulled straight from Anthropic's usage endpoint using the token Claude Code already stored — you don't do anything. Can be switched off in Settings if you'd rather it stay fully local.
+- **Works offline** for everything else — tokens, cost estimates, per-model breakdown, session blocks, burn rate, an activity sparkline — all computed from your local transcripts. Doesn't need the network at all if you turn polling off.
+- **Stays out of your way.** Frameless, translucent, draggable, always on top (optional). Compact mode if you just want the number. Click-through if it's annoying you. Lives in the tray, hotkeys to show/hide.
+- Dark/light/system theme, because obviously.
+- **Read-only.** It never writes to `~/.claude`, and the OAuth token never goes anywhere except `api.anthropic.com`. More on this below since I know some of you will (rightly) want to check.
 
 ## Screenshots
 
-The widget has three layouts: the full dashboard, **compact mode**, and the **settings**
-panel. (Run it to see them — see [Quick start](#quick-start).)
+There are three views — full dashboard, compact mode, and settings. Easier to just run it and look (see Quick start below) than for me to describe them badly here.
 
 ---
 
 ## Download & install
 
-Grab the latest build from the [**Releases page**](https://github.com/manankapoor23/claudget/releases/latest) — macOS `.dmg`, Windows `Setup.exe`/`Portable.exe`, Linux `.AppImage`.
+Latest builds are on the [Releases page](https://github.com/manankapoor23/claudget/releases/latest) — `.dmg` for macOS, `Setup.exe`/`Portable.exe` for Windows, `.AppImage` for Linux.
 
-claudget is free and open source, so the builds aren't paid-signed by Apple/Microsoft. Your OS shows a one-time warning the first time you open it — that's expected for unsigned open-source apps, not a problem with the app:
+I'm not paying Apple/Microsoft to sign an open-source side project, so your OS will complain the first time you open it. This is normal, not a sign something's wrong:
 
-- **macOS** — right-click the app → **Open** (then **Open** again). If you see *"is damaged and can't be opened"*, clear the download quarantine once:
+- **macOS** — right-click → Open (then Open again on the popup). If it says the app "is damaged and can't be opened" (classic Gatekeeper overreaction for unsigned apps), run:
   ```bash
   xattr -cr "/Applications/claudget.app"
   ```
-- **Windows** — on the SmartScreen prompt, click **More info → Run anyway**.
-- **Linux** — `chmod +x` the AppImage and run it. No prompt.
+- **Windows** — SmartScreen will throw up a wall, click "More info" → "Run anyway".
+- **Linux** — `chmod +x` the AppImage, run it, no complaints.
 
-> Auto-update works on Windows and Linux. On macOS (unsigned) you re-download new versions from Releases manually.
+Auto-update works fine on Windows/Linux. macOS being unsigned means no auto-update — just grab new versions from Releases when you want them.
 
-## Quick start (build from source)
+## Quick start (building from source)
 
-**Requirements:** Node.js ≥ 20, npm ≥ 9, and the Claude Code CLI installed and signed in
-(run `claude` once if you haven't). Windows, macOS, and Linux are supported.
+You'll need Node ≥ 20, npm ≥ 9, and the Claude Code CLI already installed and logged in (run `claude` once if you haven't). Works on Mac, Windows, Linux.
 
 ```bash
-# 1. Install dependencies (installs both workspaces)
+# installs both workspaces
 npm install
 
-# 2. Run in development (hot-reloading renderer + main)
+# dev mode, hot reload on both renderer and main
 npm run dev
 
-# 3. …or build and run the production bundle
+# or build + run the production bundle
 npm run build
-npm start            # see "Running the built app" below
+npm start
 ```
 
-### Running the built app
+### Running the built app without packaging it
 
-`npm run build` compiles everything into `packages/desktop/out`. To launch that bundle
-without packaging an installer:
+`npm run build` spits everything out into `packages/desktop/out`. If you just want to run that without going through electron-builder:
 
 ```bash
 npm run build
-npx electron packages/desktop      # launches the built main process
+npx electron packages/desktop
 ```
 
-To produce a distributable installer instead, see [Packaging](#packaging).
+For an actual installer, skip to [Packaging](#packaging).
 
 ---
 
 ## Scripts
 
-All scripts run from the repository root.
+Run these from the repo root.
 
-| Script                | What it does                                                     |
-| --------------------- | ---------------------------------------------------------------- |
-| `npm run dev`         | Build `core`, then start the desktop app with hot reload.        |
-| `npm run build`       | Build `core` (tsup) and the desktop app (electron-vite).         |
-| `npm run package`     | Build, then produce an installer/binary via electron-builder.    |
-| `npm run package:dir` | Build an unpacked app directory (fast, for local smoke testing). |
-| `npm run typecheck`   | Strict `tsc --noEmit` across both workspaces.                    |
-| `npm test`            | Run the `core` unit tests (vitest).                              |
-| `npm run lint`        | ESLint across the repo.                                          |
-| `npm run format`      | Prettier write. `format:check` to verify only.                   |
+| Script | Does what |
+| --- | --- |
+| `npm run dev` | builds `core`, launches desktop app with hot reload |
+| `npm run build` | builds `core` (tsup) + desktop (electron-vite) |
+| `npm run package` | full build → installer via electron-builder |
+| `npm run package:dir` | unpacked app dir, no installer — good for quick local testing |
+| `npm run typecheck` | `tsc --noEmit`, strict, both workspaces |
+| `npm test` | vitest, `core` package only |
+| `npm run lint` | eslint, whole repo |
+| `npm run format` | prettier write (`format:check` to just check) |
 
 ---
 
 ## Configuration
 
-Settings live in a JSON file in the app's user-data directory and can be edited from the
-in-app **Settings** screen (recommended) or by hand. Open the file via
-**Settings → About → Config file**. Locations:
+Lives in a JSON file in the app's user-data dir. Easiest way to edit it: Settings screen in the app. You can also open the raw file directly from Settings → About → Config file, or find it yourself:
 
-| OS      | Path                                                |
-| ------- | --------------------------------------------------- |
-| Windows | `%APPDATA%\claudget\config.json`                    |
-| macOS   | `~/Library/Application Support/claudget/config.json` |
-| Linux   | `~/.config/claudget/config.json`                    |
+| OS | Path |
+| --- | --- |
+| Windows | `%APPDATA%\claudget\config.json` |
+| macOS | `~/Library/Application Support/claudget/config.json` |
+| Linux | `~/.config/claudget/config.json` |
 
-Invalid individual fields fall back to their default (a single bad value never bricks the
-widget). Full schema:
+If you hand-edit it and mess up a field, that one field just falls back to default — won't brick the whole app. Full list of what you can set:
 
-| Key                      | Type / range                           | Default    | Meaning                                                                       |
-| ------------------------ | -------------------------------------- | ---------- | ----------------------------------------------------------------------------- |
-| `enableOfficial`         | boolean                                | `true`     | Poll Anthropic for plan limits (the usage-% gauges). When `false`, the widget is 100% local. |
-| `officialPollIntervalMs` | int, 180 000–3 600 000                 | `300000`   | Time between plan-limit polls. **Floor is 180 s** (endpoint is rate-limited). |
-| `localDebounceMs`        | int, 200–10 000                        | `1000`     | Debounce for coalescing transcript file-change events.                        |
-| `fullRescanIntervalMs`   | int, 10 000–3 600 000                  | `120000`   | Periodic full rescan to catch new projects / missed FS events.                |
-| `recentSessionLimit`     | int, 1–100                             | `8`        | Max recent sessions listed.                                                   |
-| `historyWindowHours`     | int, 1–168                             | `24`       | Span of the activity sparkline.                                               |
-| `blockHours`             | number, 1–24                           | `5`        | Length of a usage "block" (Claude's session window is ~5 h).                  |
-| `currency`               | ISO 4217 string                        | `"USD"`    | Display currency for cost estimates.                                          |
-| `claudeDir`              | string \| null                         | `null`     | Override the `~/.claude` directory. `null` = auto-detect.                     |
-| `pricingOverridePath`    | string \| null                         | `null`     | Path to a JSON pricing-override file. `null` = bundled defaults.              |
-| `theme`                  | `system` \| `dark` \| `light`          | `"system"` | Color theme.                                                                  |
-| `alwaysOnTop`            | boolean                                | `true`     | Keep the window above others.                                                 |
-| `clickThrough`           | boolean                                | `false`    | Pass mouse clicks to windows beneath the widget.                              |
-| `compact`                | boolean                                | `false`    | Minimal at-a-glance layout.                                                   |
-| `opacity`                | number, 0.3–1                          | `1`        | Window opacity.                                                               |
-| `showInTaskbar`          | boolean                                | `true`     | Show in the taskbar/dock.                                                     |
-| `launchOnLogin`          | boolean                                | `false`    | Start the widget at login.                                                    |
-| `logLevel`               | `error` \| `warn` \| `info` \| `debug` | `"info"`   | File/console log verbosity.                                                   |
+| Key | Type / range | Default | What it does |
+| --- | --- | --- | --- |
+| `enableOfficial` | boolean | `true` | poll Anthropic for the plan-limit gauges. `false` = fully local. |
+| `officialPollIntervalMs` | int, 180000–3600000 | `300000` | how often to poll. **Can't go below 180s** — the endpoint will rate-limit you. |
+| `localDebounceMs` | int, 200–10000 | `1000` | debounce for transcript file-change events |
+| `fullRescanIntervalMs` | int, 10000–3600000 | `120000` | periodic full rescan, catches new projects/missed FS events |
+| `recentSessionLimit` | int, 1–100 | `8` | how many recent sessions to list |
+| `historyWindowHours` | int, 1–168 | `24` | how far back the sparkline goes |
+| `blockHours` | number, 1–24 | `5` | length of a usage "block" (Claude's session window is ~5h) |
+| `currency` | ISO 4217 | `"USD"` | display currency for costs |
+| `claudeDir` | string \| null | `null` | override `~/.claude` location, `null` = auto-detect |
+| `pricingOverridePath` | string \| null | `null` | point at your own pricing JSON instead of the bundled one |
+| `theme` | `system`\|`dark`\|`light` | `"system"` | self-explanatory |
+| `alwaysOnTop` | boolean | `true` | keep window above everything |
+| `clickThrough` | boolean | `false` | let clicks pass through to whatever's underneath |
+| `compact` | boolean | `false` | minimal layout |
+| `opacity` | number, 0.3–1 | `1` | window opacity |
+| `showInTaskbar` | boolean | `true` | show in taskbar/dock |
+| `launchOnLogin` | boolean | `false` | start at login |
+| `logLevel` | `error`\|`warn`\|`info`\|`debug` | `"info"` | log verbosity |
 
-### Environment overrides
+### Env var override
 
-- `CLAUDE_CONFIG_DIR` — if set, used as the Claude data directory (the `claudeDir` config
-  field takes precedence over it).
+`CLAUDE_CONFIG_DIR` — sets the Claude data dir if you've got it somewhere nonstandard. (The `claudeDir` config field wins if both are set.)
 
 ---
 
 ## Keyboard shortcuts
 
-| Shortcut         | Action                  |
-| ---------------- | ----------------------- |
-| `Ctrl/Cmd+Alt+U` | Show / hide the widget. |
-| `Ctrl/Cmd+Alt+C` | Toggle click-through.   |
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl/Cmd+Alt+U` | show/hide |
+| `Ctrl/Cmd+Alt+C` | toggle click-through |
 
-The system-tray icon offers the same toggles plus **Refresh**, **Open logs**, **Open
-config**, and **Quit**.
+Tray icon has the same toggles plus Refresh, Open logs, Open config, Quit.
 
 ---
 
-## How it works (data sources)
+## How it works
 
-The widget combines two independent sources into one snapshot:
+Two data sources, combined into one snapshot:
 
-1. **Local transcripts** (`~/.claude/projects/**/*.jsonl`) — parsed and aggregated into
-   token counts, cost estimates, per-model breakdown, ~5-hour blocks, burn rate, and an
-   hourly activity series. This is the source of truth for _spend_ and works offline.
-2. **Official usage endpoint** (`api.anthropic.com/api/oauth/usage`) — read using the
-   OAuth access token in `~/.claude/.credentials.json` (the same token the CLI uses),
-   with a `claude-code/<version>` User-Agent. This is the source of truth for _plan
-   limits_ (% used, % remaining, reset time). Polled no more often than every 180 s,
-   with exponential backoff on HTTP 429.
+1. **Local transcripts** — `~/.claude/projects/**/*.jsonl`, parsed and aggregated into token counts, cost estimates, per-model breakdown, ~5h blocks, burn rate, hourly activity. This is ground truth for spend, and it's all offline.
+2. **Official usage endpoint** — `api.anthropic.com/api/oauth/usage`, hit using the same OAuth token the CLI already has, same `claude-code/<version>` user-agent the CLI sends. This is ground truth for plan limits (% used, % left, reset time). Polled at most every 180s with backoff on 429s.
 
-If the endpoint is unavailable (offline, expired login, rate-limited), the widget shows
-the last known values marked **Cached** and keeps local data flowing. See
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full pipeline.
+If the endpoint's unreachable for whatever reason — you're offline, login expired, you got rate-limited — it just shows the last known numbers tagged **Cached** and keeps the local stuff updating like normal. Full pipeline details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) if you're curious.
 
-### Security & privacy
+### Security / privacy, because someone always asks
 
-- The OAuth access token is **never logged** and **never sent anywhere except
-  `api.anthropic.com`**. Only non-secret fields (subscription type, rate-limit tier,
-  scopes, org UUID) ever appear in snapshots or logs.
-- The widget **only ever reads** `~/.claude`. It never writes to it.
-- All app state (config, window position, logs) lives in the app's own user-data dir.
+- The OAuth token is never logged, never sent anywhere except `api.anthropic.com`. The only non-secret stuff (subscription type, rate-limit tier, scopes, org UUID) shows up in snapshots/logs.
+- Strictly read-only on `~/.claude`. Never writes there, ever.
+- Everything else the app needs (config, window position, logs) stays in its own user-data dir.
 
 ---
 
 ## Packaging
 
-`electron-builder` config lives in [`packages/desktop/electron-builder.yml`](packages/desktop/electron-builder.yml).
+electron-builder config is at [`packages/desktop/electron-builder.yml`](packages/desktop/electron-builder.yml).
 
 ```bash
-npm run package        # full installer for the current OS
-npm run package:dir    # unpacked app dir (no installer) — quick local test
+npm run package        # installer for whatever OS you're on
+npm run package:dir    # unpacked dir, no installer, faster for testing
 ```
 
-Targets: **Windows** NSIS installer (`…-Setup-x64.exe`) + portable (`…-Portable-x64.exe`);
-**macOS** `.dmg`; **Linux** `AppImage`. Output lands in `packages/desktop/release`.
+Targets: Windows NSIS installer + portable exe, macOS dmg, Linux AppImage. Output goes to `packages/desktop/release`.
 
-> On Windows, electron-builder downloads a `winCodeSign` bundle that contains macOS
-> symlinks; extracting it can fail with _"A required privilege is not held by the client"_
-> unless you enable **Developer Mode** (Settings → System → For developers) or run the build
-> from an elevated shell. The macOS files inside are irrelevant to a Windows build.
+> Heads up on Windows: electron-builder pulls down a `winCodeSign` bundle that has macOS symlinks in it, and extracting that can blow up with "A required privilege is not held by the client" unless Developer Mode is on (Settings → System → For developers) or you're running from an elevated shell. The macOS bits in there don't matter for a Windows build, it's just how the bundle ships.
 
 ---
 
 ## Troubleshooting
 
-- **"No usage data is available yet."** — You haven't used Claude Code on this machine, or
-  `~/.claude/projects` is empty. Run a Claude Code session and the widget updates within a
-  second or two.
-- **Plan limits show "Sign in…" / "login expired".** — Run `claude` once to refresh your
-  credentials; the widget picks up the new token on the next poll.
-- **Plan limits show "Cached" / "rate-limited".** — Anthropic throttles the usage endpoint.
-  The widget backs off automatically; local data keeps updating. Increase
-  `officialPollIntervalMs` if it persists.
-- **Wrong cost estimates.** — Costs are _estimates_ from a bundled price table; point
-  `pricingOverridePath` at your own JSON to override. Plan-limit percentages come straight
-  from Anthropic and are authoritative.
-- **`Electron failed to install correctly`.** — Electron's binary download was interrupted.
-  Fix with `node node_modules/electron/install.js`, or remove `node_modules` and re-run
-  `npm install`.
-- **Logs.** — Open via the tray or **Settings → Logs**. Raise `logLevel` to `debug` for
-  detail.
+- **"No usage data is available yet."** — Either you haven't used Claude Code on this machine yet, or `~/.claude/projects` is empty. Run a session, give it a second or two.
+- **Plan limits stuck on "Sign in…" / "login expired".** — Run `claude` once to refresh your credentials. Widget picks it up on the next poll.
+- **Plan limits showing "Cached" / rate-limited.** — Anthropic's throttling the usage endpoint, this is expected if you poll a lot. It backs off on its own; local data's unaffected. Bump `officialPollIntervalMs` if it keeps happening.
+- **Cost numbers look off.** — They're estimates from a bundled price table, not official. Point `pricingOverridePath` at your own JSON if you want accuracy there. The plan-limit percentages, on the other hand, come straight from Anthropic and are real.
+- **"Electron failed to install correctly"** — the Electron binary download got interrupted. Run `node node_modules/electron/install.js`, or just nuke `node_modules` and `npm install` again.
+- **Logs** — tray menu or Settings → Logs. Set `logLevel` to `debug` if you need more.
 
 ---
 
@@ -226,16 +184,14 @@ Targets: **Windows** NSIS installer (`…-Setup-x64.exe`) + portable (`…-Porta
 
 ```
 packages/
-  core/        Framework-agnostic data layer (parsing, aggregation, official client,
-               engine). No Electron, no React. Unit-tested with vitest.
-  desktop/     Electron shell: main process (windowing, tray, IPC, config), preload
-               bridge, and the React renderer (UI).
+  core/        framework-agnostic data layer — parsing, aggregation, the official
+               client, the engine. No Electron, no React in here. vitest for tests.
+  desktop/     the actual Electron app — main process (windowing, tray, IPC,
+               config), preload bridge, React renderer for the UI.
 docs/
-  ARCHITECTURE.md   Design, data flow, and module reference.
+  ARCHITECTURE.md   how it's all wired together, if you want the long version.
 ```
-
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full architecture.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
