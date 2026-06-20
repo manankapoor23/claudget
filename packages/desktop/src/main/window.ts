@@ -114,6 +114,16 @@ export class WidgetWindow {
     if (deps.rendererUrl) void this.browser.loadURL(deps.rendererUrl);
     else void this.browser.loadFile(deps.rendererFile);
 
+    // ponytail: recede when you're working elsewhere, snap back on focus.
+    // DIM is the explicit knob — tune to taste.
+    const DIM = 0.78;
+    this.browser.on('blur', () => {
+      if (!this.browser.isDestroyed()) this.browser.setOpacity(this.config.opacity * DIM);
+    });
+    this.browser.on('focus', () => {
+      if (!this.browser.isDestroyed()) this.browser.setOpacity(this.config.opacity);
+    });
+
     this.browser.on('resize', () => this.onBoundsChanged());
     this.browser.on('move', () => this.onBoundsChanged());
   }
@@ -137,11 +147,17 @@ export class WidgetWindow {
     const wasCompact = this.config.compact;
     this.config = config;
 
-    this.browser.setAlwaysOnTop(config.alwaysOnTop, 'floating');
+    // 'screen-saver' level floats above fullscreen apps; 'floating' doesn't.
+    this.browser.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
     this.browser.setIgnoreMouseEvents(config.clickThrough, { forward: true });
     this.browser.setOpacity(config.opacity);
     this.browser.setSkipTaskbar(!config.showInTaskbar);
     this.browser.setResizable(!config.compact);
+    // MUST be last: setAlwaysOnTop above rewrites the macOS collection behavior,
+    // so re-assert all-Spaces visibility here or the widget won't follow you to
+    // other desktops. (Brief dock/window flicker per call — only fires on
+    // startup + settings changes, so it's fine.)
+    this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
     if (config.compact !== wasCompact) {
       const target = config.compact ? COMPACT : this.expanded;
