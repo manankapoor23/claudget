@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "WebSearch",
-      "PowerShell($env:ELECTRON_RUN_AS_NODE=$null; $installer = Resolve-Path \"packages/desktop/release/Claude Usage Widget-0.1.2-Setup-x64.exe\"; $p = Start-Process -FilePath $installer.Path -ArgumentList \"/S\" -PassThru -Wait; Write-Output \"INSTALL_EXIT=$\\($p.ExitCode\\)\"; Start-Sleep -Seconds 2; $exe = \"C:\\\\Users\\\\Manan\\\\AppData\\\\Local\\\\Programs\\\\Claude Usage Widget\\\\Claude Usage Widget.exe\"; $q = Start-Process -FilePath $exe -PassThru; Start-Sleep -Seconds 6; Write-Output \"RUNNING=$\\(-not $q.HasExited\\)\")"
-    ]
-  }
-}

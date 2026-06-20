@@ -28,3 +28,13 @@ coverage/
 .env
 .env.local
 *.local.json
+
+# Local working notes & tooling — not part of the open-source project
+.claude/
+.vercel/
+.mcp.json
+CLAUDE.md
+DESIGN.md
+POSTMORTEM.md
+context.md
+test-electron-api.cjs
