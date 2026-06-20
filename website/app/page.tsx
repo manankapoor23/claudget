@@ -51,7 +51,8 @@ const PLATFORMS = [
     os: "macOS",
     file: "Universal .dmg · drag to Applications",
     note: "11 Big Sur or later · Intel + Apple Silicon",
-    unblock: "First open: right-click the app → Open. (Or run xattr -cr on it.)",
+    unblock:
+      "Unsigned, so macOS blocks first launch. After dragging to Applications, run: xattr -dr com.apple.quarantine /Applications/claudget.app  (details below).",
   },
   {
     Icon: IconWindows,
@@ -198,12 +199,33 @@ export default function Home() {
           </div>
           <div className="box__body" style={{ borderTop: "var(--border)" }}>
             <p className="meta" style={{ marginBottom: "var(--s3)" }}>
-              <strong style={{ color: "var(--ink)" }}>
-                Why does my OS warn me?
-              </strong>{" "}
+              <strong style={{ color: "var(--ink)" }}>Why does my OS warn me?</strong>{" "}
               claudget is free and open source, so the builds aren&apos;t paid-signed by
-              Apple/Microsoft. The one-time step above is all it takes — the code is on
-              GitHub for anyone to read.
+              Apple/Microsoft. The override below is one-time — the code is on GitHub for
+              anyone to read.
+            </p>
+            <p className="meta" style={{ marginBottom: "var(--s2)" }}>
+              <strong style={{ color: "var(--ink)" }}>macOS</strong> (Sequoia blocks
+              unsigned apps and may move them to Trash). Drag claudget to Applications, then
+              in Terminal:
+            </p>
+            <pre
+              style={{
+                background: "var(--glass-3)",
+                border: "var(--rim-dim)",
+                borderRadius: "var(--radius-3)",
+                padding: "var(--s2) var(--s3)",
+                overflowX: "auto",
+                marginBottom: "var(--s3)",
+              }}
+            >
+              <code>xattr -dr com.apple.quarantine /Applications/claudget.app</code>
+            </pre>
+            <p className="meta" style={{ marginBottom: "var(--s3)" }}>
+              Then open it. (Or: System Settings → Privacy &amp; Security → “claudget was
+              blocked” → <strong style={{ color: "var(--ink)" }}>Open Anyway</strong>.) On{" "}
+              <strong style={{ color: "var(--ink)" }}>Windows</strong>, SmartScreen → “More
+              info” → “Run anyway”.
             </p>
             <p className="meta">
               Prefer to build it yourself? Clone the repo, run{" "}

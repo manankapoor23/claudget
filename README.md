@@ -32,10 +32,11 @@ Latest builds are on the [Releases page](https://github.com/manankapoor23/claudg
 
 I'm not paying Apple/Microsoft to sign an open-source side project, so your OS will complain the first time you open it. This is normal, not a sign something's wrong:
 
-- **macOS** — right-click → Open (then Open again on the popup). If it says the app "is damaged and can't be opened" (classic Gatekeeper overreaction for unsigned apps), run:
+- **macOS** — modern macOS (Sequoia) hard-blocks unsigned apps and may move them straight to Trash ("can't verify it's free of malware"). The reliable fix: drag **claudget** into Applications (restore it from Trash first if needed), then in Terminal:
   ```bash
-  xattr -cr "/Applications/claudget.app"
+  xattr -dr com.apple.quarantine /Applications/claudget.app
   ```
+  Now open it normally. (Alternative: **System Settings → Privacy & Security → "claudget was blocked" → Open Anyway**.) To skip the block entirely next time, strip quarantine from the download *before* opening it: `xattr -cr ~/Downloads/claudget-*.dmg`.
 - **Windows** — SmartScreen will throw up a wall, click "More info" → "Run anyway".
 - **Linux** — `chmod +x` the AppImage, run it, no complaints.
 
