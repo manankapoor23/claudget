@@ -4,6 +4,7 @@ import ThemeToggle from "./ThemeToggle";
 const NAV = [
   { id: "features", label: "Features" },
   { id: "how", label: "How it works" },
+  { id: "changelog", label: "Changelog" },
   { id: "download", label: "Download" },
 ];
 

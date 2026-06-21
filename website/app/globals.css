@@ -396,6 +396,69 @@ ul {
   font-weight: 500;
   color: var(--muted);
 }
+.box__meta--link {
+  margin-left: auto;
+  transition: color 0.15s ease;
+}
+.box__meta--link:hover {
+  color: var(--accent);
+}
+
+/* ---- Changelog ---- */
+.changelog {
+  padding: var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+.changelog__entry {
+  padding-top: var(--s4);
+  border-top: var(--rim-dim);
+}
+.changelog__entry:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+.changelog__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+.changelog__ver {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--ink);
+}
+.changelog__latest {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+.changelog__date {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.changelog__list {
+  list-style: disc;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+}
+.changelog__list li {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink);
+}
 
 /* =========================================================================
    Buttons — glass pills with gentle lift
