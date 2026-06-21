@@ -44,6 +44,7 @@ I built it because I kept alt-tabbing to a terminal just to run a usage command 
 
 - [What it does](#what-it-does)
 - [Download &amp; install](#download--install)
+- [Changelog](CHANGELOG.md)
 - [Screenshots](#screenshots)
 - [Configuration](#configuration)
 - [Keyboard shortcuts](#keyboard-shortcuts)
