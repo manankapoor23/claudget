@@ -109,7 +109,7 @@ export class WidgetWindow {
       },
     });
 
-    this.applyConfig(deps.config);
+    this.applyConfig(deps.config, true);
 
     if (deps.rendererUrl) void this.browser.loadURL(deps.rendererUrl);
     else void this.browser.loadFile(deps.rendererFile);
@@ -143,25 +143,42 @@ export class WidgetWindow {
     }, 400);
   }
 
-  applyConfig(config: WidgetConfig): void {
-    const wasCompact = this.config.compact;
+  /**
+   * Applies only what changed. `first` forces a full assert for the initial call.
+   *
+   * ponytail: every native call here is cheap on its own but they are NOT free at
+   * UI-event rate — the opacity slider drives this ~30-60x/second, and
+   * setVisibleOnAllWorkspaces rewrites the window's macOS collection behavior
+   * (the flicker the old comment waved away). Re-asserting all of it per pointer
+   * move is what made the widget incoherent on macOS 26.
+   */
+  applyConfig(config: WidgetConfig, first = false): void {
+    const prev = this.config;
     this.config = config;
 
-    // 'screen-saver' level floats above fullscreen apps; 'floating' doesn't.
-    this.browser.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
-    this.browser.setIgnoreMouseEvents(config.clickThrough, { forward: true });
-    this.browser.setOpacity(config.opacity);
-    this.browser.setSkipTaskbar(!config.showInTaskbar);
-    this.browser.setResizable(!config.compact);
-    // MUST be last: setAlwaysOnTop above rewrites the macOS collection behavior,
-    // so re-assert all-Spaces visibility here or the widget won't follow you to
-    // other desktops. (Brief dock/window flicker per call — only fires on
-    // startup + settings changes, so it's fine.)
-    this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    const changed = (k: keyof WidgetConfig): boolean => first || config[k] !== prev[k];
 
-    if (config.compact !== wasCompact) {
-      const target = config.compact ? COMPACT : this.expanded;
-      this.browser.setSize(target.width, target.height, true);
+    // 'screen-saver' level floats above fullscreen apps; 'floating' doesn't.
+    if (changed('alwaysOnTop')) {
+      this.browser.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
+      // setAlwaysOnTop rewrites the macOS collection behavior, so all-Spaces
+      // visibility must be re-asserted right after it — but only then.
+      this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    }
+    if (changed('clickThrough')) {
+      this.browser.setIgnoreMouseEvents(config.clickThrough, { forward: true });
+    }
+    // Cheap and the one thing the slider is actually for — always apply.
+    if (changed('opacity')) this.browser.setOpacity(config.opacity);
+    if (changed('showInTaskbar')) this.browser.setSkipTaskbar(!config.showInTaskbar);
+    if (changed('compact')) {
+      this.browser.setResizable(!config.compact);
+      // The window is constructed at the right size already, so only resize on a
+      // real transition — never on the initial assert.
+      if (!first) {
+        const target = config.compact ? COMPACT : this.expanded;
+        this.browser.setSize(target.width, target.height, true);
+      }
     }
   }
 
