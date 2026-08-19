@@ -91,14 +91,28 @@ if (!singleInstanceLock) {
     engine.on('snapshot', (s) => budgetAlerter.check(s, config));
     engine.on('error', (err) => logger.error('Engine error', err));
 
+    // ponytail: only do the expensive bits when the field they depend on actually
+    // changed. The opacity slider fires onChange on every pointer move (~30-60/s),
+    // and setLoginItemSettings alone is a ~9ms privileged LaunchServices call on
+    // macOS 26 — unconditionally re-running it beachballed the whole app mid-drag.
     const applyConfig = (patch: Partial<WidgetConfig>): WidgetConfig => {
+      const prev = config;
       config = configStore.set(patch);
       engine.updateConfig(patch);
       widgetWindow?.applyConfig(config);
-      logger.setLevel(config.logLevel);
-      app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });
+      if (config.logLevel !== prev.logLevel) logger.setLevel(config.logLevel);
+      if (config.launchOnLogin !== prev.launchOnLogin) {
+        app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });
+      }
       sendConfig(config);
-      trayHandle?.syncMenu();
+      // Only the fields the tray menu actually renders as checkboxes.
+      if (
+        config.alwaysOnTop !== prev.alwaysOnTop ||
+        config.clickThrough !== prev.clickThrough ||
+        config.compact !== prev.compact
+      ) {
+        trayHandle?.syncMenu();
+      }
       return config;
     };
 
@@ -152,7 +166,10 @@ if (!singleInstanceLock) {
       applyConfig({ clickThrough: !config.clickThrough }),
     );
 
-    app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });
+    // Only assert this when it's actually wanted. It's a slow privileged call and
+    // on macOS 26 an unsigned/dev build gets "Operation not permitted" — no reason
+    // to pay for it (or log an error) just to set the default of "off" to "off".
+    if (config.launchOnLogin) app.setLoginItemSettings({ openAtLogin: true });
     app.on('will-quit', () => {
       globalShortcut.unregisterAll();
       void engine.stop();

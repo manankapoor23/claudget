@@ -21,6 +21,23 @@ import {
 import { readFileSafe, readJsonSafe, walkFiles } from './util/fs';
 import { watchTranscripts, type TranscriptWatcher } from './watch';
 
+/**
+ * Config fields a {@link UsageSnapshot} actually depends on. Anything absent here
+ * (opacity, theme, alwaysOnTop, ...) is presentation-only and cannot change a
+ * snapshot, so patching it must not trigger a rebuild.
+ */
+const SNAPSHOT_AFFECTING_KEYS = [
+  'enableOfficial',
+  'officialPollIntervalMs',
+  'historyWindowHours',
+  'blockHours',
+  'recentSessionLimit',
+  'claudeDir',
+  'currency',
+  'dailyBudgetUSD',
+  'monthlyBudgetUSD',
+] as const satisfies readonly (keyof WidgetConfig)[];
+
 export interface UsageEngineOptions {
   config: WidgetConfig;
   logger?: Logger;
@@ -153,7 +170,11 @@ export class UsageEngine extends EventEmitter {
       this.scheduleRescan();
     }
 
-    this.emitSnapshot();
+    // ponytail: a snapshot is a full re-aggregate of every entry plus a structured
+    // clone across the IPC boundary. Purely cosmetic fields (opacity, theme, ...)
+    // change nothing in it, and the opacity slider fires ~30-60 patches/second —
+    // rebuilding and re-pushing per pointer move is what starved the main process.
+    if (SNAPSHOT_AFFECTING_KEYS.some((k) => this.config[k] !== prev[k])) this.emitSnapshot();
     return this.config;
   }
 
