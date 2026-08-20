@@ -26,75 +26,10 @@ export function LogoMark({ style, className }: { style?: CSSProperties; classNam
   );
 }
 
-export function IconOverview(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="3" y="3" width="7" height="7" />
-      <rect x="14" y="3" width="7" height="7" />
-      <rect x="3" y="14" width="7" height="7" />
-      <rect x="14" y="14" width="7" height="7" />
-    </svg>
-  );
-}
-
-export function IconFeatures(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4 6h16M4 12h16M4 18h10" />
-    </svg>
-  );
-}
-
-export function IconFlow(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="3" y="4" width="7" height="6" />
-      <rect x="14" y="14" width="7" height="6" />
-      <path d="M6.5 10v4h11" />
-    </svg>
-  );
-}
-
 export function IconDownload(props: P) {
   return (
     <svg {...base} {...props}>
       <path d="M12 3v12M7 11l5 5 5-5M4 21h16" />
-    </svg>
-  );
-}
-
-export function IconLock(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <rect x="4" y="10" width="16" height="10" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-export function IconOffline(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M3 3l18 18M9 18h6M12 14v4" />
-      <path d="M5 9a13 13 0 0 1 4-2.5M19 9a13 13 0 0 0-7-3" />
-    </svg>
-  );
-}
-
-export function IconGauge(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4 18a8 8 0 1 1 16 0" />
-      <path d="M12 18l4-5" />
-    </svg>
-  );
-}
-
-export function IconLayers(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M12 3l9 5-9 5-9-5 9-5z" />
-      <path d="M3 13l9 5 9-5" />
     </svg>
   );
 }
@@ -112,24 +47,6 @@ export function IconMoon(props: P) {
   return (
     <svg {...base} {...props}>
       <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
-    </svg>
-  );
-}
-
-export function IconBell(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M6 9a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6z" />
-      <path d="M10 20a2 2 0 0 0 4 0" />
-    </svg>
-  );
-}
-
-export function IconSearch(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4-4" />
     </svg>
   );
 }
@@ -171,14 +88,6 @@ export function IconMail(props: P) {
     <svg {...base} {...props}>
       <rect x="3" y="5" width="18" height="14" />
       <path d="M3 6l9 7 9-7" />
-    </svg>
-  );
-}
-
-export function IconArrow(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
