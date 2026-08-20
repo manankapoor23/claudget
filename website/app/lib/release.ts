@@ -43,6 +43,8 @@ export interface Release {
   version: string;
   /** e.g. "Aug 2026", or null when the date is missing/unparseable. */
   published: string | null;
+  /** Raw ISO timestamp of the release, for sitemap lastmod. */
+  publishedAt: string | null;
   assets: Partial<Record<PlatformKey, ReleaseAsset>>;
   /** True when the data is a hardcoded fallback rather than live from GitHub. */
   stale: boolean;
@@ -85,6 +87,7 @@ interface ApiRelease {
 const FALLBACK: Release = {
   version: "0.2.3",
   published: null,
+  publishedAt: null,
   assets: {},
   stale: true,
 };
@@ -242,14 +245,16 @@ export async function getLatestRelease(): Promise<Release> {
   }
 
   let published: string | null = null;
+  let publishedAt: string | null = null;
   if (typeof latest.published_at === "string") {
     const d = new Date(latest.published_at);
     if (!Number.isNaN(d.getTime())) {
       published = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      publishedAt = latest.published_at;
     }
   }
 
-  return { version, published, assets, stale: false };
+  return { version, published, publishedAt, assets, stale: false };
 }
 
 /**

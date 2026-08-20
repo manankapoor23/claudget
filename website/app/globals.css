@@ -411,6 +411,7 @@ svg {
 }
 
 .hero__name {
+  display: block;
   font-family: var(--mono);
   font-size: 15px;
   font-weight: 600;
