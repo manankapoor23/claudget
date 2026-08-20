@@ -63,10 +63,23 @@ nsis:
 portable:
   artifactName: ${productName}-${version}-Portable-${arch}.${ext}
 
+dmg:
+  # Pin the arch into every filename. Left to its default, electron-builder omits
+  # the suffix for x64 — the three builds came out as "-universal.dmg",
+  # "-arm64.dmg" and plain ".dmg", and the website reads the arch from the
+  # filename, so the x64 build would have been served as the universal one.
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
 mac:
   target:
+    # Three artifacts on purpose. A universal build carries both slices, so it
+    # is ~190 MB larger on disk than the arch the machine will actually execute
+    # — but it is the only download that is always correct, and Safari reports
+    # Apple Silicon Macs as "Intel Mac OS X", so the site cannot always tell.
+    # So: universal stays the safe default, and the per-arch builds let anyone
+    # we can positively identify take the half-size download instead.
     - target: dmg
-      arch: [universal]
+      arch: [universal, arm64, x64]
   category: public.app-category.developer-tools
   icon: build/icon.icns
   # Unsigned + ad-hoc signed (no paid Apple cert). The app launches on Apple
