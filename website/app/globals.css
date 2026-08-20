@@ -1127,3 +1127,148 @@ ul {
     scroll-behavior: auto !important;
   }
 }
+
+/* =========================================================================
+   DOWNLOADER
+   All three platforms are always in the DOM. The visitor's own platform is
+   promoted entirely in CSS, keyed off the `data-os` attribute that layout.tsx
+   sets before first paint — no spinner, no hydration swap, no layout shift.
+   ========================================================================= */
+
+/* ---- hero CTA: show only the button matching the detected OS ---- */
+.dl-cta-group {
+  display: contents;
+}
+.dl-cta {
+  display: none;
+  text-align: left;
+}
+/* Anything that isn't a platform we ship → the neutral button. Matching on
+   "not one of the known three" rather than "attribute absent" matters: a stray
+   or future `data-os` value would otherwise hide every button and leave the
+   hero with no call to action at all. */
+:root:not([data-os="mac"]):not([data-os="win"]):not([data-os="linux"]) .dl-cta--any,
+:root[data-os="mac"] .dl-cta--mac,
+:root[data-os="win"] .dl-cta--win,
+:root[data-os="linux"] .dl-cta--linux {
+  display: inline-flex;
+}
+.dl-cta__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.dl-cta__sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  opacity: 0.72;
+}
+
+/* ---- platform cards ---- */
+.dl {
+  position: relative;
+}
+/* "Your system" — hidden until this card matches the detected OS. */
+.dl__badge {
+  position: absolute;
+  top: calc(-1 * var(--s2));
+  right: var(--s3);
+  display: none;
+  padding: 2px var(--s2);
+  border-radius: 999px;
+  background: var(--accent);
+  border: 1px solid rgba(255, 127, 87, 0.6);
+  color: #1a0f0a;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 6px 16px -8px rgba(255, 127, 87, 0.8);
+}
+:root[data-os="mac"] .dl--mac .dl__badge,
+:root[data-os="win"] .dl--win .dl__badge,
+:root[data-os="linux"] .dl--linux .dl__badge {
+  display: block;
+}
+/* Promote the matching card: accent rim + a touch more lift. */
+:root[data-os="mac"] .dl--mac,
+:root[data-os="win"] .dl--win,
+:root[data-os="linux"] .dl--linux {
+  border-color: rgba(255, 127, 87, 0.45);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 127, 87, 0.09),
+    rgba(255, 255, 255, 0.04)
+  );
+  box-shadow:
+    var(--hi-top),
+    var(--shadow-float),
+    0 0 0 1px rgba(255, 127, 87, 0.12);
+}
+/* The Download button used to be the card's last child, so `margin-top:auto`
+   positioned it fine. The filename/portable/notes rows now follow it, and each
+   card has a different amount of them — so the auto margin absorbed a different
+   slack per card and the three buttons landed at three different heights.
+   Pin the closing notes to the bottom instead and give the blurb a floor, so
+   every Download button sits on one shared baseline. */
+.dl .btn {
+  margin-top: 0;
+}
+.dl__file {
+  min-height: 46px;
+}
+.dl__unblock {
+  margin-top: auto;
+}
+
+/* Exact artifact being downloaded — reassuring, and it names the version. */
+.dl__filename {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: calc(-1 * var(--s2));
+}
+.dl__alt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.25);
+  align-self: flex-start;
+  transition: color 0.15s ease;
+}
+.dl__alt:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.box__meta--link {
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+.box__meta--link:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .downloads {
+    grid-template-columns: 1fr;
+  }
+  .dl__badge {
+    right: var(--s2);
+  }
+  /* Stacked in one column, your platform would otherwise sit below two you
+     can't use. Hoist it. Left alone on wide screens, where all three are
+     visible at once and the conventional mac/win/linux order reads better. */
+  :root[data-os="mac"] .dl--mac,
+  :root[data-os="win"] .dl--win,
+  :root[data-os="linux"] .dl--linux {
+    order: -1;
+  }
+}
