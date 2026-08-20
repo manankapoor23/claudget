@@ -1277,3 +1277,48 @@ ul {
     order: -1;
   }
 }
+
+/* ---- download counts ----
+   Installer downloads only; the auto-updater's latest*.yml polls are excluded
+   upstream in lib/release.ts, so this number means people, not requests. */
+.dl-stats {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s4);
+  padding: var(--s3) var(--s4);
+  border-bottom: var(--rim-dim);
+  background: var(--glass-3);
+}
+.dl-stats__total {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 13px;
+  color: var(--muted);
+}
+.dl-stats__total svg {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+.dl-stats__total b {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.dl-stats__split {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s3);
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+@media (max-width: 640px) {
+  .dl-stats__split {
+    margin-left: 0;
+  }
+}

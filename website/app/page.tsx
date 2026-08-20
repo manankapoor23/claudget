@@ -1,5 +1,11 @@
 import Shell from "./components/Shell";
-import { DownloadCta, DownloadGrid, ReleaseTag } from "./components/Download";
+import {
+  DownloadCount,
+  DownloadCta,
+  DownloadGrid,
+  DownloadStats,
+  ReleaseTag,
+} from "./components/Download";
 import { Changelog } from "./components/Changelog";
 import {
   LogoMark,
@@ -54,6 +60,7 @@ export default function Home() {
           <div>
             <span className="hero__eyebrow">
               open source · MIT · macOS / Windows / Linux
+              <DownloadCount />
             </span>
             <h1>
               Your Claude&nbsp;Code usage, <mark>on the desk</mark> in real time.
@@ -158,6 +165,7 @@ export default function Home() {
             <h2 className="section-header">Download</h2>
             <ReleaseTag />
           </div>
+          <DownloadStats />
           <DownloadGrid />
           <div className="box__body" style={{ borderTop: "var(--border)" }}>
             <p className="meta" style={{ marginBottom: "var(--s3)" }}>

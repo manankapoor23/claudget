@@ -1,8 +1,11 @@
 import { REPO_URL, RELEASES_URL } from "../constants";
 
-/* GitHub's "latest release" API. Revalidated hourly, so a visit costs nothing
-   and a new release appears on the site within the hour without a redeploy. */
-const API = "https://api.github.com/repos/manankapoor23/claudget/releases/latest";
+/* One GitHub call serves both the download links and the download counts: the
+   release list carries per-asset `download_count`. Revalidated hourly, and both
+   readers below hit the same cached fetch, so a visit costs nothing and a new
+   release shows up within the hour without a redeploy. Reading one source also
+   means the version and the counts can never disagree with each other. */
+const API = "https://api.github.com/repos/manankapoor23/claudget/releases?per_page=100";
 const REVALIDATE_SECONDS = 3600;
 
 export type PlatformKey = "mac" | "win" | "winPortable" | "linux";
@@ -25,10 +28,28 @@ export interface Release {
   stale: boolean;
 }
 
+export interface DownloadStats {
+  /** Installer downloads across every published release. */
+  total: number;
+  byPlatform: { mac: number; win: number; linux: number };
+  /** True when GitHub couldn't be read, so the count must not be shown. */
+  unavailable: boolean;
+}
+
 interface ApiAsset {
   name?: unknown;
   size?: unknown;
+  download_count?: unknown;
   browser_download_url?: unknown;
+}
+
+interface ApiRelease {
+  tag_name?: unknown;
+  name?: unknown;
+  published_at?: unknown;
+  draft?: unknown;
+  prerelease?: unknown;
+  assets?: unknown;
 }
 
 /**
@@ -37,7 +58,7 @@ interface ApiAsset {
  * always resolves to something downloadable.
  */
 const FALLBACK: Release = {
-  version: "0.2.2",
+  version: "0.2.3",
   published: null,
   assets: {},
   stale: true,
@@ -49,9 +70,16 @@ function formatSize(bytes: number): string {
   return `${Math.round(mb)} MB`;
 }
 
-/** Maps an asset filename onto the platform it installs, or null to ignore it. */
+/**
+ * Maps an asset filename onto the platform it installs, or null if it isn't a
+ * thing a person downloads.
+ *
+ * The exclusions carry weight: electron-builder also uploads `latest*.yml`
+ * update manifests and `.blockmap` delta maps, which the auto-updater fetches on
+ * a schedule. Those currently account for 104 of 128 asset downloads — counting
+ * them would report five times the real number and call the updater a user.
+ */
 function classify(name: string): PlatformKey | null {
-  // electron-builder also uploads update manifests and delta maps — not downloads.
   if (name.endsWith(".blockmap") || name.endsWith(".yml")) return null;
   if (name.endsWith(".dmg")) return "mac";
   if (name.endsWith(".AppImage")) return "linux";
@@ -62,63 +90,109 @@ function classify(name: string): PlatformKey | null {
   return null;
 }
 
-/**
- * Reads the latest published release. Never throws and never returns null — a
- * failure degrades to {@link FALLBACK} so the download section always renders.
- */
-export async function getLatestRelease(): Promise<Release> {
+/** Fetches the release list. Returns [] on any failure. */
+async function fetchReleases(): Promise<ApiRelease[]> {
   try {
     const res = await fetch(API, {
       headers: { Accept: "application/vnd.github+json" },
       next: { revalidate: REVALIDATE_SECONDS },
     });
-    if (!res.ok) return FALLBACK;
-
-    const data = (await res.json()) as {
-      tag_name?: unknown;
-      name?: unknown;
-      published_at?: unknown;
-      assets?: unknown;
-    };
-
-    const tag =
-      typeof data.tag_name === "string"
-        ? data.tag_name
-        : typeof data.name === "string"
-          ? data.name
-          : "";
-    const version = tag.replace(/^v/, "").trim();
-    if (!version) return FALLBACK;
-
-    const assets: Partial<Record<PlatformKey, ReleaseAsset>> = {};
-    if (Array.isArray(data.assets)) {
-      for (const raw of data.assets as ApiAsset[]) {
-        const name = typeof raw.name === "string" ? raw.name : "";
-        const url =
-          typeof raw.browser_download_url === "string" ? raw.browser_download_url : "";
-        const size = typeof raw.size === "number" ? raw.size : 0;
-        if (!name || !url) continue;
-
-        const key = classify(name);
-        // First match wins — the API lists one asset per target.
-        if (key && !assets[key]) {
-          assets[key] = { url, filename: name, size: formatSize(size) };
-        }
-      }
-    }
-
-    let published: string | null = null;
-    if (typeof data.published_at === "string") {
-      const d = new Date(data.published_at);
-      if (!Number.isNaN(d.getTime())) {
-        published = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-      }
-    }
-
-    return { version, published, assets, stale: false };
+    if (!res.ok) return [];
+    const data: unknown = await res.json();
+    return Array.isArray(data) ? (data as ApiRelease[]) : [];
   } catch {
-    return FALLBACK;
+    return [];
   }
+}
+
+/** A release a visitor can actually download: published, not a preview. */
+function isPublished(r: ApiRelease): boolean {
+  return r.draft !== true && r.prerelease !== true;
+}
+
+function versionOf(r: ApiRelease): string {
+  const tag =
+    typeof r.tag_name === "string"
+      ? r.tag_name
+      : typeof r.name === "string"
+        ? r.name
+        : "";
+  return tag.replace(/^v/, "").trim();
+}
+
+/**
+ * Reads the newest published release. Never throws and never returns null — a
+ * failure degrades to {@link FALLBACK} so the download section always renders.
+ */
+export async function getLatestRelease(): Promise<Release> {
+  const releases = await fetchReleases();
+  // GitHub returns newest first, so the first publishable entry is the latest.
+  const latest = releases.find((r) => isPublished(r) && versionOf(r));
+  if (!latest) return FALLBACK;
+
+  const version = versionOf(latest);
+  const assets: Partial<Record<PlatformKey, ReleaseAsset>> = {};
+  if (Array.isArray(latest.assets)) {
+    for (const raw of latest.assets as ApiAsset[]) {
+      const name = typeof raw.name === "string" ? raw.name : "";
+      const url =
+        typeof raw.browser_download_url === "string" ? raw.browser_download_url : "";
+      const size = typeof raw.size === "number" ? raw.size : 0;
+      if (!name || !url) continue;
+
+      const key = classify(name);
+      // First match wins — the API lists one asset per target.
+      if (key && !assets[key]) {
+        assets[key] = { url, filename: name, size: formatSize(size) };
+      }
+    }
+  }
+
+  let published: string | null = null;
+  if (typeof latest.published_at === "string") {
+    const d = new Date(latest.published_at);
+    if (!Number.isNaN(d.getTime())) {
+      published = d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+  }
+
+  return { version, published, assets, stale: false };
+}
+
+/**
+ * Totals installer downloads across every published release — the closest thing
+ * to "how many people installed this" that GitHub exposes. Update manifests and
+ * delta maps are excluded; see {@link classify}.
+ */
+export async function getDownloadStats(): Promise<DownloadStats> {
+  const releases = await fetchReleases();
+  if (releases.length === 0) {
+    return { total: 0, byPlatform: { mac: 0, win: 0, linux: 0 }, unavailable: true };
+  }
+
+  const byPlatform = { mac: 0, win: 0, linux: 0 };
+  for (const release of releases) {
+    if (!isPublished(release) || !Array.isArray(release.assets)) continue;
+    for (const raw of release.assets as ApiAsset[]) {
+      const name = typeof raw.name === "string" ? raw.name : "";
+      const count = typeof raw.download_count === "number" ? raw.download_count : 0;
+      if (!name || count <= 0) continue;
+
+      const key = classify(name);
+      if (key === "mac") byPlatform.mac += count;
+      // The installer and the portable build are both "someone got it on Windows".
+      else if (key === "win" || key === "winPortable") byPlatform.win += count;
+      else if (key === "linux") byPlatform.linux += count;
+    }
+  }
+
+  const total = byPlatform.mac + byPlatform.win + byPlatform.linux;
+  return { total, byPlatform, unavailable: false };
+}
+
+/** 1234 → "1,234". */
+export function formatCount(n: number): string {
+  return n.toLocaleString("en-US");
 }
 
 /**

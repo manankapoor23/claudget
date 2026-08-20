@@ -2,6 +2,8 @@ import { IconApple, IconWindows, IconLinux, IconDownload } from "../icons";
 import { RELEASES_URL } from "../constants";
 import {
   downloadHref,
+  formatCount,
+  getDownloadStats,
   getLatestRelease,
   type PlatformKey,
   type Release,
@@ -103,6 +105,37 @@ export async function ReleaseTag() {
       {release.published ? ` · ${release.published}` : ""} · all releases →
     </a>
   );
+}
+
+/**
+ * Installer downloads across every release. Rendered only when GitHub actually
+ * answered — a zero from a failed fetch would read as "nobody wants this", which
+ * is a worse lie than showing nothing.
+ */
+export async function DownloadStats() {
+  const { total, byPlatform, unavailable } = await getDownloadStats();
+  if (unavailable || total === 0) return null;
+
+  return (
+    <div className="dl-stats">
+      <span className="dl-stats__total">
+        <IconDownload />
+        <b>{formatCount(total)}</b> download{total === 1 ? "" : "s"}
+      </span>
+      <span className="dl-stats__split">
+        <span>macOS {formatCount(byPlatform.mac)}</span>
+        <span>Windows {formatCount(byPlatform.win)}</span>
+        <span>Linux {formatCount(byPlatform.linux)}</span>
+      </span>
+    </div>
+  );
+}
+
+/** Compact total for the hero eyebrow. Renders nothing if unavailable. */
+export async function DownloadCount() {
+  const { total, unavailable } = await getDownloadStats();
+  if (unavailable || total === 0) return null;
+  return <> · {formatCount(total)} downloads</>;
 }
 
 function Card({ meta, release }: { meta: PlatformMeta; release: Release }) {
