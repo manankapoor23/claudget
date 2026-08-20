@@ -6,6 +6,17 @@ copyright: Copyright © 2026 claudget contributors
 # electron-builder's auto-detection can't find it. Keep in sync with the electron devDep.
 electronVersion: 42.4.1
 
+# The UI is English-only. This prunes the app-level locale stubs; the ~47 MB of
+# locale.pak inside Electron Framework.framework is handled by afterPack, which
+# electronLanguages does not reach.
+electronLanguages:
+  - en-US
+
+afterPack: build/after-pack.js
+
+# Smaller installers. Build-time cost only — installed size is unchanged.
+compression: maximum
+
 # Free distribution, no paid certs. Releases are published to GitHub Releases.
 publish:
   provider: github
@@ -18,6 +29,8 @@ directories:
 
 files:
   - out/**/*
+  # Source maps are a build artefact; users don't need them installed.
+  - '!out/**/*.map'
   - package.json
 
 extraResources:
