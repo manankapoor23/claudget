@@ -113,14 +113,18 @@ export async function ReleaseTag() {
  * is a worse lie than showing nothing.
  */
 export async function DownloadStats() {
-  const { total, byPlatform, unavailable } = await getDownloadStats();
+  const { total, byPlatform, unavailable, partial } = await getDownloadStats();
   if (unavailable || total === 0) return null;
 
   return (
     <div className="dl-stats">
       <span className="dl-stats__total">
         <IconDownload />
-        <b>{formatCount(total)}</b> download{total === 1 ? "" : "s"}
+        <b>
+          {formatCount(total)}
+          {partial ? "+" : ""}
+        </b>{" "}
+        download{total === 1 ? "" : "s"}
       </span>
       <span className="dl-stats__split">
         <span>macOS {formatCount(byPlatform.mac)}</span>
@@ -133,9 +137,15 @@ export async function DownloadStats() {
 
 /** Compact total for the hero eyebrow. Renders nothing if unavailable. */
 export async function DownloadCount() {
-  const { total, unavailable } = await getDownloadStats();
+  const { total, unavailable, partial } = await getDownloadStats();
   if (unavailable || total === 0) return null;
-  return <> · {formatCount(total)} downloads</>;
+  return (
+    <>
+      {" · "}
+      {formatCount(total)}
+      {partial ? "+" : ""} downloads
+    </>
+  );
 }
 
 function Card({ meta, release }: { meta: PlatformMeta; release: Release }) {

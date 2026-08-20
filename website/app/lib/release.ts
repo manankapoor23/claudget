@@ -7,6 +7,13 @@ import { REPO_URL, RELEASES_URL } from "../constants";
    means the version and the counts can never disagree with each other. */
 const API = "https://api.github.com/repos/manankapoor23/claudget/releases?per_page=100";
 const REVALIDATE_SECONDS = 3600;
+/**
+ * Safety ceiling on pagination — 100 releases per page, so 1000 releases.
+ * Deliberately not higher: unauthenticated GitHub allows 60 requests an hour, so
+ * an unbounded loop could exhaust the budget for the whole site. Reaching this
+ * reports the total as partial rather than pretending it is final.
+ */
+const MAX_RELEASE_PAGES = 10;
 
 export type PlatformKey = "mac" | "win" | "winPortable" | "linux";
 
@@ -34,6 +41,11 @@ export interface DownloadStats {
   byPlatform: { mac: number; win: number; linux: number };
   /** True when GitHub couldn't be read, so the count must not be shown. */
   unavailable: boolean;
+  /**
+   * True when releases were left unread (a failed page, or the page cap), making
+   * `total` a lower bound. Rendered as "1,234+" so it never overstates itself.
+   */
+  partial: boolean;
 }
 
 interface ApiAsset {
@@ -90,19 +102,81 @@ function classify(name: string): PlatformKey | null {
   return null;
 }
 
-/** Fetches the release list. Returns [] on any failure. */
-async function fetchReleases(): Promise<ApiRelease[]> {
+interface ReleasePage {
+  releases: ApiRelease[];
+  /** Absolute URL of the next page, or null when this is the last one. */
+  next: string | null;
+  ok: boolean;
+}
+
+/**
+ * Pulls the `rel="next"` URL out of a Link header.
+ *
+ * The host is re-checked because this URL comes from a response header rather
+ * than from our own code — a paginating loop should not follow it somewhere else.
+ */
+function parseNextLink(header: string | null): string | null {
+  if (!header) return null;
+  const match = /<([^>]+)>;\s*rel="next"/.exec(header);
+  const url = match?.[1];
+  if (!url) return null;
   try {
-    const res = await fetch(API, {
+    if (new URL(url).host !== "api.github.com") return null;
+  } catch {
+    return null;
+  }
+  return url;
+}
+
+/** Fetches one page of releases. Never throws. */
+async function fetchReleasePage(url: string): Promise<ReleasePage> {
+  try {
+    const res = await fetch(url, {
       headers: { Accept: "application/vnd.github+json" },
       next: { revalidate: REVALIDATE_SECONDS },
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { releases: [], next: null, ok: false };
     const data: unknown = await res.json();
-    return Array.isArray(data) ? (data as ApiRelease[]) : [];
+    if (!Array.isArray(data)) return { releases: [], next: null, ok: false };
+    return {
+      releases: data as ApiRelease[],
+      next: parseNextLink(res.headers.get("link")),
+      ok: true,
+    };
   } catch {
-    return [];
+    return { releases: [], next: null, ok: false };
   }
+}
+
+/**
+ * Releases are newest-first, so the first page is all the download links need.
+ * Returns [] on failure.
+ */
+async function fetchReleases(): Promise<ApiRelease[]> {
+  return (await fetchReleasePage(API)).releases;
+}
+
+/**
+ * Walks every page of releases by following the Link header.
+ *
+ * `complete` is the honest part: a total that silently drops older releases
+ * still looks like a total, so anything short of exhausting the pages — a failed
+ * page or the safety cap — has to say so rather than pass itself off as final.
+ * With one release page this loop makes exactly one request and exits.
+ */
+async function fetchAllReleases(): Promise<{ releases: ApiRelease[]; complete: boolean }> {
+  const all: ApiRelease[] = [];
+  let url: string | null = API;
+
+  for (let page = 0; page < MAX_RELEASE_PAGES; page++) {
+    const { releases, next, ok } = await fetchReleasePage(url);
+    if (!ok) return { releases: all, complete: false };
+    all.push(...releases);
+    if (!next) return { releases: all, complete: true };
+    url = next;
+  }
+  // Ran out of allowed pages with more still to come.
+  return { releases: all, complete: false };
 }
 
 /** A release a visitor can actually download: published, not a preview. */
@@ -162,12 +236,19 @@ export async function getLatestRelease(): Promise<Release> {
 /**
  * Totals installer downloads across every published release — the closest thing
  * to "how many people installed this" that GitHub exposes. Update manifests and
- * delta maps are excluded; see {@link classify}.
+ * delta maps are excluded; see {@link classify}. Every page of releases is read,
+ * and if any is missed the result is flagged `partial` rather than under-reported
+ * as final.
  */
 export async function getDownloadStats(): Promise<DownloadStats> {
-  const releases = await fetchReleases();
+  const { releases, complete } = await fetchAllReleases();
   if (releases.length === 0) {
-    return { total: 0, byPlatform: { mac: 0, win: 0, linux: 0 }, unavailable: true };
+    return {
+      total: 0,
+      byPlatform: { mac: 0, win: 0, linux: 0 },
+      unavailable: true,
+      partial: false,
+    };
   }
 
   const byPlatform = { mac: 0, win: 0, linux: 0 };
@@ -187,7 +268,7 @@ export async function getDownloadStats(): Promise<DownloadStats> {
   }
 
   const total = byPlatform.mac + byPlatform.win + byPlatform.linux;
-  return { total, byPlatform, unavailable: false };
+  return { total, byPlatform, unavailable: false, partial: !complete };
 }
 
 /** 1234 → "1,234". */
