@@ -1,5 +1,6 @@
 import Shell from "./components/Shell";
 import { DownloadCta, DownloadGrid, ReleaseTag } from "./components/Download";
+import { Changelog } from "./components/Changelog";
 import {
   LogoMark,
   IconOffline,
@@ -18,30 +19,6 @@ import {
 } from "./constants";
 
 /* ---------- content data ------------------------------------------------ */
-
-const CHANGELOG = [
-  {
-    version: "0.2.2",
-    date: "Jun 2026",
-    changes: ["New claudget app icon and branding across the app."],
-  },
-  {
-    version: "0.2.1",
-    date: "Jun 2026",
-    changes: ["Renamed to claudget — installers are now claudget-<version>-…"],
-  },
-  {
-    version: "0.2.0",
-    date: "Jun 2026",
-    changes: [
-      "Glassmorphism redesign — frosted UI, single coral accent.",
-      "Budgets & alerts: daily/monthly spend limits with native notifications at 80% and 100%.",
-      "Spend forecast, plan-pace badge, and an insights panel (top project, model split, busiest hour).",
-      "Stays on top across every macOS Space and over fullscreen apps.",
-      "Auto-update on Windows & Linux.",
-    ],
-  },
-];
 
 const FEATURES = [
   {
@@ -172,22 +149,7 @@ export default function Home() {
               All releases →
             </a>
           </div>
-          <div className="changelog">
-            {CHANGELOG.map((rel, i) => (
-              <div className="changelog__entry" key={rel.version}>
-                <div className="changelog__head">
-                  <span className="changelog__ver">v{rel.version}</span>
-                  {i === 0 ? <span className="changelog__latest">Latest</span> : null}
-                  <span className="changelog__date">{rel.date}</span>
-                </div>
-                <ul className="changelog__list">
-                  {rel.changes.map((c) => (
-                    <li key={c}>{c}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <Changelog />
         </section>
 
         {/* ============ DOWNLOAD ============ */}
