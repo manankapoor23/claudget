@@ -15,7 +15,20 @@ const REVALIDATE_SECONDS = 3600;
  */
 const MAX_RELEASE_PAGES = 10;
 
-export type PlatformKey = "mac" | "win" | "winPortable" | "linux";
+export type PlatformKey =
+  | "mac"
+  | "macArm64"
+  | "macX64"
+  | "win"
+  | "winPortable"
+  | "linux";
+
+/** macOS variants, in the order the download row lists them. */
+export const MAC_VARIANTS = [
+  { key: "mac", label: "Universal", hint: "any Mac" },
+  { key: "macArm64", label: "Apple Silicon", hint: "M1 and later" },
+  { key: "macX64", label: "Intel", hint: "pre-2020 Macs" },
+] as const satisfies readonly { key: PlatformKey; label: string; hint: string }[];
 
 export interface ReleaseAsset {
   /** Direct download URL for the installer itself. */
@@ -93,7 +106,13 @@ function formatSize(bytes: number): string {
  */
 function classify(name: string): PlatformKey | null {
   if (name.endsWith(".blockmap") || name.endsWith(".yml")) return null;
-  if (name.endsWith(".dmg")) return "mac";
+  if (name.endsWith(".dmg")) {
+    // Arch lives in the filename; anything else is the universal build. This
+    // sits before the .exe branch so "-x64.dmg" can never be read as Windows.
+    if (name.includes("-arm64")) return "macArm64";
+    if (name.includes("-x64")) return "macX64";
+    return "mac";
+  }
   if (name.endsWith(".AppImage")) return "linux";
   if (name.endsWith(".exe")) {
     if (name.includes("Portable")) return "winPortable";
@@ -260,7 +279,10 @@ export async function getDownloadStats(): Promise<DownloadStats> {
       if (!name || count <= 0) continue;
 
       const key = classify(name);
-      if (key === "mac") byPlatform.mac += count;
+      // Three macOS artifacts, one platform — a download is a download.
+      if (key === "mac" || key === "macArm64" || key === "macX64") {
+        byPlatform.mac += count;
+      }
       // The installer and the portable build are both "someone got it on Windows".
       else if (key === "win" || key === "winPortable") byPlatform.win += count;
       else if (key === "linux") byPlatform.linux += count;

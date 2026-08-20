@@ -2,6 +2,7 @@ import Shell from "./components/Shell";
 import { AppWindow } from "./components/AppWindow";
 import { Architecture } from "./components/Architecture";
 import { Changelog } from "./components/Changelog";
+import MacArch from "./components/MacArch";
 import {
   DownloadCount,
   DownloadCta,
@@ -89,6 +90,7 @@ export default function Home() {
   return (
     <Shell>
       <div id="top" />
+      <MacArch />
 
       {/* ============ HERO ============ */}
       <section className="wrap hero">

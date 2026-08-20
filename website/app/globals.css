@@ -50,11 +50,13 @@
   --gutter: 24px;
   --nav-h: 56px;
 
+  /* Mixed-case family names are quoted so they read as names rather than CSS
+     keywords — stylelint's value-keyword-case flags the bare forms. */
   --sans:
-    var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    var(--font-sans), -apple-system, "BlinkMacSystemFont", "Segoe UI", "Roboto",
     sans-serif;
   --mono:
-    var(--font-plex-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    var(--font-plex-mono), ui-monospace, "SFMono-Regular", "SF Mono", "Menlo",
     monospace;
 
   color-scheme: dark;
@@ -970,10 +972,30 @@ svg {
   white-space: nowrap;
 }
 
-:root[data-os="mac"] .dl--mac .dl__badge,
+/* Badge the row this machine should actually take. macOS has three candidates,
+   so until the architecture is known the universal build is the right answer —
+   `:not([data-arch])` is what makes that the default rather than a guess. */
+:root[data-os="mac"]:not([data-arch]) .dl--mac .dl__badge,
+:root[data-os="mac"][data-arch="arm64"] .dl--macArm64 .dl__badge,
+:root[data-os="mac"][data-arch="x64"] .dl--macX64 .dl__badge,
 :root[data-os="win"] .dl--win .dl__badge,
 :root[data-os="linux"] .dl--linux .dl__badge {
   display: inline-block;
+}
+
+/* Variant rows sit under their platform: no repeated OS name, indented file
+   cell, and a lighter rule so the group reads as one block. */
+.dl--sub {
+  border-bottom-color: color-mix(in srgb, var(--line) 55%, transparent);
+}
+
+.dl--sub .dl__file {
+  padding-left: var(--s4);
+}
+
+.dl__file b {
+  color: var(--text-2);
+  font-weight: 600;
 }
 
 .dl__actions {

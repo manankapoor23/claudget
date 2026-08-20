@@ -6,6 +6,24 @@ copyright: Copyright © 2026 claudget contributors
 # electron-builder's auto-detection can't find it. Keep in sync with the electron devDep.
 electronVersion: 42.4.1
 
+# The UI is English-only.
+#
+# This does the whole job on Windows and Linux — electron-builder reduces
+# locales/ to exactly this list while copying the framework, before afterPack
+# runs. On macOS it only prunes the small app-level *.lproj stubs and leaves the
+# ~47 MB of locale.pak inside Electron Framework.framework, which is why the
+# afterPack hook below exists.
+#
+# Keep this list and KEEP in build/after-pack.js in agreement, or a locale will
+# survive on one platform and not the others.
+electronLanguages:
+  - en-US
+
+afterPack: build/after-pack.js
+
+# Smaller installers. Build-time cost only — installed size is unchanged.
+compression: maximum
+
 # Free distribution, no paid certs. Releases are published to GitHub Releases.
 publish:
   provider: github
@@ -18,6 +36,8 @@ directories:
 
 files:
   - out/**/*
+  # Source maps are a build artefact; users don't need them installed.
+  - '!out/**/*.map'
   - package.json
 
 extraResources:
@@ -50,10 +70,23 @@ nsis:
 portable:
   artifactName: ${productName}-${version}-Portable-${arch}.${ext}
 
+dmg:
+  # Pin the arch into every filename. Left to its default, electron-builder omits
+  # the suffix for x64 — the three builds came out as "-universal.dmg",
+  # "-arm64.dmg" and plain ".dmg", and the website reads the arch from the
+  # filename, so the x64 build would have been served as the universal one.
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
 mac:
   target:
+    # Three artifacts on purpose. A universal build carries both slices, so it
+    # is ~190 MB larger on disk than the arch the machine will actually execute
+    # — but it is the only download that is always correct, and Safari reports
+    # Apple Silicon Macs as "Intel Mac OS X", so the site cannot always tell.
+    # So: universal stays the safe default, and the per-arch builds let anyone
+    # we can positively identify take the half-size download instead.
     - target: dmg
-      arch: [universal]
+      arch: [universal, arm64, x64]
   category: public.app-category.developer-tools
   icon: build/icon.icns
   # Unsigned + ad-hoc signed (no paid Apple cert). The app launches on Apple
