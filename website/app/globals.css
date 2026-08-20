@@ -50,11 +50,13 @@
   --gutter: 24px;
   --nav-h: 56px;
 
+  /* Mixed-case family names are quoted so they read as names rather than CSS
+     keywords — stylelint's value-keyword-case flags the bare forms. */
   --sans:
-    var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    var(--font-sans), -apple-system, "BlinkMacSystemFont", "Segoe UI", "Roboto",
     sans-serif;
   --mono:
-    var(--font-plex-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    var(--font-plex-mono), ui-monospace, "SFMono-Regular", "SF Mono", "Menlo",
     monospace;
 
   color-scheme: dark;

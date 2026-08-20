@@ -216,11 +216,25 @@ function Row({
       <div className="dl__actions">
         <span className="dl__badge">Your system</span>
         {portable ? (
-          <a className="dl__alt" href={portable.url}>
+          <a
+            className="dl__alt"
+            href={portable.url}
+            aria-label={`Download the portable .exe for ${os}`}
+          >
             portable .exe
           </a>
         ) : null}
-        <a className="btn" href={downloadHref(release, key)} {...external}>
+        {/* Every row's visible label is just "Download", so without this a
+            screen reader reading the link list hears the same name five times
+            and can't tell the platforms apart. */}
+        <a
+          className="btn"
+          href={downloadHref(release, key)}
+          aria-label={`Download claudget ${release.version} for ${os}${
+            variant ? ` — ${variant.label}` : ""
+          }`}
+          {...external}
+        >
           <IconDownload />
           Download
         </a>

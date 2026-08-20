@@ -6,9 +6,16 @@ copyright: Copyright © 2026 claudget contributors
 # electron-builder's auto-detection can't find it. Keep in sync with the electron devDep.
 electronVersion: 42.4.1
 
-# The UI is English-only. This prunes the app-level locale stubs; the ~47 MB of
-# locale.pak inside Electron Framework.framework is handled by afterPack, which
-# electronLanguages does not reach.
+# The UI is English-only.
+#
+# This does the whole job on Windows and Linux — electron-builder reduces
+# locales/ to exactly this list while copying the framework, before afterPack
+# runs. On macOS it only prunes the small app-level *.lproj stubs and leaves the
+# ~47 MB of locale.pak inside Electron Framework.framework, which is why the
+# afterPack hook below exists.
+#
+# Keep this list and KEEP in build/after-pack.js in agreement, or a locale will
+# survive on one platform and not the others.
 electronLanguages:
   - en-US
 

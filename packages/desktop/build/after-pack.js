@@ -18,8 +18,19 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-/** Locales to keep. `en` is the fallback Chromium uses when one is missing. */
-const KEEP = new Set(['en', 'en_US', 'en-US', 'en_GB', 'en-GB']);
+/**
+ * Locales to keep — US English only, matching `electronLanguages` in
+ * electron-builder.yml. The two must agree: on Windows and Linux
+ * electron-builder has already reduced locales/ to that list before this hook
+ * runs, so a locale kept only here would silently exist on macOS and nowhere
+ * else. Both spellings are listed because macOS uses `en_US.lproj` while
+ * Chromium's flat paks use `en-US.pak`.
+ *
+ * Dropping en-GB costs nothing visible: these paks localise Chromium's own
+ * strings (context menus, form validation), and claudget is a frameless window
+ * whose entire UI is our own React. Chromium falls back to `en` regardless.
+ */
+const KEEP = new Set(['en', 'en_US', 'en-US']);
 
 /** Strips the extension and normalises separators so both naming styles match. */
 function localeOf(name) {
