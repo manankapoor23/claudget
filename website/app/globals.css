@@ -441,6 +441,11 @@ ul {
   border-radius: 99px;
   padding: 2px 8px;
 }
+/* Written up but not yet tagged — reads as a note, not as an achievement. */
+.changelog__latest--unreleased {
+  color: var(--muted);
+  border-color: var(--border-col);
+}
 .changelog__date {
   margin-left: auto;
   font-size: 13px;

@@ -121,6 +121,22 @@ export async function getLatestRelease(): Promise<Release> {
   }
 }
 
+/**
+ * Compares two dotted version strings. Negative if `a` sorts before `b`, 0 if
+ * equal, positive if after. Missing or non-numeric parts count as 0.
+ */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(".");
+  const pb = b.split(".");
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = Number(pa[i] ?? 0);
+    const y = Number(pb[i] ?? 0);
+    if (Number.isNaN(x) || Number.isNaN(y)) return 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
+
 /** Direct asset URL when we have one, else the releases page (always works). */
 export function downloadHref(release: Release, key: PlatformKey): string {
   return release.assets[key]?.url ?? RELEASES_URL;
