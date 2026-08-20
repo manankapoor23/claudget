@@ -1,4 +1,5 @@
 import Shell from "./components/Shell";
+import { DownloadCta, DownloadGrid, ReleaseTag } from "./components/Download";
 import {
   LogoMark,
   IconOffline,
@@ -6,10 +7,6 @@ import {
   IconLayers,
   IconLock,
   IconGitHub,
-  IconApple,
-  IconWindows,
-  IconLinux,
-  IconDownload,
   IconMail,
 } from "./icons";
 import {
@@ -69,31 +66,6 @@ const FEATURES = [
   },
 ];
 
-const PLATFORMS = [
-  {
-    Icon: IconApple,
-    os: "macOS",
-    file: "Universal .dmg · drag to Applications",
-    note: "11 Big Sur or later · Intel + Apple Silicon",
-    unblock:
-      "Unsigned, so macOS blocks first launch. After dragging to Applications, run: xattr -dr com.apple.quarantine /Applications/claudget.app  (details below).",
-  },
-  {
-    Icon: IconWindows,
-    os: "Windows",
-    file: "NSIS Setup-x64.exe · or Portable-x64.exe",
-    note: "Windows 10 / 11 · x64",
-    unblock: 'First open: SmartScreen → "More info" → "Run anyway".',
-  },
-  {
-    Icon: IconLinux,
-    os: "Linux",
-    file: "AppImage-x64 · chmod +x and run",
-    note: "Most modern distros · x64",
-    unblock: "No prompt — just chmod +x and run.",
-  },
-];
-
 /* ---------- page -------------------------------------------------------- */
 
 export default function Home() {
@@ -115,10 +87,7 @@ export default function Home() {
               cost, burn rate, plan limits and recent sessions. Zero setup. Fully local.
             </p>
             <div className="hero__actions">
-              <a className="btn btn--primary btn--lg" href="#download">
-                <IconDownload />
-                Download free
-              </a>
+              <DownloadCta />
               <a
                 className="btn btn--lg"
                 href={REPO_URL}
@@ -225,33 +194,9 @@ export default function Home() {
         <section id="download" className="box">
           <div className="box__head">
             <h2 className="section-header">Download</h2>
-            <span className="box__meta">Latest release</span>
+            <ReleaseTag />
           </div>
-          <div className="downloads">
-            {PLATFORMS.map(({ Icon, os, file, note, unblock }) => (
-              <div className="dl" key={os}>
-                <div className="dl__os">
-                  <Icon />
-                  <h3>{os}</h3>
-                </div>
-                <div className="dl__file">
-                  {file}
-                  <br />
-                  <span style={{ color: "var(--muted)" }}>{note}</span>
-                </div>
-                <a
-                  className="btn btn--primary"
-                  href={RELEASES_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <IconDownload />
-                  Get for {os}
-                </a>
-                <div className="dl__unblock">{unblock}</div>
-              </div>
-            ))}
-          </div>
+          <DownloadGrid />
           <div className="box__body" style={{ borderTop: "var(--border)" }}>
             <p className="meta" style={{ marginBottom: "var(--s3)" }}>
               <strong style={{ color: "var(--ink)" }}>Why does my OS warn me?</strong>{" "}

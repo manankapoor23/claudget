@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import { getLatestRelease } from "./lib/release";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -71,8 +72,14 @@ export const viewport: Viewport = {
 // Applied before paint so a saved light-theme choice doesn't flash dark.
 const THEME_BOOT = `(function(){try{var t=localStorage.getItem('claudget-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
+// Same trick for the download buttons: tag the platform before first paint so
+// CSS can promote the visitor's own installer with no spinner and no swap.
+// Left unset on mobile / unknown UAs, which shows the neutral "Download free".
+const OS_BOOT = `(function(){try{var n=navigator,u=n.userAgent||"",p=(n.userAgentData&&n.userAgentData.platform)||n.platform||"",s=p+" "+u,o="";if(/android/i.test(s)){}else if(/iphone|ipad|ipod/i.test(s)){}else if(/mac/i.test(s)){o="mac";}else if(/win/i.test(s)){o="win";}else if(/linux|x11|cros/i.test(s)){o="linux";}if(o){document.documentElement.dataset.os=o;}}catch(e){}})();`;
+
 // Structured data — tells Google this is a free, cross-platform downloadable app.
-const JSON_LD = {
+// `softwareVersion` comes from the live release so it can't drift out of date.
+const jsonLd = (version: string) => ({
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: "claudget",
@@ -82,17 +89,18 @@ const JSON_LD = {
   description: DESCRIPTION,
   url: SITE_URL,
   downloadUrl: "https://github.com/manankapoor23/claudget/releases/latest",
-  softwareVersion: "0.2.2",
+  softwareVersion: version,
   license: "https://github.com/manankapoor23/claudget/blob/main/LICENSE",
   author: { "@type": "Person", name: "Manan Kapoor", url: "https://github.com/manankapoor23" },
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-};
+});
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { version } = await getLatestRelease();
   return (
     <html
       lang="en"
@@ -101,9 +109,10 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: OS_BOOT }} />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(version)) }}
         />
       </head>
       <body>{children}</body>
