@@ -5,6 +5,31 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.2.4] — 2026-08-20
+
+### Changed
+
+- **The installed app is roughly half the size.** Two things were paying for
+  themselves twice over: Electron ships ~220 Chromium locale bundles (~47 MB)
+  for a UI that only exists in English, and the macOS build was universal, which
+  puts two copies of the Electron framework on disk when a machine can only ever
+  execute one. `app.asar` was 6 MB of a 279 MB install, so none of this was the
+  app's own code.
+
+  ```
+  installed   486 MB -> 233 MB
+  download    205 MB ->  94 MB
+  ```
+
+- **macOS now has three downloads:** Universal, Apple Silicon and Intel. The
+  per-arch builds are about half the size. Universal remains the safe choice and
+  the site's default — macOS reports Apple Silicon Macs as "Intel Mac OS X", so
+  the right build can't always be detected, and the site only picks one when it
+  can prove which it is.
+
+- Source maps are no longer shipped inside the app, and installers use maximum
+  compression.
+
 ## [0.2.3] — 2026-08-20
 
 ### Fixed
@@ -52,6 +77,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.2.4]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.4
 [0.2.3]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.3
 [0.2.2]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.2
 [0.2.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.1
