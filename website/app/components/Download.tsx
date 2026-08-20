@@ -1,5 +1,4 @@
 import { IconApple, IconWindows, IconLinux, IconDownload } from "../icons";
-import { RELEASES_URL } from "../constants";
 import {
   downloadHref,
   formatCount,
@@ -18,7 +17,7 @@ interface PlatformMeta {
   key: PlatformKey;
   os: string;
   Icon: typeof IconApple;
-  /** Short description of the artifact. */
+  /** What the artifact is. */
   file: string;
   requires: string;
   unblock: string;
@@ -29,16 +28,16 @@ const PLATFORMS: PlatformMeta[] = [
     key: "mac",
     os: "macOS",
     Icon: IconApple,
-    file: "Universal .dmg · drag to Applications",
-    requires: "11 Big Sur+ · Intel & Apple Silicon",
+    file: "Universal .dmg",
+    requires: "11 Big Sur+ · Apple Silicon + Intel",
     unblock:
-      "Unsigned, so macOS blocks the first launch. Drag to Applications, then run the xattr command below.",
+      "Unsigned, so the first launch is blocked. Drag to Applications, then run:",
   },
   {
     key: "win",
     os: "Windows",
     Icon: IconWindows,
-    file: "NSIS installer · choose your folder",
+    file: "NSIS installer",
     requires: "Windows 10 / 11 · x64",
     unblock: 'First open: SmartScreen → "More info" → "Run anyway".',
   },
@@ -46,9 +45,9 @@ const PLATFORMS: PlatformMeta[] = [
     key: "linux",
     os: "Linux",
     Icon: IconLinux,
-    file: "AppImage · chmod +x and run",
+    file: "AppImage",
     requires: "Most modern distros · x64",
-    unblock: "No prompt — just chmod +x and run.",
+    unblock: "No prompt — chmod +x and run.",
   },
 ];
 
@@ -72,7 +71,7 @@ export async function DownloadCta() {
               Download for {os}
               <span className="dl-cta__sub">
                 v{release.version}
-                {asset ? ` · ${asset.size}` : ""} · free
+                {asset ? ` · ${asset.size}` : ""}
               </span>
             </span>
           </a>
@@ -83,28 +82,29 @@ export async function DownloadCta() {
       <a className="btn btn--primary btn--lg dl-cta dl-cta--any" href="#download">
         <IconDownload />
         <span className="dl-cta__text">
-          Download free
-          <span className="dl-cta__sub">v{release.version} · macOS, Windows, Linux</span>
+          Download
+          <span className="dl-cta__sub">v{release.version} · mac · win · linux</span>
         </span>
       </a>
     </span>
   );
 }
 
-/** Version pill for the Download section header. */
+/** Version + publish date, for a section label. */
 export async function ReleaseTag() {
   const release = await getLatestRelease();
   return (
-    <a
-      className="box__meta box__meta--link"
-      href={RELEASES_URL}
-      target="_blank"
-      rel="noreferrer"
-    >
+    <>
       v{release.version}
-      {release.published ? ` · ${release.published}` : ""} · all releases →
-    </a>
+      {release.published ? ` · ${release.published}` : ""}
+    </>
   );
+}
+
+/** Bare version string, for the footer metadata block. */
+export async function ReleaseVersion() {
+  const { version } = await getLatestRelease();
+  return <>{version}</>;
 }
 
 /**
@@ -119,12 +119,11 @@ export async function DownloadStats() {
   return (
     <div className="dl-stats">
       <span className="dl-stats__total">
-        <IconDownload />
         <b>
           {formatCount(total)}
           {partial ? "+" : ""}
-        </b>{" "}
-        download{total === 1 ? "" : "s"}
+        </b>
+        <span className="lbl">installer download{total === 1 ? "" : "s"}</span>
       </span>
       <span className="dl-stats__split">
         <span>macOS {formatCount(byPlatform.mac)}</span>
@@ -135,21 +134,23 @@ export async function DownloadStats() {
   );
 }
 
-/** Compact total for the hero eyebrow. Renders nothing if unavailable. */
+/** Compact total for the hero metadata strip. Renders nothing if unavailable. */
 export async function DownloadCount() {
   const { total, unavailable, partial } = await getDownloadStats();
   if (unavailable || total === 0) return null;
   return (
-    <>
-      {" · "}
-      {formatCount(total)}
-      {partial ? "+" : ""} downloads
-    </>
+    <span>
+      <b>
+        {formatCount(total)}
+        {partial ? "+" : ""}
+      </b>{" "}
+      downloads
+    </span>
   );
 }
 
-function Card({ meta, release }: { meta: PlatformMeta; release: Release }) {
-  const { key, os, Icon, file, requires, unblock } = meta;
+function Row({ meta, release }: { meta: PlatformMeta; release: Release }) {
+  const { key, os, Icon, file, requires } = meta;
   const asset = release.assets[key];
   const portable = key === "win" ? release.assets.winPortable : undefined;
   // Without a direct asset we link the releases page, which opens in a new tab.
@@ -157,49 +158,67 @@ function Card({ meta, release }: { meta: PlatformMeta; release: Release }) {
 
   return (
     <div className={`dl dl--${key}`}>
-      <span className="dl__badge">Your system</span>
-
       <div className="dl__os">
         <Icon />
         <h3>{os}</h3>
       </div>
 
       <div className="dl__file">
-        {file}
-        <br />
-        <span style={{ color: "var(--muted)" }}>{requires}</span>
+        {file} · {requires}
+        <span>{asset ? `${asset.filename} · ${asset.size}` : "see releases"}</span>
       </div>
 
-      <a className="btn btn--primary" href={downloadHref(release, key)} {...external}>
-        <IconDownload />
-        Download{asset ? ` · ${asset.size}` : ""}
-      </a>
-
-      {asset ? (
-        <div className="dl__filename" title={asset.filename}>
-          {asset.filename}
-        </div>
-      ) : null}
-
-      {portable ? (
-        <a className="dl__alt" href={portable.url}>
-          or portable .exe · {portable.size} — no install
+      <div className="dl__actions">
+        <span className="dl__badge">Your system</span>
+        {portable ? (
+          <a className="dl__alt" href={portable.url}>
+            portable .exe
+          </a>
+        ) : null}
+        <a className="btn" href={downloadHref(release, key)} {...external}>
+          <IconDownload />
+          Download
         </a>
-      ) : null}
-
-      <div className="dl__unblock">{unblock}</div>
+      </div>
     </div>
   );
 }
 
-/** The three platform cards. */
+/** The three platform rows, plus the first-launch notes. */
 export async function DownloadGrid() {
   const release = await getLatestRelease();
   return (
-    <div className="downloads">
-      {PLATFORMS.map((meta) => (
-        <Card key={meta.key} meta={meta} release={release} />
-      ))}
-    </div>
+    <>
+      <div className="downloads">
+        {PLATFORMS.map((meta) => (
+          <Row key={meta.key} meta={meta} release={release} />
+        ))}
+      </div>
+
+      <div className="notes">
+        {PLATFORMS.map(({ key, os, unblock }) => (
+          <div className="note" key={key}>
+            <span className="lbl">{os}</span>
+            <p>
+              {unblock}
+              {key === "mac" ? (
+                <>
+                  {" "}
+                  <code>xattr -dr com.apple.quarantine /Applications/claudget.app</code>
+                </>
+              ) : null}
+            </p>
+          </div>
+        ))}
+        <div className="note">
+          <span className="lbl">Why</span>
+          <p>
+            The builds aren&apos;t paid-signed by Apple or Microsoft — claudget is
+            free and open source. The override is one-time, and the source is on
+            GitHub to read.
+          </p>
+        </div>
+      </div>
+    </>
   );
 }

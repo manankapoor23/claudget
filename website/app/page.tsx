@@ -1,351 +1,343 @@
 import Shell from "./components/Shell";
+import { AppWindow } from "./components/AppWindow";
+import { Architecture } from "./components/Architecture";
+import { Changelog } from "./components/Changelog";
 import {
   DownloadCount,
   DownloadCta,
   DownloadGrid,
   DownloadStats,
   ReleaseTag,
+  ReleaseVersion,
 } from "./components/Download";
-import { Changelog } from "./components/Changelog";
+import { IconGitHub, IconMail, LogoMark } from "./icons";
 import {
-  LogoMark,
-  IconOffline,
-  IconGauge,
-  IconLayers,
-  IconLock,
-  IconGitHub,
-  IconMail,
-} from "./icons";
-import {
-  REPO_URL,
-  RELEASES_URL,
+  LICENSE_URL,
+  MAKER_EMAIL,
   MAKER_NAME,
   MAKER_URL,
-  MAKER_EMAIL,
+  RELEASES_URL,
+  REPO_URL,
 } from "./constants";
 
-/* ---------- content data ------------------------------------------------ */
+/* ---------- content ------------------------------------------------------ */
 
-const FEATURES = [
+/** What the widget actually measures. Values are representative, labels exact. */
+const TRACKS = [
   {
-    Icon: IconOffline,
-    title: "Local by default",
-    body: "Tokens, cost, per-model breakdown, session blocks and burn rate — all read from the transcripts Claude Code already stores. 100% offline, no API key.",
+    value: "6.9M",
+    label: "tokens",
+    note: "Input, output and cache, split by block, session, project and model.",
   },
   {
-    Icon: IconGauge,
-    title: "Optional plan limits",
-    body: "Switch on plan tracking to see your 5-hour and weekly windows, percent remaining and a live reset countdown from Anthropic's usage endpoint. Off by default.",
+    value: "$17.10",
+    label: "est. cost",
+    note: "Priced from the model mix found in your own transcripts.",
   },
   {
-    Icon: IconLock,
-    title: "Private by design",
-    body: "Strictly read-only to ~/.claude — it never writes there, never logs your OAuth token, and sends nothing anywhere except api.anthropic.com.",
+    value: "42K",
+    unit: "/m",
+    label: "burn rate",
+    note: "Tokens per minute across the active block, with a projection.",
   },
   {
-    Icon: IconLayers,
-    title: "Stays out of the way",
-    body: "Frameless, translucent and always-on-top, with a compact mode, click-through, tray hiding and global hotkeys. Dark, light or system theme, updating in real time.",
+    value: "02:14",
+    label: "resets in",
+    note: "Countdown to the end of the current ~5-hour window.",
+  },
+  {
+    value: "27%",
+    label: "plan used",
+    note: "5-hour and weekly limits, when plan tracking is switched on.",
+  },
+  {
+    value: "8",
+    label: "sessions",
+    note: "Recent sessions with per-project and per-model totals.",
   },
 ];
 
-/* ---------- page -------------------------------------------------------- */
+const DETAILS = [
+  {
+    n: "01",
+    title: "Local data",
+    body: "Usage is read straight from the transcripts Claude Code already writes. No API key, no account, no network required — the local view works fully offline.",
+    code: "~/.claude/projects/**/*.jsonl",
+  },
+  {
+    n: "02",
+    title: "Plan limits",
+    body: "Optionally polls Anthropic's usage endpoint with the OAuth token Claude Code already stored, for 5-hour and weekly percentages and reset times. Off until you enable it, and rate-limited with backoff.",
+    code: "api.anthropic.com/api/oauth/usage",
+  },
+  {
+    n: "03",
+    title: "Read-only",
+    body: "claudget never writes to Claude Code's directory, never logs your OAuth token, and sends nothing anywhere except the Anthropic endpoint above when you turn plan tracking on.",
+  },
+  {
+    n: "04",
+    title: "Desktop-native",
+    body: "A frameless always-on-top window that follows you across every Space and over fullscreen apps. Tray menu, compact mode, click-through, global hotkeys, and dark/light/system themes.",
+    code: "⌘⌥U toggle · ⌘⌥C click-through",
+  },
+];
+
+/* ---------- page --------------------------------------------------------- */
 
 export default function Home() {
   return (
     <Shell>
-      <div className="content stack">
-        {/* ============ HERO / OVERVIEW ============ */}
-        <section id="overview" className="hero">
-          <div>
-            <span className="hero__eyebrow">
-              open source · MIT · macOS / Windows / Linux
-              <DownloadCount />
+      <div id="top" />
+
+      {/* ============ HERO ============ */}
+      <section className="wrap hero">
+        <div>
+          <div className="hero__name">claudget</div>
+          <h1>A small desktop monitor for Claude&nbsp;Code.</h1>
+          <p className="hero__lede">
+            Reads usage from Claude&nbsp;Code&apos;s local transcripts and keeps
+            tokens, cost, burn rate and plan limits on your desktop. Local-first
+            and read-only by default.
+          </p>
+
+          <div className="hero__actions">
+            <DownloadCta />
+            <a className="btn btn--lg" href={REPO_URL} target="_blank" rel="noreferrer">
+              <IconGitHub />
+              GitHub
+            </a>
+          </div>
+
+          <div className="hero__meta">
+            <span>
+              <b>
+                <ReleaseTag />
+              </b>
             </span>
-            <h1>
-              Your Claude&nbsp;Code usage, <mark>on the desk</mark> in real time.
-            </h1>
-            <p className="hero__lede">
-              A lightweight, always-on-top desktop widget that reads the transcripts
-              Claude&nbsp;Code already stores — and turns them into a live ledger of tokens,
-              cost, burn rate, plan limits and recent sessions. Zero setup. Fully local.
+            <span>MIT</span>
+            <span>macOS · Windows · Linux</span>
+            <DownloadCount />
+          </div>
+        </div>
+
+        <AppWindow />
+      </section>
+
+      {/* ============ WHAT IT TRACKS ============ */}
+      <section id="app" className="wrap sec">
+        <div className="sec__grid">
+          <div className="sec__label">
+            <b>—</b> What it tracks
+          </div>
+          <div>
+            <h2 className="sec__title">Telemetry, not dashboards.</h2>
+            <p className="sec__lede">
+              Everything below is derived on your machine from files
+              Claude&nbsp;Code has already written. Figures shown are
+              representative.
             </p>
-            <div className="hero__actions">
-              <DownloadCta />
+          </div>
+        </div>
+
+        <div className="tracks" style={{ marginTop: "var(--s6)" }}>
+          {TRACKS.map(({ value, unit, label, note }) => (
+            <div className="track" key={label}>
+              <div className="track__val">
+                {value}
+                {unit ? <span>{unit}</span> : null}
+              </div>
+              <span className="lbl">{label}</span>
+              <p className="track__note">{note}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ HOW IT WORKS ============ */}
+      <section id="how" className="wrap sec">
+        <div className="sec__grid">
+          <div className="sec__label">
+            <b>—</b> How it works
+          </div>
+          <div>
+            <h2 className="sec__title">Two sources, one snapshot.</h2>
+            <p className="sec__lede">
+              A file watcher and an optional HTTP poll feed a single aggregator.
+              The widget renders whatever the latest snapshot says.
+            </p>
+          </div>
+        </div>
+
+        <div className="sec__grid">
+          <div />
+          <Architecture />
+        </div>
+      </section>
+
+      {/* ============ DETAIL ROWS ============ */}
+      <section className="wrap sec">
+        <div className="rows">
+          {DETAILS.map(({ n, title, body, code }) => (
+            <div className="row" key={n}>
+              <div className="sec__label">
+                <b>{n}</b> {title}
+              </div>
+              <div className="row__body">
+                <h3>{title}</h3>
+                <p>{body}</p>
+                {code ? <div className="row__code">{code}</div> : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ DOWNLOAD ============ */}
+      <section id="download" className="wrap sec">
+        <div className="sec__grid">
+          <div className="sec__label">
+            <b>—</b> Download
+          </div>
+          <div>
+            <h2 className="sec__title">
+              Free and open source · <ReleaseTag />
+            </h2>
+            <p className="sec__lede">
+              Direct downloads from GitHub Releases. No sign-up, no installer
+              telemetry.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "var(--s6)" }}>
+          <DownloadStats />
+          <DownloadGrid />
+        </div>
+
+        <div className="sec__grid" style={{ marginTop: "var(--s7)" }}>
+          <div className="sec__label">
+            <b>—</b> From source
+          </div>
+          <div>
+            <p className="sec__lede" style={{ marginBottom: "var(--s3)" }}>
+              Requires Node.js ≥ 20. The installer lands in{" "}
+              <span className="mono">packages/desktop/release</span>.
+            </p>
+            <code className="cmd">{`npm install\nnpm run package`}</code>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ CHANGELOG ============ */}
+      <section id="changelog" className="wrap sec">
+        <div className="sec__grid">
+          <div className="sec__label">
+            <b>—</b> Changelog
+          </div>
+          <div>
+            <h2 className="sec__title">Release history</h2>
+            <p className="sec__lede">
               <a
-                className="btn btn--lg"
-                href={REPO_URL}
+                className="tlink"
+                href={RELEASES_URL}
                 target="_blank"
                 rel="noreferrer"
               >
+                All releases on GitHub
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "var(--s6)" }}>
+          <Changelog />
+        </div>
+      </section>
+
+      {/* ============ MAKER ============ */}
+      <section className="wrap sec">
+        <div className="sec__grid">
+          <div className="sec__label">
+            <b>—</b> Made by
+          </div>
+          <div className="maker">
+            <div className="maker__name">{MAKER_NAME}</div>
+            <p>
+              Built because I wanted a simple way to see how much
+              Claude&nbsp;Code I was actually using without keeping another
+              browser tab open. It reads only what the CLI already stores on this
+              machine, and stays out of the way.
+            </p>
+            <p>
+              MIT licensed and developed in the open. Issues and pull requests
+              are genuinely welcome.
+            </p>
+            <div className="maker__links">
+              <a className="btn" href={MAKER_URL} target="_blank" rel="noreferrer">
                 <IconGitHub />
-                View source
+                @manankapoor23
+              </a>
+              <a
+                className="btn"
+                href={`${REPO_URL}/issues`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Issues
+              </a>
+              <a className="btn" href={`mailto:${MAKER_EMAIL}`}>
+                <IconMail />
+                Email
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ FOOTER ============ */}
+      <footer className="footer">
+        <div className="wrap">
+          <div className="footer__meta">
+            <div>
+              <span className="lbl">Version</span>
+              <span className="num">
+                <ReleaseVersion />
+              </span>
+            </div>
+            <div>
+              <span className="lbl">License</span>
+              <a href={LICENSE_URL} target="_blank" rel="noreferrer">
+                MIT
+              </a>
+            </div>
+            <div>
+              <span className="lbl">Platforms</span>
+              <span className="num">macOS · Windows · Linux</span>
+            </div>
+            <div>
+              <span className="lbl">Source</span>
+              <a href={REPO_URL} target="_blank" rel="noreferrer">
+                GitHub
               </a>
             </div>
           </div>
 
-          {/* ---- widget mockup ---- */}
-          <WidgetMock />
-        </section>
-
-        {/* ============ FEATURES ============ */}
-        <section id="features" className="box">
-          <div className="box__head">
-            <h2 className="section-header">Features</h2>
-          </div>
-          <div className="features">
-            {FEATURES.map(({ Icon, title, body }) => (
-              <article className="feature" key={title}>
-                <div className="feature__icon">
-                  <Icon />
-                </div>
-                <h3>{title}</h3>
-                <p>{body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        {/* ============ HOW IT WORKS ============ */}
-        <section id="how" className="box">
-          <div className="box__head">
-            <h2 className="section-header">How it works</h2>
-          </div>
-          <div className="box__body">
-            <p className="meta" style={{ marginBottom: "var(--s4)" }}>
-              The widget combines two independent sources into one snapshot. If the network
-              source is unavailable, it shows the last known values marked{" "}
-              <strong style={{ color: "var(--ink)" }}>Cached</strong> and keeps local data
-              flowing.
-            </p>
-            <div className="steps">
-              <div className="step">
-                <div className="step__num">01</div>
-                <h3>Local transcripts</h3>
-                <p>
-                  <code>~/.claude/projects/**/*.jsonl</code> is parsed and aggregated into
-                  token counts, cost estimates, a per-model breakdown, ~5-hour blocks, burn
-                  rate and an hourly activity series. This is the source of truth for spend —
-                  and it works entirely offline.
-                </p>
-              </div>
-              <div className="step">
-                <div className="step__num">02</div>
-                <h3>Official usage endpoint</h3>
-                <p>
-                  Optionally, <code>api.anthropic.com</code> is read with the OAuth token
-                  Claude&nbsp;Code already stored — the source of truth for plan limits
-                  (percent used, percent remaining, reset time). Polled no more than every
-                  180s with backoff. Off until you enable it.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ============ CHANGELOG ============ */}
-        <section id="changelog" className="box">
-          <div className="box__head">
-            <h2 className="section-header">Changelog</h2>
-            <a
-              className="box__meta box__meta--link"
-              href={RELEASES_URL}
-              target="_blank"
-              rel="noreferrer"
-            >
-              All releases →
-            </a>
-          </div>
-          <Changelog />
-        </section>
-
-        {/* ============ DOWNLOAD ============ */}
-        <section id="download" className="box">
-          <div className="box__head">
-            <h2 className="section-header">Download</h2>
-            <ReleaseTag />
-          </div>
-          <DownloadStats />
-          <DownloadGrid />
-          <div className="box__body" style={{ borderTop: "var(--border)" }}>
-            <p className="meta" style={{ marginBottom: "var(--s3)" }}>
-              <strong style={{ color: "var(--ink)" }}>Why does my OS warn me?</strong>{" "}
-              claudget is free and open source, so the builds aren&apos;t paid-signed by
-              Apple/Microsoft. The override below is one-time — the code is on GitHub for
-              anyone to read.
-            </p>
-            <p className="meta" style={{ marginBottom: "var(--s2)" }}>
-              <strong style={{ color: "var(--ink)" }}>macOS</strong> (Sequoia blocks
-              unsigned apps and may move them to Trash). Drag claudget to Applications, then
-              in Terminal:
-            </p>
-            <pre
+          <div className="footer__bar">
+            <span
               style={{
-                background: "var(--glass-3)",
-                border: "var(--rim-dim)",
-                borderRadius: "var(--radius-3)",
-                padding: "var(--s2) var(--s3)",
-                overflowX: "auto",
-                marginBottom: "var(--s3)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--s2)",
               }}
             >
-              <code>xattr -dr com.apple.quarantine /Applications/claudget.app</code>
-            </pre>
-            <p className="meta" style={{ marginBottom: "var(--s3)" }}>
-              Then open it. (Or: System Settings → Privacy &amp; Security → “claudget was
-              blocked” → <strong style={{ color: "var(--ink)" }}>Open Anyway</strong>.) On{" "}
-              <strong style={{ color: "var(--ink)" }}>Windows</strong>, SmartScreen → “More
-              info” → “Run anyway”.
-            </p>
-            <p className="meta">
-              Prefer to build it yourself? Clone the repo, run{" "}
-              <code
-                style={{
-                  background: "var(--paper-border-bg)",
-                  border: "1px solid var(--ink)",
-                  padding: "0 4px",
-                }}
-              >
-                npm install &amp;&amp; npm run package
-              </code>{" "}
-              and find the installer in <code>packages/desktop/release</code>. Requires
-              Node.js ≥ 20.
-            </p>
-          </div>
-        </section>
-
-        {/* ============ MAKER ============ */}
-        <section id="maker" className="box">
-          <div className="box__head">
-            <h2 className="section-header">Maker</h2>
-          </div>
-          <div className="maker">
-            <div className="maker__mark" aria-hidden>
-              MK
-            </div>
-            <div className="maker__body">
-              <div className="maker__name">
-                {MAKER_NAME}
-                <span className="maker__role">Engineer · maintainer</span>
-              </div>
-              <p>
-                I built <strong>claudget</strong> because I wanted a calmer, always-on way to
-                keep an eye on Claude&nbsp;Code spend without leaving the editor or pasting an
-                API key anywhere. It reads only what the CLI already stores on your machine,
-                stays out of the way, and is free and open source under the MIT license.
-              </p>
-              <p className="meta">
-                Issues, ideas and pull requests are genuinely welcome — the whole thing is
-                built in the open.
-              </p>
-              <div className="maker__links">
-                <a className="btn" href={MAKER_URL} target="_blank" rel="noreferrer">
-                  <IconGitHub style={{ width: 16, height: 16 }} />
-                  @manankapoor23
-                </a>
-                <a className="btn" href={`mailto:${MAKER_EMAIL}`}>
-                  <IconMail style={{ width: 16, height: 16 }} />
-                  Email
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      {/* ============ FOOTER ============ */}
-      <footer id="footer" className="footer">
-        <div className="footer__inner">
-          <div className="footer__brand">
-            <span className="footer__logo">
-              <LogoMark style={{ width: 28, height: 28 }} />
-              claudget
+              <LogoMark style={{ width: 15, height: 15 }} />
+              claudget · built by {MAKER_NAME}
             </span>
-            <span className="footer__line">Built by {MAKER_NAME} · MIT</span>
+            <span>Not affiliated with Anthropic</span>
           </div>
-          <nav className="footer__links">
-            <a href={REPO_URL} target="_blank" rel="noreferrer">
-              GitHub
-            </a>
-            <a href={RELEASES_URL} target="_blank" rel="noreferrer">
-              Latest release
-            </a>
-            <a href={`${REPO_URL}/issues`} target="_blank" rel="noreferrer">
-              Report an issue
-            </a>
-          </nav>
-        </div>
-        <div className="footer__bar">
-          Not affiliated with Anthropic · reads only what Claude&nbsp;Code stores
         </div>
       </footer>
     </Shell>
-  );
-}
-
-/* ---------- widget mockup (printed-report rendering) -------------------- */
-
-function WidgetMock() {
-  // deterministic bar heights for the activity sparkline
-  const bars = [38, 52, 30, 64, 80, 46, 58, 72, 90, 60, 44, 76];
-  return (
-    <div className="mock" aria-hidden>
-      <div className="mock__bar">
-        <span className="mock__dots">
-          <i />
-          <i />
-          <i />
-        </span>
-        <span className="mock__title">Current Block · 5h window</span>
-      </div>
-      <div className="mock__body">
-        <div className="bigmetric">
-          <div className="mock__row">
-            <span className="label">Block Tokens</span>
-            <span className="label">Consumed 27%</span>
-          </div>
-          <div className="mock__row" style={{ alignItems: "flex-end" }}>
-            <span className="metric">6.9M</span>
-            <span className="meta">/ 26M</span>
-          </div>
-          <div className="mock__gauge" style={{ marginTop: "var(--s2)" }}>
-            <div className="gauge">
-              <i style={{ width: "27%" }} />
-            </div>
-            <span className="meta">27%</span>
-          </div>
-        </div>
-
-        <div>
-          <div className="label" style={{ marginBottom: "var(--s2)" }}>
-            Activity · last 12h
-          </div>
-          <div className="spark">
-            {bars.map((h, i) => (
-              <i key={i} style={{ height: `${h}%` }} />
-            ))}
-          </div>
-        </div>
-
-        <div className="mock__grid">
-          <div className="mock__cell">
-            <span className="label">Est. Cost</span>
-            <div className="metric">$17.10</div>
-          </div>
-          <div className="mock__cell">
-            <span className="label">Burn Rate</span>
-            <div className="metric">42K/m</div>
-          </div>
-          <div className="mock__cell">
-            <span className="label">Resets In</span>
-            <div className="metric">02:14</div>
-          </div>
-          <div className="mock__cell">
-            <span className="label">Sessions</span>
-            <div className="metric">8</div>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }

@@ -1,116 +1,85 @@
 /* =========================================================================
-   CLAUDET — marketing site
-   Design language: Dark Glassmorphism — matches the desktop widget.
-   Tokens ported verbatim from packages/desktop/src/renderer/styles/index.css
-   so the site genuinely reads as the same product as the app.
-   Frosted translucent surfaces, soft rims (not hard frames), single coral
-   accent, gentle float/lift. Class names & markup are unchanged.
+   claudget — marketing site
+
+   Design language: macOS developer utility. Solid surfaces, 1px hairlines,
+   small radii, dense telemetry, editorial grid. The accent is a status colour,
+   not decoration — it marks the active/important metric and nothing else.
+
+   Telemetry (tokens, cost, %, timers, versions, paths) is monospace; prose is
+   sans. That split is the whole visual identity, so it is enforced by class
+   rather than left to chance.
    ========================================================================= */
 
+/* ---- dark (default) ---- */
 :root {
-  /* ---- Dark glass (default) ----
-     Names kept (--paper / --header-yellow / --action-orange / --border-col)
-     so markup needn't change; the values are now the widget's glass system. */
+  --bg: #0b0b0c;
+  --surface: #111113;
+  --surface-2: #17171a;
+  --surface-3: #1d1d21;
 
-  /* Glass fills (widget: --glass / --glass-2 / --glass-3) */
-  --glass: rgba(10, 9, 12, 0.62); /* main surface tint */
-  --glass-2: rgba(255, 255, 255, 0.07); /* raised panels */
-  --glass-3: rgba(255, 255, 255, 0.03); /* faintest */
+  --line: #232327;
+  --line-strong: #32323a;
 
-  /* Legacy surface aliases mapped onto glass */
-  --paper: #0a090c; /* deep near-black base (page) */
-  --paper-2: var(--glass-2); /* raised surface → frosted panel */
-  --paper-border-bg: rgba(255, 255, 255, 0.05); /* box headers */
+  --text: #ededee;
+  --text-2: #a2a2aa;
+  --text-3: #6d6d76;
 
-  --header-yellow: rgba(255, 255, 255, 0.06); /* toolbar — frosted */
-  --action-orange: #ff7f57; /* single accent — Claude coral */
-  --accent: #ff7f57;
-  --accent-dim: rgba(255, 127, 87, 0.18);
-  --sage: #8fb39c; /* legacy secondary (rarely used) */
+  --accent: #ff6b3d;
+  --accent-quiet: rgba(255, 107, 61, 0.12);
+  --ok: #52a97f;
+  --warn: #d3a03c;
 
-  --ink: rgba(255, 255, 255, 0.9);
-  --muted: rgba(255, 255, 255, 0.4);
-  --border-col: rgba(255, 255, 255, 0.14);
+  /* One restrained shadow, used only to lift the app window off the page. */
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -12px rgba(0, 0, 0, 0.55);
 
-  /* Rims (widget) */
-  --rim: 1px solid rgba(255, 255, 255, 0.14);
-  --rim-top: 1px solid rgba(255, 255, 255, 0.36);
-  --rim-dim: 1px solid rgba(255, 255, 255, 0.08);
+  --r1: 6px;
+  --r2: 8px;
+  --r3: 10px;
 
-  --success: #5ecba1;
-  --warning: #f4c26a;
-  --danger: #e86b6b;
-
-  /* layered backdrop glow tones */
-  --glow-coral: rgba(255, 127, 87, 0.22);
-  --glow-cool: rgba(96, 130, 200, 0.18);
-  --grid: rgba(255, 255, 255, 0.015);
-
-  /* Frosted-glass effect (one knob to tune everywhere) */
-  --blur: blur(22px) saturate(150%);
-  --blur-strong: blur(28px) saturate(160%);
-
-  /* Float shadows + glass top highlight */
-  --shadow-soft: 0 12px 32px -16px rgba(0, 0, 0, 0.6);
-  --shadow-float: 0 18px 48px -20px rgba(0, 0, 0, 0.7);
-  --hi-top: inset 0 1px 0 rgba(255, 255, 255, 0.08);
-
-  /* System — rounding is back (widget: 16 / 10 / 5) */
-  --border: var(--rim);
-  --radius: 16px;
-  --radius-2: 10px;
-  --radius-3: 5px;
-  color-scheme: dark;
-
-  /* Spacing scale — no arbitrary values */
   --s1: 4px;
   --s2: 8px;
-  --s3: 16px;
-  --s4: 24px;
-  --s5: 32px;
-  --s6: 48px;
-  --s7: 64px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+  --s9: 96px;
 
-  --header-h: 72px;
+  --page: 1080px;
+  --gutter: 24px;
+  --nav-h: 56px;
 
-  --font-mono: var(--font-plex-mono), "JetBrains Mono", "Courier New", monospace;
+  --sans:
+    var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --mono:
+    var(--font-plex-mono), ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    monospace;
+
+  color-scheme: dark;
 }
 
-/* ---- Light glass ---- */
+/* ---- light: warm off-white, same structure ---- */
 :root[data-theme="light"] {
-  --glass: rgba(255, 252, 248, 0.74); /* crisper frost */
-  --glass-2: rgba(255, 255, 255, 0.62);
-  --glass-3: rgba(255, 255, 255, 0.36);
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --surface-2: #f5f3ef;
+  --surface-3: #eeebe5;
 
-  --paper: #efe9df; /* warm light base, lifted a touch */
-  --paper-2: var(--glass-2);
-  --paper-border-bg: rgba(255, 255, 255, 0.55);
+  --line: #e4e1db;
+  --line-strong: #cfcbc3;
 
-  --header-yellow: rgba(255, 255, 255, 0.55);
-  --action-orange: #f56a3c; /* slightly deeper coral — reads better on light */
-  --accent: #f56a3c;
-  --accent-dim: rgba(245, 106, 60, 0.16);
-  --sage: #5e7e6b;
+  --text: #17171a;
+  --text-2: #55555e;
+  --text-3: #83838d;
 
-  --ink: rgba(20, 13, 8, 0.92); /* crisper text */
-  --muted: rgba(20, 13, 8, 0.5);
-  --border-col: rgba(0, 0, 0, 0.12);
+  --accent: #cf4a20;
+  --accent-quiet: rgba(207, 74, 32, 0.09);
+  --ok: #2f7f56;
+  --warn: #9a6f14;
 
-  --rim: 1px solid rgba(0, 0, 0, 0.12);
-  --rim-top: 1px solid rgba(255, 255, 255, 0.85);
-  --rim-dim: 1px solid rgba(0, 0, 0, 0.07);
-
-  --success: #3f7a5a;
-  --warning: #a9722a;
-  --danger: #c0503a;
-
-  --glow-coral: rgba(255, 127, 87, 0.34); /* livelier backdrop */
-  --glow-cool: rgba(120, 150, 210, 0.28);
-  --grid: rgba(33, 30, 26, 0.025);
-
-  --shadow-soft: 0 14px 36px -18px rgba(40, 30, 20, 0.42);
-  --shadow-float: 0 22px 50px -20px rgba(40, 30, 20, 0.5);
-  --hi-top: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --shadow: 0 1px 2px rgba(24, 20, 16, 0.06), 0 8px 24px -14px rgba(24, 20, 16, 0.16);
 
   color-scheme: light;
 }
@@ -122,84 +91,36 @@
 }
 
 html {
-  scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--header-h) + var(--s4));
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
   font-size: 15px;
-  line-height: 1.5;
-  overflow-x: hidden;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Mono is confined to data + product identity (wordmarks). */
-.metric,
-.label,
-.hero__eyebrow,
-.mock__title,
-.gauge,
-code,
-.step__num,
-.maker__mark,
-.footer__bar,
-.dl__file,
-.header__brand,
-.footer__brand .footer__logo {
-  font-family: var(--font-mono);
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+figure,
+pre {
+  margin: 0;
 }
 
-/* ---- Backdrop: deep gradient + soft blurred color blobs ----------------
-   backdrop-filter needs something behind it to blur. A fixed layer paints a
-   near-black gradient plus large coral + cool glows; a second layer adds a
-   barely-there engineering grid. Both sit behind all content. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: -12%; /* overscan so the slow drift never reveals an edge */
-  z-index: -2;
-  pointer-events: none;
-  background:
-    radial-gradient(60% 50% at 78% 12%, var(--glow-coral), transparent 60%),
-    radial-gradient(55% 50% at 12% 30%, var(--glow-cool), transparent 60%),
-    radial-gradient(70% 60% at 50% 110%, var(--glow-coral), transparent 55%),
-    radial-gradient(120% 120% at 50% 0%, #14121a 0%, var(--paper) 60%);
-  /* ambient: the glows drift + breathe almost imperceptibly */
-  animation: backdrop-drift 50s ease-in-out infinite alternate;
-}
-@keyframes backdrop-drift {
-  from {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  to {
-    transform: translate3d(-2.5%, 1.5%, 0) scale(1.06);
-  }
-}
-:root[data-theme="light"] body::before {
-  background:
-    radial-gradient(60% 50% at 80% 10%, var(--glow-coral), transparent 60%),
-    radial-gradient(55% 50% at 10% 28%, var(--glow-cool), transparent 60%),
-    radial-gradient(70% 60% at 50% 112%, var(--glow-coral), transparent 55%),
-    radial-gradient(120% 120% at 50% 0%, #fbf7f0 0%, var(--paper) 65%);
-}
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(var(--grid) 1px, transparent 1px),
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 28px 28px;
+ul,
+ol {
+  padding: 0;
+  list-style: none;
 }
 
 a {
@@ -207,136 +128,117 @@ a {
   text-decoration: none;
 }
 
-h1,
-h2,
-h3,
-h4,
-p {
-  margin: 0;
+button {
+  font: inherit;
+  color: inherit;
 }
 
-ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+svg {
+  display: block;
 }
 
 ::selection {
   background: var(--accent);
-  color: #1a0f0a;
+  color: #fff;
 }
 
-/* ---- Typography hierarchy ---------------------------------------------- */
-
-.page-title {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.5px;
-}
-
-.section-header {
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.label {
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--muted);
-}
-
-.metric {
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.meta {
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--muted);
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 /* =========================================================================
-   App shell: single frosted toolbar header (full-width)
+   Telemetry primitives — the site's core typographic idea
+   ========================================================================= */
+
+/* Small tracked uppercase label that sits under or beside a number. */
+.lbl {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* Any figure the product actually measures. */
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--text);
+}
+
+/* Inline technical strings: paths, filenames, versions, commands. */
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.92em;
+  color: var(--text-2);
+}
+
+/* =========================================================================
+   Shell / nav
    ========================================================================= */
 
 .shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ---- Header brand (logo + wordmark, mono) ---- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--nav-h);
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+  padding: 0 var(--gutter);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.header__inner {
+  width: 100%;
+  max-width: var(--page);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
 .header__brand {
   display: inline-flex;
   align-items: center;
   gap: var(--s2);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  color: var(--ink);
-  transition: opacity 0.18s ease;
-}
-.header__brand:hover {
-  opacity: 0.65;
-}
-.header__brand svg {
-  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-.header__brand:hover svg {
-  transform: rotate(-6deg) scale(1.08);
-}
-
-/* ---- Header nav links ---- */
-.header__nav {
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  margin-right: var(--s4);
-}
-.header__link {
+  font-family: var(--mono);
   font-size: 14px;
-  font-weight: 500;
-  color: var(--muted);
-  transition: color 0.15s ease;
-}
-.header__link:hover {
-  color: var(--ink);
-}
-
-@media (max-width: 560px) {
-  .header__nav {
-    display: none;
-  }
-}
-
-/* ---- Header toolbar (frosted glass bar) ---- */
-.header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--header-h);
-  background: var(--glass);
-  -webkit-backdrop-filter: var(--blur-strong);
-  backdrop-filter: var(--blur-strong);
-  border-bottom: var(--rim);
-  box-shadow:
-    var(--hi-top),
-    var(--shadow-soft);
-  display: flex;
-  align-items: center;
-  gap: var(--s4);
-  padding: 0 var(--s4);
-  z-index: 30;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
 }
 
 .header__spacer {
   flex: 1;
+}
+
+.header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+}
+
+.header__link {
+  font-size: 13.5px;
+  color: var(--text-2);
+  transition: color 0.12s ease;
+}
+
+.header__link:hover {
+  color: var(--text);
 }
 
 .header__right {
@@ -345,200 +247,152 @@ ul {
   gap: var(--s2);
 }
 
-/* ---- Main content area ---- */
 .main {
-  margin-left: 0;
-  padding-top: var(--header-h);
+  flex: 1;
 }
 
-.content {
-  max-width: 1100px;
+/* Anchor targets must clear the sticky header. */
+[id] {
+  scroll-margin-top: calc(var(--nav-h) + var(--s5));
+}
+
+.wrap {
+  max-width: var(--page);
   margin: 0 auto;
-  padding: var(--s6) var(--s4) var(--s6);
+  padding: 0 var(--gutter);
 }
 
 /* =========================================================================
-   Boxed sections — now floating frosted glass panels
-   ========================================================================= */
-
-.box {
-  border: var(--rim);
-  border-radius: var(--radius);
-  background: var(--glass-2);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  box-shadow:
-    var(--hi-top),
-    var(--shadow-soft);
-  overflow: hidden;
-}
-
-.box + .box,
-.stack > * + * {
-  margin-top: var(--s7);
-}
-
-.box__head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s3);
-  padding: var(--s3) var(--s4);
-  border-bottom: var(--rim-dim);
-  background: var(--glass-3);
-}
-
-.box__body {
-  padding: var(--s4);
-}
-
-.box__meta {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
-}
-.box__meta--link {
-  margin-left: auto;
-  transition: color 0.15s ease;
-}
-.box__meta--link:hover {
-  color: var(--accent);
-}
-
-/* ---- Changelog ---- */
-.changelog {
-  padding: var(--s4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-}
-.changelog__entry {
-  padding-top: var(--s4);
-  border-top: var(--rim-dim);
-}
-.changelog__entry:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-.changelog__head {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  margin-bottom: var(--s2);
-}
-.changelog__ver {
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--ink);
-}
-.changelog__latest {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-  border: 1px solid var(--accent);
-  border-radius: 99px;
-  padding: 2px 8px;
-}
-/* Written up but not yet tagged — reads as a note, not as an achievement. */
-.changelog__latest--unreleased {
-  color: var(--muted);
-  border-color: var(--border-col);
-}
-.changelog__date {
-  margin-left: auto;
-  font-size: 13px;
-  color: var(--muted);
-  font-family: var(--font-mono);
-}
-.changelog__list {
-  list-style: disc;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s1);
-}
-.changelog__list li {
-  font-size: 15px;
-  line-height: 1.55;
-  color: var(--ink);
-}
-
-/* =========================================================================
-   Buttons — glass pills with gentle lift
+   Buttons — flat, bordered, one accent primary
    ========================================================================= */
 
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--s2);
-  border: var(--rim);
-  border-radius: var(--radius-2);
-  background: var(--glass-2);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  color: var(--ink);
-  font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0;
-  padding: var(--s2) var(--s3);
+  padding: 7px 13px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r1);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 500;
   cursor: pointer;
-  box-shadow: var(--hi-top);
   transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.15s ease,
-    border-color 0.15s ease;
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .btn:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.22);
-  box-shadow:
-    var(--hi-top),
-    var(--shadow-float);
+  background: var(--surface-3);
+  border-color: var(--text-3);
 }
 
-.btn:active {
-  transform: translateY(0);
-  box-shadow: var(--hi-top);
-  opacity: 0.85;
+.btn svg {
+  width: 15px;
+  height: 15px;
 }
 
 .btn--primary {
   background: var(--accent);
-  border-color: rgba(255, 127, 87, 0.6);
-  color: #1a0f0a;
-  box-shadow:
-    0 8px 22px -10px rgba(255, 127, 87, 0.7),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
 }
+
 .btn--primary:hover {
-  background: #ff8f6b;
-  border-color: rgba(255, 127, 87, 0.85);
-  box-shadow:
-    0 14px 30px -10px rgba(255, 127, 87, 0.75),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(1.08);
 }
 
 .btn--lg {
+  padding: 10px 16px;
   font-size: 14px;
-  padding: var(--s3) var(--s4);
 }
 
 .btn--icon {
-  padding: var(--s2);
-}
-.btn--icon svg {
-  display: block;
+  padding: 7px;
 }
 
-.btn svg {
-  width: 18px;
-  height: 18px;
+.btn--icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Quiet text link with a hairline underline — used for secondary actions. */
+.tlink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+  border-bottom: 1px solid var(--line-strong);
+  padding-bottom: 1px;
+  transition:
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.tlink:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* =========================================================================
+   Section scaffold — editorial two-column grid, hairline rules, no cards
+   ========================================================================= */
+
+.sec {
+  border-top: 1px solid var(--line);
+  /* padding-top/bottom, never the shorthand: these elements also carry .wrap,
+     whose horizontal padding is the only thing keeping content off the screen
+     edge on narrow viewports. */
+  padding-top: var(--s7);
+  padding-bottom: var(--s7);
+}
+
+.sec__grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--s7);
+  align-items: start;
+}
+
+.sec__label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.sec__label b {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sec__title {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-bottom: var(--s3);
+}
+
+.sec__lede {
+  font-size: 15px;
+  color: var(--text-2);
+  max-width: 62ch;
+}
+
+.sec__lede + .sec__lede {
+  margin-top: var(--s3);
 }
 
 /* =========================================================================
@@ -546,608 +400,493 @@ ul {
    ========================================================================= */
 
 .hero {
+  padding-top: var(--s9);
+  padding-bottom: var(--s8);
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: var(--s5);
-  align-items: stretch;
-}
-
-/* Grid/flex children must be allowed to shrink below their content width,
-   otherwise long monospace strings force horizontal overflow on mobile. */
-.hero > *,
-.mock,
-.step,
-.feature,
-.dl,
-.box {
-  min-width: 0;
-}
-
-.hero__eyebrow {
-  display: inline-flex;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s9);
   align-items: center;
-  gap: var(--s2);
-  border: var(--rim);
-  border-radius: 20px;
-  background: var(--glass-2);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  padding: var(--s1) var(--s3);
-  font-size: 11px;
+}
+
+.hero__name {
+  font-family: var(--mono);
+  font-size: 15px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.02em;
+  color: var(--accent);
   margin-bottom: var(--s4);
-  box-shadow: var(--hi-top);
 }
 
 .hero h1 {
-  font-size: 40px;
-  font-weight: 700;
-  line-height: 1.08;
-  letter-spacing: -0.02em;
-  margin-bottom: var(--s4);
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.hero h1 mark {
-  background: transparent;
-  color: var(--accent);
-  padding: 0;
-  text-shadow: 0 0 24px rgba(255, 127, 87, 0.4);
+  font-size: 44px;
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.028em;
+  max-width: 20ch;
 }
 
 .hero__lede {
+  margin-top: var(--s5);
   font-size: 16px;
-  line-height: 1.6;
-  color: var(--ink);
-  max-width: 46ch;
-  margin-bottom: var(--s5);
+  color: var(--text-2);
+  max-width: 54ch;
 }
 
 .hero__actions {
+  margin-top: var(--s6);
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--s3);
 }
 
-/* =========================================================================
-   Widget mockup — a real frosted-glass widget
-   ========================================================================= */
-
-.mock {
-  border: var(--rim);
-  border-radius: var(--radius);
-  background: var(--glass);
-  -webkit-backdrop-filter: var(--blur-strong);
-  backdrop-filter: var(--blur-strong);
+/* Version / licence / platforms strip under the buttons. */
+.hero__meta {
+  margin-top: var(--s6);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--line);
   display: flex;
-  flex-direction: column;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -24px 48px -28px rgba(0, 0, 0, 0.55),
-    var(--shadow-float);
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-3);
 }
 
-.mock__bar {
+.hero__meta b {
+  color: var(--text-2);
+  font-weight: 500;
+}
+
+/* =========================================================================
+   The app window — the visual centrepiece.
+   Deliberately rendered at the widget's real proportions: the point is that
+   this is a small utility, so making it look poster-sized would misrepresent it.
+   ========================================================================= */
+
+.appwin {
+  width: 360px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r3);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  user-select: none;
+}
+
+.appwin__bar {
   display: flex;
   align-items: center;
   gap: var(--s2);
-  padding: var(--s2) var(--s3);
-  border-bottom: var(--rim-dim);
-  background: var(--glass-3);
+  height: 30px;
+  padding: 0 var(--s3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
 }
-.mock__dots {
+
+.appwin__dots {
   display: flex;
-  gap: 6px;
+  gap: 5px;
 }
-.mock__dots i {
-  width: 10px;
-  height: 10px;
+
+.appwin__dots i {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--glass-2);
-  border: var(--rim-dim);
-  display: block;
+  background: var(--line-strong);
 }
-.mock__dots i:first-child {
+
+.appwin__dots i:first-child {
   background: var(--accent);
-  border-color: rgba(255, 127, 87, 0.5);
 }
-.mock__title {
-  font-size: 11px;
-  font-weight: 700;
+
+.appwin__title {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-left: var(--s2);
-  color: var(--muted);
+  color: var(--text-3);
 }
-.mock__body {
+
+.appwin__live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.appwin__live i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.appwin__body {
   padding: var(--s4);
   display: flex;
   flex-direction: column;
   gap: var(--s4);
-  flex: 1;
 }
 
-.mock__row {
+.appwin__row {
   display: flex;
-  justify-content: space-between;
   align-items: baseline;
-}
-
-.bigmetric .metric {
-  font-size: 40px;
-}
-
-.mock__gauge {
-  display: flex;
-  align-items: center;
+  justify-content: space-between;
   gap: var(--s2);
 }
-.gauge {
+
+/* Primary metric: big mono number, small label above. */
+.big {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.big__val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 27px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--text);
+}
+
+.big__of {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.big__pct {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Segmented meter — reads as an instrument, not a progress animation. */
+.meter {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+}
+
+.meter i {
   flex: 1;
-  height: 8px;
-  border-radius: 99px;
-  background: var(--glass-3);
-  overflow: hidden;
-}
-.gauge i {
-  display: block;
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), rgba(255, 127, 87, 0.5));
+  border-radius: 1px;
+  background: var(--surface-3);
 }
 
-.mock__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border: var(--rim-dim);
-  border-radius: var(--radius-2);
-  overflow: hidden;
-}
-.mock__cell {
-  padding: var(--s3);
-  border-right: var(--rim-dim);
-  border-bottom: var(--rim-dim);
-  background: var(--glass-3);
-}
-.mock__cell:nth-child(2n) {
-  border-right: none;
-}
-.mock__cell:nth-child(n + 3) {
-  border-bottom: none;
-}
-.mock__cell .metric {
-  font-size: 22px;
-  margin-top: var(--s1);
+.meter i.on {
+  background: var(--accent);
 }
 
-/* mini bar chart, glass */
 .spark {
   display: flex;
   align-items: flex-end;
-  gap: 3px;
-  height: 56px;
-  border-bottom: var(--rim-dim);
-  padding-bottom: 0;
+  gap: 2px;
+  height: 32px;
 }
+
+/* One tone — height carries the data, so a second colour would imply a second
+   series that doesn't exist. */
 .spark i {
   flex: 1;
-  background: linear-gradient(
-    180deg,
-    var(--accent),
-    rgba(255, 127, 87, 0.35)
-  );
-  border-radius: 3px 3px 0 0;
-  display: block;
+  min-width: 0;
+  border-radius: 1px;
+  background: var(--text-3);
+  opacity: 0.55;
 }
 
-/* =========================================================================
-   Feature grid — borderless inner cards (glass reserved for the outer box)
-   ========================================================================= */
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--s3);
-  padding: var(--s4);
-}
-.feature {
-  padding: var(--s4);
-  border-radius: var(--radius-2);
-  background: var(--glass-3);
-}
-.feature__icon {
-  width: 36px;
-  height: 36px;
-  border: var(--rim-dim);
-  border-radius: var(--radius-3);
-  background: var(--accent-dim);
-  color: var(--accent);
-  display: grid;
-  place-items: center;
-  margin-bottom: var(--s3);
-  box-shadow: var(--hi-top);
-}
-.feature__icon svg {
-  width: 20px;
-  height: 20px;
-}
-.feature h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: var(--s2);
-}
-.feature p {
-  font-size: 15px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-
-/* =========================================================================
-   How it works — numbered data sources
-   ========================================================================= */
-
-.steps {
+/* 2x2 stat grid inside the window, split by hairlines. */
+.statgrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--s3);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
 }
-.step {
-  border-radius: var(--radius-2);
-  background: var(--glass-3);
-  padding: var(--s4);
+
+.statgrid > div {
+  padding: var(--s3);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
-.step__num {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--accent);
-  border-bottom: var(--rim-dim);
-  padding-bottom: var(--s2);
-  margin-bottom: var(--s3);
+
+.statgrid .lbl {
+  display: block;
+  margin-bottom: 3px;
 }
-.step h3 {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: var(--s2);
-}
-.step p {
+
+.statgrid .num {
   font-size: 15px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.step code {
-  background: var(--glass-2);
-  border: var(--rim-dim);
-  border-radius: var(--radius-3);
-  padding: 1px 5px;
-  font-size: 12px;
-  color: var(--accent);
+  font-weight: 600;
 }
 
-/* =========================================================================
-   Download grid
-   ========================================================================= */
-
-.downloads {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--s3);
-}
-.dl {
-  padding: var(--s4);
-  border: var(--rim);
-  border-radius: var(--radius-2);
-  background: var(--glass-2);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  box-shadow:
-    var(--hi-top),
-    var(--shadow-soft);
+.appwin__foot {
   display: flex;
-  flex-direction: column;
-  gap: var(--s3);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-.dl:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    var(--hi-top),
-    var(--shadow-float);
-}
-.dl__os {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-}
-.dl__os svg {
-  width: 28px;
-  height: 28px;
-}
-.dl__os h3 {
-  font-size: 16px;
-  font-weight: 700;
-}
-.dl__file {
-  font-size: 12px;
-  color: var(--muted);
-  border-top: var(--rim-dim);
-  padding-top: var(--s2);
-}
-.dl .btn {
-  margin-top: auto;
-}
-.dl__unblock {
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--muted);
-  border-top: var(--rim-dim);
-  padding-top: var(--s2);
-}
-
-/* =========================================================================
-   Maker / about
-   ========================================================================= */
-
-.maker {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-}
-.maker__mark {
-  border-right: var(--rim-dim);
-  display: grid;
-  place-items: center;
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--accent);
-  background: var(--glass-3);
-  text-shadow: 0 0 24px rgba(255, 127, 87, 0.4);
-}
-.maker__body {
-  padding: var(--s4);
-}
-.maker__name {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s3);
-  flex-wrap: wrap;
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: var(--s3);
-}
-.maker__role {
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--muted);
-}
-.maker__body p {
-  font-size: 14px;
-  line-height: 1.65;
-  margin-bottom: var(--s3);
-  max-width: 64ch;
-}
-.maker__body p strong {
-  color: var(--accent);
-}
-.maker__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s3);
-  margin-top: var(--s4);
-}
-
-@media (max-width: 640px) {
-  .maker {
-    grid-template-columns: 1fr;
-  }
-  .maker__mark {
-    border-right: none;
-    border-bottom: var(--rim-dim);
-    padding: var(--s4) 0;
-  }
-}
-
-/* =========================================================================
-   Footer
-   ========================================================================= */
-
-.footer {
-  border-top: var(--rim);
-  background: var(--glass);
-  -webkit-backdrop-filter: var(--blur);
-  backdrop-filter: var(--blur);
-  box-shadow: var(--hi-top);
-  margin-top: var(--s6);
-}
-.footer__inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: var(--s5) var(--s4);
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--s4);
+  padding: var(--s2) var(--s4);
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
 }
-.footer__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  flex-wrap: wrap;
+
+.appwin__badge {
+  color: var(--ok);
 }
-.footer__logo {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  color: var(--ink);
+
+/* Caption under the window — states the real size, reinforcing "this is small". */
+.appwin__cap {
+  width: 360px;
+  margin-top: var(--s3);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  text-align: center;
 }
-.footer__line {
+
+/* =========================================================================
+   What it tracks — telemetry grid
+   ========================================================================= */
+
+.tracks {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.track {
+  padding: var(--s5);
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.track__val {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.track__val span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+
+.track .lbl {
+  display: block;
+  margin-top: var(--s2);
+}
+
+.track__note {
+  margin-top: var(--s2);
   font-size: 13px;
-  color: var(--muted);
+  color: var(--text-2);
 }
-.footer__links {
+
+/* =========================================================================
+   Architecture diagram — thin lines, boxes, no fills
+   ========================================================================= */
+
+.arch {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--s6) 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--s4);
+  flex-direction: column;
+  align-items: center;
 }
-.footer__links a {
-  font-size: 13px;
-  color: var(--muted);
-  transition: color 0.15s ease;
+
+/* Two equal columns with zero gap, so a column centre is exactly 25% / 75% of
+   the diagram width — that is what lets the connectors align. Breathing room
+   comes from cell padding, which is symmetric and so doesn't move the centres. */
+.arch__pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
 }
-.footer__links a:hover {
-  color: var(--accent);
+
+.arch__cell {
+  padding: 0 var(--s2);
+  min-width: 0;
 }
-.footer__bar {
-  border-top: var(--rim-dim);
+
+.arch__pair--drop {
+  height: 22px;
+}
+
+.arch__pair--drop i {
+  justify-self: center;
+  width: 1px;
+  height: 100%;
+  background: var(--line-strong);
+}
+
+/* Two verticals down from the node centres, joined by a horizontal at the base. */
+.arch__join {
+  position: relative;
+  width: 100%;
+  height: 22px;
+}
+
+.arch__join::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 25%;
+  right: 25%;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+.arch__join i {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 22px;
+  background: var(--line-strong);
+}
+
+.arch__join i:nth-child(1) {
+  left: 25%;
+}
+
+.arch__join i:nth-child(2) {
+  left: 75%;
+}
+
+.arch__node {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r1);
+  background: var(--surface);
   padding: var(--s3) var(--s4);
   text-align: center;
-  font-size: 11px;
-  color: var(--muted);
-  letter-spacing: 1px;
+  min-width: 0;
+}
+
+.arch__node--accent {
+  border-color: var(--accent);
+  background: var(--accent-quiet);
+}
+
+.arch__node .lbl {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.arch__node code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-2);
+  word-break: break-all;
+}
+
+.arch__node strong {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.arch__drop {
+  width: 1px;
+  height: 22px;
+  background: var(--line-strong);
+}
+
+.arch__caption {
+  margin-top: var(--s4);
+  font-size: 13px;
+  color: var(--text-3);
+  text-align: center;
+  max-width: 60ch;
 }
 
 /* =========================================================================
-   Responsive
+   Numbered detail rows (local-first, desktop-native, read-only …)
    ========================================================================= */
 
-@media (max-width: 900px) {
-  .hero,
-  .steps {
-    grid-template-columns: 1fr;
-  }
-  .downloads,
-  .features {
-    grid-template-columns: 1fr 1fr;
-  }
+/* No border-top: the section's own rule already opens this block. */
+.rows {
+  min-width: 0;
 }
 
-@media (max-width: 640px) {
-  .header {
-    padding: 0 var(--s3);
-    gap: var(--s2);
-  }
-  .content {
-    padding: var(--s4) var(--s3);
-  }
-  .hero h1 {
-    font-size: 34px;
-  }
-  .downloads,
-  .features {
-    grid-template-columns: 1fr;
-  }
+/* The next section's own rule closes this list, so the final row must not draw
+   its own — otherwise the two hairlines read as an empty band. */
+.row:last-child {
+  border-bottom: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--s7);
+  padding: var(--s5) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.row__body h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.row__body p {
+  font-size: 14.5px;
+  color: var(--text-2);
+  max-width: 64ch;
+}
+
+.row__code {
+  margin-top: var(--s3);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r1);
+  padding: var(--s2) var(--s3);
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 /* =========================================================================
-   Accessibility fallbacks (mirror the widget)
+   Download
    ========================================================================= */
 
-/* Reduce transparency: drop blur, go to solid opaque panels. */
-@media (prefers-reduced-transparency: reduce) {
-  body::after {
-    display: none;
-  }
-  .header,
-  .box,
-  .hero__eyebrow,
-  .mock,
-  .dl,
-  .footer,
-  .btn {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
-  .header,
-  .footer,
-  .mock {
-    background: #14121a;
-  }
-  .box,
-  .dl,
-  .btn {
-    background: rgba(255, 255, 255, 0.06);
-  }
-  :root[data-theme="light"] .header,
-  :root[data-theme="light"] .footer,
-  :root[data-theme="light"] .mock {
-    background: #f3efe9;
-  }
-  :root[data-theme="light"] .box,
-  :root[data-theme="light"] .dl,
-  :root[data-theme="light"] .btn {
-    background: rgba(0, 0, 0, 0.04);
-  }
-}
-
-/* Respect reduce-motion: kill transitions & animations. */
-/* =========================================================================
-   Motion — restrained, premium. Same palette/type; only opacity + transform.
-   All of it is gated behind no-preference, so reduce-motion users get none.
-   ========================================================================= */
-@media (prefers-reduced-motion: no-preference) {
-  /* Hero rises in on load, gently staggered. */
-  .hero__eyebrow {
-    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-  .hero h1 {
-    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.08s both;
-  }
-  .hero__lede {
-    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.16s both;
-  }
-  .hero__actions {
-    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.24s both;
-  }
-  .mock {
-    animation: rise 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
-  }
-  @keyframes rise {
-    from {
-      opacity: 0;
-      transform: translateY(18px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    transition: none !important;
-    animation: none !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* =========================================================================
-   DOWNLOADER
-   All three platforms are always in the DOM. The visitor's own platform is
-   promoted entirely in CSS, keyed off the `data-os` attribute that layout.tsx
-   sets before first paint — no spinner, no hydration swap, no layout shift.
-   ========================================================================= */
-
-/* ---- hero CTA: show only the button matching the detected OS ---- */
+/* Hero CTA: one button per platform, CSS-switched by the data-os hint. */
 .dl-cta-group {
   display: contents;
 }
+
 .dl-cta {
   display: none;
   text-align: left;
 }
+
 /* Anything that isn't a platform we ship → the neutral button. Matching on
    "not one of the known three" rather than "attribute absent" matters: a stray
    or future `data-os` value would otherwise hide every button and leave the
@@ -1158,167 +897,461 @@ ul {
 :root[data-os="linux"] .dl-cta--linux {
   display: inline-flex;
 }
+
 .dl-cta__text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  line-height: 1.2;
-}
-.dl-cta__sub {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  opacity: 0.72;
+  gap: 1px;
+  line-height: 1.25;
 }
 
-/* ---- platform cards ---- */
+.dl-cta__sub {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.downloads {
+  border-top: 1px solid var(--line);
+}
+
 .dl {
-  position: relative;
+  display: grid;
+  grid-template-columns: 150px 1fr auto;
+  align-items: center;
+  gap: var(--s4);
+  padding: var(--s4) 0;
+  border-bottom: 1px solid var(--line);
 }
-/* "Your system" — hidden until this card matches the detected OS. */
+
+.dl__os {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.dl__os svg {
+  width: 17px;
+  height: 17px;
+  color: var(--text-2);
+}
+
+.dl__os h3 {
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dl__file {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-3);
+  min-width: 0;
+}
+
+.dl__file span {
+  display: block;
+}
+
+/* "Your system" — hidden until this row matches the detected OS. */
 .dl__badge {
-  position: absolute;
-  top: calc(-1 * var(--s2));
-  right: var(--s3);
   display: none;
-  padding: 2px var(--s2);
-  border-radius: 999px;
-  background: var(--accent);
-  border: 1px solid rgba(255, 127, 87, 0.6);
-  color: #1a0f0a;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 6px 16px -8px rgba(255, 127, 87, 0.8);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+  white-space: nowrap;
 }
+
 :root[data-os="mac"] .dl--mac .dl__badge,
 :root[data-os="win"] .dl--win .dl__badge,
 :root[data-os="linux"] .dl--linux .dl__badge {
-  display: block;
-}
-/* Promote the matching card: accent rim + a touch more lift. */
-:root[data-os="mac"] .dl--mac,
-:root[data-os="win"] .dl--win,
-:root[data-os="linux"] .dl--linux {
-  border-color: rgba(255, 127, 87, 0.45);
-  background: linear-gradient(
-    180deg,
-    rgba(255, 127, 87, 0.09),
-    rgba(255, 255, 255, 0.04)
-  );
-  box-shadow:
-    var(--hi-top),
-    var(--shadow-float),
-    0 0 0 1px rgba(255, 127, 87, 0.12);
-}
-/* The Download button used to be the card's last child, so `margin-top:auto`
-   positioned it fine. The filename/portable/notes rows now follow it, and each
-   card has a different amount of them — so the auto margin absorbed a different
-   slack per card and the three buttons landed at three different heights.
-   Pin the closing notes to the bottom instead and give the blurb a floor, so
-   every Download button sits on one shared baseline. */
-.dl .btn {
-  margin-top: 0;
-}
-.dl__file {
-  min-height: 46px;
-}
-.dl__unblock {
-  margin-top: auto;
+  display: inline-block;
 }
 
-/* Exact artifact being downloaded — reassuring, and it names the version. */
-.dl__filename {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: calc(-1 * var(--s2));
-}
-.dl__alt {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--muted);
-  text-decoration: none;
-  border-bottom: 1px dotted rgba(255, 255, 255, 0.25);
-  align-self: flex-start;
-  transition: color 0.15s ease;
-}
-.dl__alt:hover {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-.box__meta--link {
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-.box__meta--link:hover {
-  color: var(--accent);
-}
-
-@media (max-width: 900px) {
-  .downloads {
-    grid-template-columns: 1fr;
-  }
-  .dl__badge {
-    right: var(--s2);
-  }
-  /* Stacked in one column, your platform would otherwise sit below two you
-     can't use. Hoist it. Left alone on wide screens, where all three are
-     visible at once and the conventional mac/win/linux order reads better. */
-  :root[data-os="mac"] .dl--mac,
-  :root[data-os="win"] .dl--win,
-  :root[data-os="linux"] .dl--linux {
-    order: -1;
-  }
-}
-
-/* ---- download counts ----
-   Installer downloads only; the auto-updater's latest*.yml polls are excluded
-   upstream in lib/release.ts, so this number means people, not requests. */
-.dl-stats {
+.dl__actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s4);
-  padding: var(--s3) var(--s4);
-  border-bottom: var(--rim-dim);
-  background: var(--glass-3);
+  gap: var(--s3);
+  justify-self: end;
 }
-.dl-stats__total {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s2);
-  font-size: 13px;
-  color: var(--muted);
+
+.dl__alt {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  transition: color 0.12s ease;
 }
-.dl-stats__total svg {
-  width: 15px;
-  height: 15px;
+
+.dl__alt:hover {
   color: var(--accent);
 }
-.dl-stats__total b {
-  font-family: var(--font-mono);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--ink);
+
+/* Download counts. Installer downloads only; the auto-updater's latest*.yml
+   polls are excluded upstream in lib/release.ts, so this counts people. */
+.dl-stats {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  padding-bottom: var(--s4);
 }
+
+.dl-stats__total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s2);
+}
+
+.dl-stats__total b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
 .dl-stats__split {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: var(--s1) var(--s3);
+  gap: var(--s1) var(--s4);
   margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text-3);
 }
-@media (max-width: 640px) {
+
+/* Gatekeeper / SmartScreen notes — available, not dominant. */
+.notes {
+  margin-top: var(--s5);
+  display: grid;
+  gap: var(--s3);
+}
+
+.note {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: var(--s4);
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+
+.note > .lbl {
+  padding-top: 3px;
+}
+
+.note code,
+.cmd {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r1);
+  padding: 1px 5px;
+}
+
+.cmd {
+  display: block;
+  padding: var(--s3);
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--text-2);
+  line-height: 1.7;
+}
+
+/* =========================================================================
+   Changelog
+   ========================================================================= */
+
+.changelog {
+  border-top: 1px solid var(--line);
+}
+
+.changelog__entry:last-child {
+  border-bottom: none;
+}
+
+.changelog__entry {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--s7);
+  padding: var(--s5) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.changelog__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.changelog__ver {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.changelog__date {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.changelog__latest {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* Written up but not yet tagged — reads as a note, not an achievement. */
+.changelog__latest--unreleased {
+  color: var(--text-3);
+  border-color: var(--line-strong);
+}
+
+.changelog__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.changelog__list li {
+  position: relative;
+  padding-left: var(--s4);
+  font-size: 14.5px;
+  color: var(--text-2);
+  max-width: 68ch;
+}
+
+.changelog__list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  width: 6px;
+  height: 1px;
+  background: var(--line-strong);
+}
+
+/* =========================================================================
+   Maker
+   ========================================================================= */
+
+.maker p {
+  font-size: 14.5px;
+  color: var(--text-2);
+  max-width: 62ch;
+}
+
+.maker p + p {
+  margin-top: var(--s3);
+}
+
+.maker__name {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: var(--s3);
+}
+
+.maker__links {
+  margin-top: var(--s5);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+
+/* =========================================================================
+   Footer — engineering metadata, not marketing
+   ========================================================================= */
+
+.footer {
+  border-top: 1px solid var(--line);
+}
+
+.footer__meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s5);
+  padding: var(--s7) 0 var(--s6);
+}
+
+.footer__meta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.footer__meta .num,
+.footer__meta a {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.footer__meta a:hover {
+  color: var(--accent);
+}
+
+.footer__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) 0 var(--s7);
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.footer__bar a:hover {
+  color: var(--accent);
+}
+
+/* =========================================================================
+   Responsive
+   ========================================================================= */
+
+@media (max-width: 1020px) {
+  :root {
+    --page: 760px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s8);
+    padding-top: var(--s8);
+  }
+
+  .tracks {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer__meta {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --gutter: 18px;
+  }
+
+  body {
+    font-size: 14.5px;
+  }
+
+  .hero {
+    padding-top: var(--s7);
+    padding-bottom: var(--s6);
+  }
+
+  .hero h1 {
+    font-size: 32px;
+    max-width: none;
+  }
+
+  /* Stack the editorial grid: the label becomes a heading above its content. */
+  .sec__grid,
+  .row,
+  .changelog__entry {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+  }
+
+  .sec {
+    padding-top: var(--s6);
+    padding-bottom: var(--s6);
+  }
+
+  .tracks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Keep the app window readable rather than shrinking it to a thumbnail. */
+  .appwin,
+  .appwin__cap {
+    width: 100%;
+    max-width: 360px;
+  }
+
+  /* Download rows become stacked blocks with a full-width button. */
+  .dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
+    padding: var(--s5) 0;
+  }
+
+  .dl__actions {
+    justify-self: stretch;
+  }
+
+  .dl__actions .btn {
+    flex: 1;
+  }
+
   .dl-stats__split {
     margin-left: 0;
+  }
+
+  .note {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s1);
+  }
+
+  /* Two columns can't fit here, so the diagram becomes a single flow column:
+     one node per row, one connector between. */
+  .arch__pair {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--s3);
+  }
+
+  .arch__cell {
+    padding: 0;
+  }
+
+  .arch__pair--drop,
+  .arch__join {
+    display: none;
+  }
+
+  .arch__node {
+    width: 100%;
+  }
+
+  .footer__meta {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s4);
+    padding: var(--s6) 0 var(--s5);
+  }
+
+  .header__nav {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
   }
 }
