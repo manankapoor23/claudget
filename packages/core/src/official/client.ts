@@ -1,4 +1,9 @@
-import { readCredentials, type ClaudeCredentials } from '../credentials';
+import {
+  lookupCredentials,
+  type ClaudeCredentials,
+  type CredentialsLookup,
+  type CredentialsProblem,
+} from '../credentials';
 import type { Logger } from '../logger';
 import type { OfficialStatus, OfficialUsage, OfficialWindow } from '../types';
 import { normalizeOfficialPayload } from './normalize';
@@ -20,6 +25,58 @@ export interface OfficialClientOptions {
   now?: () => number;
   /** When true, the raw payload is attached to results (debug only). */
   includeRaw?: boolean;
+  /**
+   * Injectable credential lookup. Defaults to the real one; tests use this so
+   * they never depend on the developer's own Keychain.
+   */
+  lookupImpl?: (credentialsPath: string) => Promise<CredentialsLookup>;
+}
+
+/**
+ * Turns a credential problem into what the user sees: a status the UI can style,
+ * one plain sentence naming the cause, and the single command that fixes it.
+ *
+ * `fix` is null where no command helps — a denied Keychain prompt is resolved in
+ * System Settings, not the terminal, and a bad `claudeDir` is a settings change.
+ */
+function describeCredentialsProblem(problem: CredentialsProblem | null): {
+  status: OfficialStatus;
+  message: string;
+  fix: string | null;
+} {
+  switch (problem) {
+    case 'signed-out':
+    case 'no-token':
+      return {
+        status: 'signed-out',
+        message: 'Claude Code is signed out, so its plan limits aren’t available.',
+        fix: 'claude',
+      };
+    case 'not-installed':
+      return {
+        status: 'not-installed',
+        message: 'No Claude Code directory here, so there is no login to read.',
+        fix: null,
+      };
+    case 'keychain-denied':
+      return {
+        status: 'keychain-denied',
+        message: 'macOS blocked access to Claude Code’s Keychain entry.',
+        fix: null,
+      };
+    case 'malformed':
+      return {
+        status: 'credentials-malformed',
+        message: 'Claude Code’s stored login could not be read.',
+        fix: 'claude',
+      };
+    default:
+      return {
+        status: 'signed-out',
+        message: 'Claude Code’s login could not be found.',
+        fix: 'claude',
+      };
+  }
 }
 
 /**
@@ -37,6 +94,7 @@ export class OfficialUsageClient {
   private readonly now: () => number;
   private readonly endpoint: string;
   private readonly includeRaw: boolean;
+  private readonly lookup: (credentialsPath: string) => Promise<CredentialsLookup>;
 
   private credentialsPath: string;
   private cliVersion: string | null;
@@ -50,6 +108,8 @@ export class OfficialUsageClient {
     nextFetchAt: null,
     windows: [],
     message: null,
+    fix: null,
+    detail: null,
   };
   private lastWindows: OfficialWindow[] = [];
   private lastSuccessAt = 0;
@@ -62,6 +122,7 @@ export class OfficialUsageClient {
     this.now = opts.now ?? ((): number => Date.now());
     this.endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;
     this.includeRaw = opts.includeRaw ?? false;
+    this.lookup = opts.lookupImpl ?? ((p) => lookupCredentials(p));
     this.credentialsPath = opts.credentialsPath;
     this.cliVersion = opts.cliVersion;
     this.pollIntervalMs = opts.pollIntervalMs;
@@ -116,6 +177,8 @@ export class OfficialUsageClient {
       nextFetchAt: this.nextFetchAt(now),
       windows: this.lastWindows,
       message,
+      fix: null,
+      detail: null,
     };
     this.last = result;
     return result;
@@ -127,10 +190,24 @@ export class OfficialUsageClient {
   }
 
   private async fetchNow(now: number): Promise<OfficialUsage> {
-    const creds = await readCredentials(this.credentialsPath);
-    if (!creds) return this.fail('no-credentials', 'No Claude credentials found.', now, false);
+    const lookup = await this.lookup(this.credentialsPath);
+    const creds = lookup.credentials;
+
+    if (!creds) {
+      const { status, message, fix } = describeCredentialsProblem(lookup.problem);
+      return this.fail(status, message, now, false, undefined, { fix, detail: lookup.detail });
+    }
+
     if (creds.expiresAt > 0 && creds.expiresAt <= now) {
-      return this.fail('expired', 'Access token expired — run Claude Code to refresh.', now, false);
+      // With a refresh token Claude Code renews this itself on next run, so the
+      // fix is the same either way — but say which case it is.
+      const message = creds.refreshToken
+        ? 'Claude Code’s login has expired. It refreshes the next time you run it.'
+        : 'Claude Code’s login has expired and there is no refresh token to renew it.';
+      return this.fail('expired', message, now, false, undefined, {
+        fix: 'claude',
+        detail: `Token expired ${new Date(creds.expiresAt).toISOString()}.`,
+      });
     }
 
     try {
@@ -154,15 +231,29 @@ export class OfficialUsageClient {
         this.logger.warn(
           `Rate limited (429); backing off until ${new Date(this.backoffUntil).toISOString()}`,
         );
-        return this.serveCached('rate-limited', true, 'Rate limited by the usage endpoint.', now);
+        return this.serveCached(
+          'rate-limited',
+          true,
+          'Anthropic is rate-limiting usage checks.',
+          now,
+        );
       }
       if (res.status === 401 || res.status === 403) {
         this.bumpBackoff(now);
-        return this.fail('unauthorized', `Usage endpoint returned ${res.status}.`, now, true);
+        return this.fail(
+          'unauthorized',
+          'Anthropic rejected the stored login.',
+          now,
+          true,
+          undefined,
+          { fix: 'claude', detail: `Usage endpoint returned HTTP ${res.status}.` },
+        );
       }
       if (!res.ok) {
         this.bumpBackoff(now);
-        return this.fail('network-error', `Usage endpoint returned ${res.status}.`, now, true);
+        return this.fail('network-error', 'Could not reach Anthropic.', now, true, undefined, {
+          detail: `Usage endpoint returned HTTP ${res.status}.`,
+        });
       }
 
       let payload: unknown;
@@ -170,7 +261,16 @@ export class OfficialUsageClient {
         payload = await res.json();
       } catch {
         this.bumpBackoff(now);
-        return this.fail('parse-error', 'Usage response was not valid JSON.', now, true);
+        return this.fail(
+          'parse-error',
+          'Anthropic returned an unreadable response.',
+          now,
+          true,
+          undefined,
+          {
+            detail: 'The usage response was not valid JSON.',
+          },
+        );
       }
 
       this.logger.debug('Official usage payload received', this.includeRaw ? payload : undefined);
@@ -180,10 +280,11 @@ export class OfficialUsageClient {
         this.logger.warn('No usage windows could be mapped from the payload.');
         return this.fail(
           'parse-error',
-          'No recognisable limits in usage response.',
+          'Anthropic returned no recognisable limits.',
           now,
           true,
           payload,
+          { detail: 'The response parsed, but no usage windows could be mapped from it.' },
         );
       }
 
@@ -199,19 +300,23 @@ export class OfficialUsageClient {
         nextFetchAt: now + this.pollIntervalMs,
         windows,
         message: null,
+        fix: null,
+        detail: null,
         ...(this.includeRaw ? { raw: payload } : {}),
       };
       this.last = result;
       return result;
     } catch (err) {
       this.bumpBackoff(now);
-      const message =
-        err instanceof Error && err.name === 'AbortError'
-          ? 'Usage request timed out.'
-          : err instanceof Error
-            ? err.message
-            : 'Network error.';
-      return this.fail('network-error', message, now, true);
+      const timedOut = err instanceof Error && err.name === 'AbortError';
+      const detail = timedOut
+        ? `No response within ${REQUEST_TIMEOUT_MS / 1000}s.`
+        : err instanceof Error
+          ? err.message
+          : String(err);
+      return this.fail('network-error', 'Could not reach Anthropic.', now, true, undefined, {
+        detail,
+      });
     }
   }
 
@@ -240,6 +345,7 @@ export class OfficialUsageClient {
     now: number,
     keepWindows: boolean,
     raw?: unknown,
+    extra?: { fix?: string | null; detail?: string | null },
   ): OfficialUsage {
     const windows = keepWindows ? this.lastWindows : [];
     const available = windows.length > 0;
@@ -251,6 +357,8 @@ export class OfficialUsageClient {
       nextFetchAt: this.nextFetchAt(now),
       windows,
       message,
+      fix: extra?.fix ?? null,
+      detail: extra?.detail ?? null,
       ...(this.includeRaw && raw !== undefined ? { raw } : {}),
     };
     this.last = result;

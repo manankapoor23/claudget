@@ -352,7 +352,11 @@ export class UsageEngine extends EventEmitter {
         fetchedAt: null,
         nextFetchAt: null,
         windows: [],
-        message: 'Official usage polling is disabled.',
+        message: 'Plan-limit polling is off.',
+        fix: null,
+        // No detail: the UI's hint for this status already says how to turn it
+        // on, and repeating it printed the same sentence twice in the panel.
+        detail: null,
       };
     }
     return this.official.getLast();

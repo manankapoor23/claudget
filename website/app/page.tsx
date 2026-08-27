@@ -95,8 +95,14 @@ export default function Home() {
       {/* ============ HERO ============ */}
       <section className="wrap hero">
         <div>
-          <div className="hero__name">claudget</div>
-          <h1>A small desktop monitor for Claude&nbsp;Code.</h1>
+          {/* The brand belongs inside the h1: it is the term people search for,
+              and it was previously in a sibling div, so the page's primary
+              heading never mentioned the product by name. Rendered as a block
+              span so this is identical visually to the two-element version. */}
+          <h1>
+            <span className="hero__name">claudget</span>
+            A small desktop monitor for Claude&nbsp;Code.
+          </h1>
           <p className="hero__lede">
             Reads usage from Claude&nbsp;Code&apos;s local transcripts and keeps
             tokens, cost, burn rate and plan limits on your desktop. Local-first

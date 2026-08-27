@@ -18,8 +18,14 @@ const plexMono = IBM_Plex_Mono({
 });
 
 const SITE_URL = "https://claudget.vercel.app";
+/* Kept under ~155 characters: Google truncates the snippet around there, and the
+   old 207-character version was being cut mid-sentence in results. */
 const DESCRIPTION =
-  "claudget — a lightweight, always-on-top desktop widget that shows your Claude Code usage in real time: tokens, cost, burn rate, plan limits, and recent sessions. 100% local by default. macOS, Windows, Linux.";
+  "A small desktop monitor for Claude Code. Track tokens, cost, burn rate and plan limits from your own local transcripts. Free, open source, local-first.";
+
+/* Social cards allow more room than a search snippet, so this one can breathe. */
+const SOCIAL_DESCRIPTION =
+  "Track Claude Code tokens, cost, burn rate and plan limits from a small always-on-top desktop widget. Reads your own local transcripts — no API key, read-only by default. macOS, Windows, Linux.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -41,18 +47,20 @@ export const metadata: Metadata = {
   authors: [{ name: "Manan Kapoor", url: "https://github.com/manankapoor23" }],
   creator: "Manan Kapoor",
   openGraph: {
-    title: "claudget — real-time Claude Code usage",
-    description: DESCRIPTION,
+    title: "claudget — a small desktop monitor for Claude Code",
+    description: SOCIAL_DESCRIPTION,
     url: SITE_URL,
     siteName: "claudget",
     type: "website",
-    images: [{ url: "/claudget-logo.png", width: 512, height: 512, alt: "claudget" }],
+    locale: "en_US",
+    // Image comes from app/opengraph-image.tsx — declaring one here would
+    // override the generated 1200x630 card with the old square logo.
   },
   twitter: {
     card: "summary_large_image",
-    title: "claudget — real-time Claude Code usage",
-    description: DESCRIPTION,
-    images: ["/claudget-logo.png"],
+    title: "claudget — a small desktop monitor for Claude Code",
+    description: SOCIAL_DESCRIPTION,
+    // Image comes from app/twitter-image.tsx.
   },
   icons: {
     icon: [{ url: "/claudget-logo.png", type: "image/png" }],
@@ -85,14 +93,28 @@ const jsonLd = (version: string) => ({
   name: "claudget",
   alternateName: "Claude Code usage widget",
   applicationCategory: "DeveloperApplication",
-  operatingSystem: "macOS, Windows, Linux",
+  applicationSubCategory: "Developer utility",
+  operatingSystem: "macOS 11+, Windows 10+, Linux x64",
+  softwareRequirements: "Claude Code CLI",
   description: DESCRIPTION,
   url: SITE_URL,
   downloadUrl: "https://github.com/manankapoor23/claudget/releases/latest",
+  installUrl: `${SITE_URL}/#download`,
   softwareVersion: version,
+  softwareHelp: "https://github.com/manankapoor23/claudget#readme",
+  releaseNotes: "https://github.com/manankapoor23/claudget/releases/latest",
+  screenshot: `${SITE_URL}/opengraph-image`,
+  isAccessibleForFree: true,
   license: "https://github.com/manankapoor23/claudget/blob/main/LICENSE",
   author: { "@type": "Person", name: "Manan Kapoor", url: "https://github.com/manankapoor23" },
+  maintainer: {
+    "@type": "Person",
+    name: "Manan Kapoor",
+    url: "https://github.com/manankapoor23",
+  },
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  // No aggregateRating: there are no real reviews to point at, and inventing
+  // one is exactly the kind of thing that earns a structured-data penalty.
 });
 
 export default async function RootLayout({

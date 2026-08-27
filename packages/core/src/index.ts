@@ -34,9 +34,14 @@ export {
   type ClaudePaths,
 } from './paths';
 export {
+  lookupCredentials,
   readCredentials,
   redactCredentials,
   type ClaudeCredentials,
+  type CredentialsLookup,
+  type CredentialsProblem,
+  type KeychainRead,
+  type LookupOptions,
   type RedactedCredentials,
 } from './credentials';
 
