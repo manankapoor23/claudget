@@ -5,6 +5,27 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.2.5] — 2026-08-27
+
+### Changed
+
+- **The plan-usage panel now says why it has nothing to show, and what fixes
+  it.** Signing out of Claude Code produced a bare "No Claude credentials
+  found.", which read as though the whole widget had stopped. It now names the
+  cause, offers the one command that resolves it, and makes clear that tokens,
+  cost and burn rate are unaffected — those come from local transcripts and
+  don't need a login at all.
+
+- Causes that need different responses are no longer reported identically.
+  Signed out, no Claude directory, a macOS Keychain prompt that was denied,
+  unreadable credentials and an expired token are now distinguished — signing in
+  again does nothing about a denied Keychain, and neither helps if the Claude
+  directory setting points somewhere wrong. An expired token also says whether it
+  can refresh itself.
+
+- Status badges name the state — Signed out, Blocked, Not found, Expired,
+  Rejected, Offline — rather than a single "Unavailable".
+
 ## [0.2.4] — 2026-08-20
 
 ### Changed
@@ -77,6 +98,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.2.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5
 [0.2.4]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.4
 [0.2.3]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.3
 [0.2.2]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.2
