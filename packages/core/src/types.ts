@@ -135,10 +135,20 @@ export interface OfficialWindow {
   limit: number | null;
 }
 
+/**
+ * Why the plan-limit panel is showing what it's showing.
+ *
+ * The credential cases are split because each one needs the user to do a
+ * different thing: sign in again, install Claude Code or fix `claudeDir`, or
+ * allow a Keychain prompt. A single 'no-credentials' told them none of that.
+ */
 export type OfficialStatus =
   | 'ok'
   | 'disabled'
-  | 'no-credentials'
+  | 'signed-out'
+  | 'not-installed'
+  | 'keychain-denied'
+  | 'credentials-malformed'
   | 'expired'
   | 'rate-limited'
   | 'unauthorized'
@@ -158,6 +168,17 @@ export interface OfficialUsage {
   windows: OfficialWindow[];
   /** Human-readable explanation when `status !== 'ok'`. */
   message: string | null;
+  /**
+   * The one command that fixes this, when there is one, e.g. `claude`. Rendered
+   * as a copyable line rather than buried in prose.
+   */
+  fix: string | null;
+  /**
+   * Factual supporting detail — which path was checked, which status code came
+   * back. Shown as small print so the primary message can stay short. Never
+   * contains a token.
+   */
+  detail: string | null;
   /** Raw payload, included only when debug logging is enabled. */
   raw?: unknown;
 }

@@ -79,9 +79,17 @@ describe('OfficialUsageClient', () => {
       logger: createNoopLogger(),
       fetchImpl: fetchMock as unknown as typeof fetch,
       now: () => 1,
+      // Injected so this never reads the developer's own Keychain.
+      lookupImpl: () =>
+        Promise.resolve({
+          credentials: null,
+          problem: 'signed-out' as const,
+          source: null,
+          detail: 'No stored login.',
+        }),
     });
     const res = await client.getUsage({ force: true });
-    expect(res.status).toBe('no-credentials');
+    expect(res.status).toBe('signed-out');
     expect(res.available).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -101,5 +109,85 @@ describe('OfficialUsageClient', () => {
     expect(res.status).toBe('expired');
     expect(fetchMock).not.toHaveBeenCalled();
     fs.rmSync(credsPath, { force: true });
+  });
+});
+
+/**
+ * Each credential problem must reach the UI as its own status with the right fix
+ * — that mapping is the whole feature, so it gets asserted rather than assumed.
+ */
+describe('OfficialUsageClient credential problems', () => {
+  const base = {
+    cliVersion: null,
+    pollIntervalMs: 300_000,
+    logger: createNoopLogger(),
+    now: () => 1,
+  };
+
+  const cases = [
+    { problem: 'signed-out', status: 'signed-out', fix: 'claude' },
+    { problem: 'no-token', status: 'signed-out', fix: 'claude' },
+    { problem: 'not-installed', status: 'not-installed', fix: null },
+    { problem: 'keychain-denied', status: 'keychain-denied', fix: null },
+    { problem: 'malformed', status: 'credentials-malformed', fix: 'claude' },
+  ] as const;
+
+  for (const c of cases) {
+    it(`maps ${c.problem} to ${c.status} without fetching`, async () => {
+      const fetchMock = vi.fn();
+      const client = new OfficialUsageClient({
+        ...base,
+        credentialsPath: '/nowhere/.credentials.json',
+        fetchImpl: fetchMock as unknown as typeof fetch,
+        lookupImpl: () =>
+          Promise.resolve({
+            credentials: null,
+            problem: c.problem,
+            source: null,
+            detail: 'why it happened',
+          }),
+      });
+      const res = await client.getUsage({ force: true });
+      expect(res.status).toBe(c.status);
+      expect(res.fix).toBe(c.fix);
+      expect(res.detail).toBe('why it happened');
+      expect(res.available).toBe(false);
+      // A missing login is not a reason to bother the network.
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  }
+
+  it('distinguishes an expired token that can refresh itself', async () => {
+    const withRefresh = (refreshToken: string | null) =>
+      new OfficialUsageClient({
+        ...base,
+        now: () => 5_000,
+        credentialsPath: '/nowhere/.credentials.json',
+        fetchImpl: vi.fn() as unknown as typeof fetch,
+        lookupImpl: () =>
+          Promise.resolve({
+            credentials: {
+              accessToken: 'tok',
+              refreshToken,
+              expiresAt: 1_000,
+              subscriptionType: null,
+              rateLimitTier: null,
+              scopes: [],
+              organizationUuid: null,
+            },
+            problem: null,
+            source: 'file' as const,
+            detail: null,
+          }),
+      });
+
+    const renewable = await withRefresh('ref').getUsage({ force: true });
+    expect(renewable.status).toBe('expired');
+    expect(renewable.message).toContain('refreshes');
+    expect(renewable.fix).toBe('claude');
+
+    const terminal = await withRefresh(null).getUsage({ force: true });
+    expect(terminal.status).toBe('expired');
+    expect(terminal.message).toContain('no refresh token');
   });
 });
