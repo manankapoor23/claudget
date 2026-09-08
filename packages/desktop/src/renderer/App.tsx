@@ -134,7 +134,7 @@ export function App(): JSX.Element {
       <ErrorBoundary>{body}</ErrorBoundary>
       {showFooter && snapshot ? (
         <Footer
-          generatedAt={snapshot.generatedAt}
+          localUpdatedAt={snapshot.localUpdatedAt}
           health={snapshot.health}
           officialEnabled={config.enableOfficial}
           files={snapshot.local.stats.files}

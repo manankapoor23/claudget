@@ -49,6 +49,11 @@ export function watchTranscripts(
   const watcher: FSWatcher = chokidar.watch(projectsDir, {
     ignoreInitial: true,
     persistent: true,
+    // macOS file notifications can be delayed or coalesced for actively
+    // appended JSONL files. Polling keeps live usage updates reliable; the
+    // short interval is still cheaper than rescanning the whole transcript tree.
+    usePolling: process.platform === 'darwin',
+    interval: 100,
     // No awaitWriteFinish: it waits for a file to go quiet, and an active
     // transcript never does — it suppressed every event for the whole session.
     // Torn trailing lines are harmless; parseTranscriptLine drops unparseable ones.

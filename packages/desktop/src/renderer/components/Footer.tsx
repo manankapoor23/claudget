@@ -3,13 +3,18 @@ import type { SnapshotHealth } from '@claude-widget/core';
 import { formatRelative } from '../lib/format';
 
 interface FooterProps {
-  generatedAt: number;
+  localUpdatedAt: number | null;
   health: SnapshotHealth;
   officialEnabled: boolean;
   files: number;
 }
 
-export function Footer({ generatedAt, health, officialEnabled, files }: FooterProps): JSX.Element {
+export function Footer({
+  localUpdatedAt,
+  health,
+  officialEnabled,
+  files,
+}: FooterProps): JSX.Element {
   const [, setTick] = useState(0);
 
   // Re-render once a second so the "updated Ns ago" label stays current.
@@ -34,7 +39,11 @@ export function Footer({ generatedAt, health, officialEnabled, files }: FooterPr
   return (
     <div className="footer">
       <span className={dotClass} title={title} />
-      <span>Updated {formatRelative(generatedAt)}</span>
+      <span>
+        {localUpdatedAt === null
+          ? 'Waiting for usage data'
+          : 'Updated ' + formatRelative(localUpdatedAt)}
+      </span>
       <span className="footer__spacer" />
       <span>
         {files} {files === 1 ? 'transcript' : 'transcripts'}

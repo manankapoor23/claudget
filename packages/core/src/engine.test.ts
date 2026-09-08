@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { DEFAULT_CONFIG } from './config';
 import { UsageEngine } from './engine';
 import type { Logger } from './logger';
@@ -64,5 +67,51 @@ describe('UsageEngine.updateConfig', () => {
     const { engine } = engineWithCounter();
     expect(engine.updateConfig({ opacity: 0.5 }).opacity).toBe(0.5);
     expect(engine.getConfig().opacity).toBe(0.5);
+  });
+});
+
+describe('UsageEngine local freshness', () => {
+  it('does not advance localUpdatedAt when a rescan finds no new usage', async () => {
+    const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudget-engine-'));
+    const projectsDir = path.join(claudeDir, 'projects', '-Users-test-project');
+    const transcript = path.join(projectsDir, 'session.jsonl');
+    fs.mkdirSync(projectsDir, { recursive: true });
+
+    const line = (id: string): string =>
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-09-09T00:00:00.000Z',
+        uuid: id,
+        requestId: id,
+        sessionId: 'session-1',
+        message: {
+          id,
+          model: 'claude-sonnet-4-20250514',
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      });
+
+    let now = 1_000;
+    try {
+      fs.writeFileSync(transcript, line('one') + '\n');
+      const engine = new UsageEngine({
+        config: { ...DEFAULT_CONFIG, enableOfficial: false, claudeDir },
+        logger: silent,
+        now: () => now,
+      });
+
+      await engine.fullRescan();
+      expect(engine.getSnapshot().localUpdatedAt).toBe(1_000);
+
+      now = 2_000;
+      await engine.fullRescan();
+      expect(engine.getSnapshot().localUpdatedAt).toBe(1_000);
+
+      fs.appendFileSync(transcript, line('two') + '\n');
+      await engine.fullRescan();
+      expect(engine.getSnapshot().localUpdatedAt).toBe(2_000);
+    } finally {
+      fs.rmSync(claudeDir, { recursive: true, force: true });
+    }
   });
 });

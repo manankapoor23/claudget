@@ -203,6 +203,8 @@ export interface SnapshotHealth {
 /** The single object every UI surface renders. */
 export interface UsageSnapshot {
   generatedAt: number;
+  /** Epoch ms when local transcript data last changed, not merely when a snapshot was emitted. */
+  localUpdatedAt: number | null;
   schemaVersion: number;
   local: LocalUsage;
   official: OfficialUsage;
@@ -210,4 +212,4 @@ export interface UsageSnapshot {
   health: SnapshotHealth;
 }
 
-export const SNAPSHOT_SCHEMA_VERSION = 1;
+export const SNAPSHOT_SCHEMA_VERSION = 2;
