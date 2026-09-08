@@ -15,13 +15,7 @@ const REVALIDATE_SECONDS = 3600;
  */
 const MAX_RELEASE_PAGES = 10;
 
-export type PlatformKey =
-  | "mac"
-  | "macArm64"
-  | "macX64"
-  | "win"
-  | "winPortable"
-  | "linux";
+export type PlatformKey = "mac" | "macArm64" | "macX64" | "win" | "winPortable" | "linux";
 
 /** macOS variants, in the order the download row lists them. */
 export const MAC_VARIANTS = [
@@ -73,10 +67,18 @@ interface ApiAsset {
 interface ApiRelease {
   tag_name?: unknown;
   name?: unknown;
+  body?: unknown;
   published_at?: unknown;
   draft?: unknown;
   prerelease?: unknown;
   assets?: unknown;
+}
+
+export interface ReleaseHistoryEntry {
+  version: string;
+  date: string;
+  changes: string[];
+  url: string;
 }
 
 /**
@@ -208,12 +210,48 @@ function isPublished(r: ApiRelease): boolean {
 
 function versionOf(r: ApiRelease): string {
   const tag =
-    typeof r.tag_name === "string"
-      ? r.tag_name
-      : typeof r.name === "string"
-        ? r.name
-        : "";
+    typeof r.tag_name === "string" ? r.tag_name : typeof r.name === "string" ? r.name : "";
   return tag.replace(/^v/, "").trim();
+}
+
+function releaseUrl(r: ApiRelease, version: string): string {
+  const tag = typeof r.tag_name === "string" ? r.tag_name : "v" + version;
+  return REPO_URL + "/releases/tag/" + encodeURIComponent(tag);
+}
+
+function plainReleaseText(value: string): string {
+  return value
+    .replace(/\`([^\`]+)\`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function releaseChanges(r: ApiRelease, version: string): string[] {
+  const body = typeof r.body === "string" ? r.body : "";
+  const bullets = body
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^[-*]\s+/.test(line))
+    .map((line) => plainReleaseText(line.replace(/^[-*]\s+/, "")))
+    .filter(Boolean)
+    .slice(0, 4);
+  if (bullets.length > 0) return bullets;
+
+  const name = typeof r.name === "string" ? r.name : "";
+  const fallback = plainReleaseText(name.replace(/^v?\d+(?:\.\d+)+(?:\s*[—-]\s*)?/, ""));
+  return [fallback || "Release " + version];
+}
+
+function releaseDate(r: ApiRelease): string {
+  if (typeof r.published_at === "string") {
+    const date = new Date(r.published_at);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+    }
+  }
+  return "";
 }
 
 /**
@@ -231,8 +269,7 @@ export async function getLatestRelease(): Promise<Release> {
   if (Array.isArray(latest.assets)) {
     for (const raw of latest.assets as ApiAsset[]) {
       const name = typeof raw.name === "string" ? raw.name : "";
-      const url =
-        typeof raw.browser_download_url === "string" ? raw.browser_download_url : "";
+      const url = typeof raw.browser_download_url === "string" ? raw.browser_download_url : "";
       const size = typeof raw.size === "number" ? raw.size : 0;
       if (!name || !url) continue;
 
@@ -255,6 +292,23 @@ export async function getLatestRelease(): Promise<Release> {
   }
 
   return { version, published, publishedAt, assets, stale: false };
+}
+
+/** Published release notes for the website changelog, newest first. */
+export async function getReleaseHistory(): Promise<ReleaseHistoryEntry[]> {
+  const { releases } = await fetchAllReleases();
+  return releases
+    .filter((release) => isPublished(release))
+    .map((release) => {
+      const version = versionOf(release);
+      return {
+        version,
+        date: releaseDate(release),
+        changes: releaseChanges(release, version),
+        url: releaseUrl(release, version),
+      };
+    })
+    .filter((release) => release.version);
 }
 
 /**
