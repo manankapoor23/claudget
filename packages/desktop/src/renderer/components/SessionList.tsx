@@ -14,6 +14,18 @@ function projectName(s: SessionStat): string {
   return parts[parts.length - 1] ?? path ?? 'unknown';
 }
 
+function sessionLabel(s: SessionStat): string {
+  const project = projectName(s);
+  if (s.sessionTitle) return project + ' · ' + s.sessionTitle;
+  if (s.gitBranch && s.gitBranch !== 'HEAD') return project + ' · ' + s.gitBranch;
+  return project;
+}
+
+function sessionTooltip(s: SessionStat): string {
+  const details = [s.projectPath, s.gitBranch, s.sessionTitle].filter(Boolean);
+  return details.join(' · ') || s.sessionId;
+}
+
 export function SessionList({
   sessions,
   activeSessions,
@@ -33,9 +45,9 @@ export function SessionList({
         {rows.map((s) => {
           const live = liveIds.has(s.sessionId);
           return (
-            <div className="session" key={s.sessionId} title={s.projectPath}>
+            <div className="session" key={s.sessionId} title={sessionTooltip(s)}>
               <span className="session__dot" />
-              <span className="session__name">{projectName(s)}</span>
+              <span className="session__name">{sessionLabel(s)}</span>
               <span className="session__val">{formatCompact(s.tokens.total)}</span>
               <span className="session__time">{live ? 'live' : formatRelative(s.lastAt)}</span>
             </div>

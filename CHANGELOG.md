@@ -5,6 +5,15 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.2.5.1] — 2026-09-09
+
+### Fixed
+
+- **Recent sessions now have useful names.** The widget uses the real working
+  directory from Claude Code transcripts, preserves project names containing
+  hyphens, and adds a short summary of the first meaningful request. Git
+  branches and full session details remain available as fallbacks and tooltips.
+
 ## [0.2.5] — 2026-08-27
 
 ### Changed
@@ -99,6 +108,7 @@ All notable changes to claudget. Format loosely follows
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
 [0.2.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5
+[0.2.5.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5.1
 [0.2.4]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.4
 [0.2.3]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.3
 [0.2.2]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.2

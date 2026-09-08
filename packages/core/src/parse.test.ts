@@ -69,6 +69,23 @@ describe('parseTranscriptLine', () => {
     });
     expect(parseTranscriptLine(line, ctx)?.key).toBe('m9:u9');
   });
+
+  it('uses transcript metadata for project and session labels', () => {
+    const content = [
+      JSON.stringify({
+        type: 'user',
+        cwd: '/Users/test/my-app',
+        gitBranch: 'feature/better-names',
+        sessionId: 'sess_1',
+        message: { role: 'user', content: 'Fix the login flow and keep the tests green' },
+      }),
+      assistant({ output_tokens: 2 }),
+    ].join('\n');
+    const entries = parseTranscriptContent(content, ctx);
+    expect(entries[0]?.projectPath).toBe('/Users/test/my-app');
+    expect(entries[0]?.sessionTitle).toBe('Fix the login flow and keep the tests green');
+    expect(entries[0]?.gitBranch).toBe('feature/better-names');
+  });
 });
 
 describe('parseTranscriptContent', () => {

@@ -18,6 +18,8 @@ function entry(over: Partial<UsageEntry> & { timestamp: number }): UsageEntry {
     isSidechain: false,
     requestId: 'r',
     messageId: 'm',
+    sessionTitle: over.sessionTitle,
+    gitBranch: over.gitBranch,
   };
 }
 
@@ -75,14 +77,42 @@ describe('buildLocalUsage', () => {
     expect(u.sessions[0]?.sessionId).toBe('a'); // newest first
   });
 
+  it('carries the best session label metadata into session stats', () => {
+    const u = buildLocalUsage(
+      [
+        entry({
+          timestamp: NOW - HOUR,
+          sessionId: 'a',
+          projectPath: '/Users/test/my-app',
+          sessionTitle: 'Fix the login flow',
+          gitBranch: 'feature/login',
+        }),
+      ],
+      opts,
+    );
+    expect(u.sessions[0]?.projectPath).toBe('/Users/test/my-app');
+    expect(u.sessions[0]?.sessionTitle).toBe('Fix the login flow');
+    expect(u.sessions[0]?.gitBranch).toBe('feature/login');
+  });
+
   it('groups per project sorted by cost desc', () => {
     // Opus is pricier than Sonnet, so the opus-heavy project should rank first
     // even though both projects log the same token counts.
     const big = { input: 100, output: 200, cacheCreation: 0, cacheRead: 0, total: 300 };
     const u = buildLocalUsage(
       [
-        entry({ timestamp: NOW - HOUR, model: 'claude-sonnet-4-6', projectSlug: 'cheap', tokens: big }),
-        entry({ timestamp: NOW - 2 * HOUR, model: 'claude-opus-4-8', projectSlug: 'pricey', tokens: big }),
+        entry({
+          timestamp: NOW - HOUR,
+          model: 'claude-sonnet-4-6',
+          projectSlug: 'cheap',
+          tokens: big,
+        }),
+        entry({
+          timestamp: NOW - 2 * HOUR,
+          model: 'claude-opus-4-8',
+          projectSlug: 'pricey',
+          tokens: big,
+        }),
       ],
       opts,
     );

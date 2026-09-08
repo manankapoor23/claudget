@@ -37,6 +37,10 @@ export interface UsageEntry {
   isSidechain: boolean;
   requestId: string | null;
   messageId: string | null;
+  /** Short summary of the first meaningful user request in this session. */
+  sessionTitle?: string | null;
+  /** Git branch captured from the transcript, when Claude Code recorded one. */
+  gitBranch?: string | null;
 }
 
 /** Tokens + estimated cost + request count for an aggregate bucket. */
@@ -56,6 +60,8 @@ export interface SessionStat extends TokenAndCost {
   sessionId: string;
   projectPath: string;
   projectSlug: string;
+  sessionTitle: string | null;
+  gitBranch: string | null;
   firstAt: number;
   lastAt: number;
 }

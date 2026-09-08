@@ -12,7 +12,16 @@ import type {
   UsageBlock,
   UsageEntry,
 } from './types';
-import { DAY, HOUR, MINUTE, clamp, safeDiv, startOfDay, startOfHour, startOfMonth } from './util/time';
+import {
+  DAY,
+  HOUR,
+  MINUTE,
+  clamp,
+  safeDiv,
+  startOfDay,
+  startOfHour,
+  startOfMonth,
+} from './util/time';
 
 export function emptyTokens(): TokenCounts {
   return { input: 0, output: 0, cacheCreation: 0, cacheRead: 0, total: 0 };
@@ -96,11 +105,16 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
         sessionId: e.sessionId,
         projectPath: e.projectPath,
         projectSlug: e.projectSlug,
+        sessionTitle: e.sessionTitle ?? null,
+        gitBranch: e.gitBranch ?? null,
         firstAt: e.timestamp,
         lastAt: e.timestamp,
         ...emptyTAC(),
       };
       sessionMap.set(e.sessionId, s);
+    } else {
+      if (!s.sessionTitle && e.sessionTitle) s.sessionTitle = e.sessionTitle;
+      if (!s.gitBranch && e.gitBranch) s.gitBranch = e.gitBranch;
     }
     s.firstAt = Math.min(s.firstAt, e.timestamp);
     s.lastAt = Math.max(s.lastAt, e.timestamp);
@@ -116,7 +130,6 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
       accumulate(b, e, pricing);
     }
   }
-
   const blocks = buildBlocks(sorted, pricing, blockHours, now);
   const activeBlock = buildActiveBlock(blocks, blockHours, now);
 
