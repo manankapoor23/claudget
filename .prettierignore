@@ -6,3 +6,4 @@ coverage
 *.log
 pnpm-lock.yaml
 package-lock.json
+brag-output
