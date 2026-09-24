@@ -13,11 +13,10 @@ export function ActivityView({
 }): JSX.Element {
   const cost = useCostCopy();
   const [metric, setMetric] = useState<'tokens' | 'requests'>('tokens');
-  const bars = local.hourly.map((bucket) => ({
+  const bars = local.hourly.slice(-24).map((bucket) => ({
     at: bucket.startAt,
     value: metric === 'tokens' ? bucket.tokens.total : bucket.count,
   }));
-  const total = metric === 'tokens' ? local.last24h.tokens.total : local.last24h.count;
 
   return (
     <>
