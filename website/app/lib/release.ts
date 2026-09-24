@@ -21,7 +21,7 @@ export type PlatformKey = "mac" | "macArm64" | "macX64" | "win" | "winPortable" 
 export const MAC_VARIANTS = [
   { key: "mac", label: "Universal", hint: "any Mac" },
   { key: "macArm64", label: "Apple Silicon", hint: "M1 and later" },
-  { key: "macX64", label: "Intel", hint: "pre-2020 Macs" },
+  { key: "macX64", label: "Intel", hint: "Macs with Intel chips" },
 ] as const satisfies readonly { key: PlatformKey; label: string; hint: string }[];
 
 export interface ReleaseAsset {
@@ -77,6 +77,11 @@ interface ApiRelease {
 export interface ReleaseHistoryEntry {
   version: string;
   date: string;
+  /** The release name without its version, e.g. "Half the size on disk". */
+  title: string | null;
+  /** The notes' opening paragraph, when they open with prose. */
+  summary: string | null;
+  /** Top-level bullets, shown only when there's no summary. At most three. */
   changes: string[];
   url: string;
 }
@@ -87,7 +92,7 @@ export interface ReleaseHistoryEntry {
  * always resolves to something downloadable.
  */
 const FALLBACK: Release = {
-  version: "0.2.3",
+  version: "0.2.5.1",
   published: null,
   publishedAt: null,
   assets: {},
@@ -152,11 +157,34 @@ function parseNextLink(header: string | null): string | null {
   return url;
 }
 
+/**
+ * Whether a failed GitHub read should fail the render instead of falling back.
+ * At build time and in dev the fallback keeps the site buildable offline. On an
+ * hourly refresh in production, throwing is what makes Next keep serving the
+ * last good page — falling back there would cache a degraded page (old
+ * version, wrong "Latest" badge, no counts) for the next hour.
+ */
+function degradeOrThrow(): void {
+  if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+    throw new Error("GitHub releases unavailable; keeping the last good render.");
+  }
+}
+
+/** Unauthenticated calls share 60 an hour per IP; a token lifts that when set. */
+function githubHeaders(): HeadersInit {
+  const token = process.env.GITHUB_TOKEN;
+  return {
+    Accept: "application/vnd.github+json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 /** Fetches one page of releases. Never throws. */
 async function fetchReleasePage(url: string): Promise<ReleasePage> {
   try {
     const res = await fetch(url, {
-      headers: { Accept: "application/vnd.github+json" },
+      headers: githubHeaders(),
+      signal: AbortSignal.timeout(8000),
       next: { revalidate: REVALIDATE_SECONDS },
     });
     if (!res.ok) return { releases: [], next: null, ok: false };
@@ -172,12 +200,11 @@ async function fetchReleasePage(url: string): Promise<ReleasePage> {
   }
 }
 
-/**
- * Releases are newest-first, so the first page is all the download links need.
- * Returns [] on failure.
- */
+/** Releases are newest-first, so the first page is all the download links need. */
 async function fetchReleases(): Promise<ApiRelease[]> {
-  return (await fetchReleasePage(API)).releases;
+  const page = await fetchReleasePage(API);
+  if (!page.ok) degradeOrThrow();
+  return page.releases;
 }
 
 /**
@@ -223,25 +250,81 @@ function plainReleaseText(value: string): string {
   return value
     .replace(/\`([^\`]+)\`/g, "$1")
     .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*\s][^*]*)\*/g, "$1")
     .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-function releaseChanges(r: ApiRelease, version: string): string[] {
-  const body = typeof r.body === "string" ? r.body : "";
-  const bullets = body
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /^[-*]\s+/.test(line))
-    .map((line) => plainReleaseText(line.replace(/^[-*]\s+/, "")))
-    .filter(Boolean)
-    .slice(0, 4);
-  if (bullets.length > 0) return bullets;
+/** Long text cut back to its last full sentence within `max` characters. */
+function clampSentences(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  return end > max / 3 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, "") + "…";
+}
 
+/**
+ * "0.2.4 — half the size on disk" → "Half the size on disk". Only a plain
+ * lower-case first word is capitalised, so "macOS reliability" stays as is.
+ */
+function releaseTitle(r: ApiRelease): string | null {
   const name = typeof r.name === "string" ? r.name : "";
-  const fallback = plainReleaseText(name.replace(/^v?\d+(?:\.\d+)+(?:\s*[—-]\s*)?/, ""));
-  return [fallback || "Release " + version];
+  const rest = plainReleaseText(name.replace(/^v?\d+(?:\.\d+)+(?:\s*[—–-]\s*)?/, ""));
+  if (!rest) return null;
+  return /^[a-z]+(?:\s|$)/.test(rest) ? rest.charAt(0).toUpperCase() + rest.slice(1) : rest;
+}
+
+/** The body's lines, minus fenced code blocks (tables of numbers, commands). */
+function bodyLines(r: ApiRelease): string[] {
+  const body = typeof r.body === "string" ? r.body : "";
+  const lines: string[] = [];
+  let fenced = false;
+  for (const line of body.split(/\r?\n/)) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      fenced = !fenced;
+      continue;
+    }
+    if (!fenced) lines.push(line);
+  }
+  return lines;
+}
+
+/**
+ * The notes' opening paragraph. Leading headings are skipped, but anything
+ * structural before the prose (a list, a table) means the notes don't open
+ * with a summary — a closing remark further down is not one.
+ */
+function releaseSummary(lines: string[]): string | null {
+  const para: string[] = [];
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      if (para.length > 0) break;
+      continue;
+    }
+    if (/^#{1,6}\s/.test(line)) {
+      if (para.length > 0) break;
+      continue;
+    }
+    if (/^([-*+]\s|\d+[.)]\s|\||>|!\[|<)/.test(line) || /^[-=_*]{3,}$/.test(line)) break;
+    para.push(line);
+  }
+  const text = plainReleaseText(para.join(" "));
+  return text ? clampSentences(text, 280) : null;
+}
+
+/**
+ * Top-level bullets only: an indented bullet belongs to the one above it and
+ * reads as nonsense on its own. Long ones are cut back to whole sentences.
+ */
+function releaseBullets(lines: string[]): string[] {
+  return lines
+    .filter((line) => /^[-*+]\s+/.test(line))
+    .map((line) => plainReleaseText(line.replace(/^[-*+]\s+/, "")))
+    .filter(Boolean)
+    .map((text) => clampSentences(text, 160))
+    .slice(0, 3);
 }
 
 function releaseDate(r: ApiRelease): string {
@@ -297,14 +380,19 @@ export async function getLatestRelease(): Promise<Release> {
 /** Published release notes for the website changelog, newest first. */
 export async function getReleaseHistory(): Promise<ReleaseHistoryEntry[]> {
   const { releases } = await fetchAllReleases();
+  if (releases.length === 0) degradeOrThrow();
   return releases
     .filter((release) => isPublished(release))
     .map((release) => {
       const version = versionOf(release);
+      const lines = bodyLines(release);
+      const summary = releaseSummary(lines);
       return {
         version,
         date: releaseDate(release),
-        changes: releaseChanges(release, version),
+        title: releaseTitle(release),
+        summary,
+        changes: summary ? [] : releaseBullets(lines),
         url: releaseUrl(release, version),
       };
     })
@@ -320,6 +408,7 @@ export async function getReleaseHistory(): Promise<ReleaseHistoryEntry[]> {
  */
 export async function getDownloadStats(): Promise<DownloadStats> {
   const { releases, complete } = await fetchAllReleases();
+  if (releases.length === 0) degradeOrThrow();
   if (releases.length === 0) {
     return {
       total: 0,
