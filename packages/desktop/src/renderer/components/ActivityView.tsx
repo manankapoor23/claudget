@@ -17,6 +17,7 @@ export function ActivityView({
     at: bucket.startAt,
     value: metric === 'tokens' ? bucket.tokens.total : bucket.count,
   }));
+  const total = metric === 'tokens' ? local.last24h.tokens.total : local.last24h.count;
 
   return (
     <>
