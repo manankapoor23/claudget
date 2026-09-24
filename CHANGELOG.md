@@ -5,6 +5,45 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.0] — 2026-09-25
+
+### Changed
+
+- **claudget now lives in your menu bar.** On macOS both limits sit next to the
+  clock as `62% · 31%`; on Windows and Linux it's a tray icon. Click it for a
+  popover with both limits, today's tokens and rate, the last 24 hours, and your
+  heaviest sessions. The always-on-top window is gone; everything it did is
+  still here, spread over views you can turn on as you need them.
+
+- **Each limit shows when you'll run out.** A tick on the bar marks how much of
+  the window has passed. When usage is ahead of it, the row shows the time
+  you'll hit the limit at your current pace ("Full by 4:01 PM").
+
+- **Plan limits are on by default.** They come from Anthropic's usage endpoint
+  using the login Claude Code already stored. Turn off **Track plan limits** in
+  Settings to stay fully local.
+
+### Added
+
+- **Limit alerts:** a notification at 80% and 95% of a limit, once per window.
+  Pick your own thresholds in **Settings → Alerts**.
+- **Floating pill:** one line above your windows showing the limit closest to
+  running out. Its outline turns amber, then red, as you get close.
+- **Floating bar:** a resizable strip with both limits and today's activity that
+  stays on top beside your editor.
+- **Dashboard:** Overview, Activity, Sessions and Insights, including how close
+  each recent 5-hour and weekly window came to its limit and how often you hit
+  it. It's a normal window now; turn on **Keep on top** in Settings if you
+  want it to float.
+- **Settings** in its own window (General, Alerts, Data, About), and a short
+  welcome card on first launch.
+- A new app icon and design, with SF Pro on the Mac.
+
+### Fixed
+
+- The app version and the release tag match again. 0.2.5.1 had to ship as
+  0.2.6, because Electron needs three-part versions.
+
 ## [0.2.5.1] — 2026-09-09
 
 ### Fixed
@@ -107,6 +146,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.0]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.0
 [0.2.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5
 [0.2.5.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5.1
 [0.2.4]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.4

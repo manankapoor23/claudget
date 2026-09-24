@@ -1,3 +1,4 @@
+import { useCostCopy } from '../lib/billing';
 import type { JSX } from 'react';
 import type { LocalUsage } from '@claude-widget/core';
 import { formatUSD, formatPct } from '../lib/format';
@@ -23,6 +24,7 @@ export function BudgetPanel({
   monthlyBudgetUSD,
   currency,
 }: BudgetPanelProps): JSX.Element | null {
+  const cost = useCostCopy();
   const rows: Row[] = [];
   if (dailyBudgetUSD && dailyBudgetUSD > 0) {
     rows.push({ label: 'Today', spent: local.today.costUSD, budget: dailyBudgetUSD });
@@ -35,7 +37,7 @@ export function BudgetPanel({
   return (
     <div className="panel">
       <div className="panel__head">
-        <span className="panel__title">Budget</span>
+        <span className="panel__title">{cost.included ? 'Budget · API value' : 'Budget'}</span>
       </div>
       {rows.map((r) => {
         const frac = r.budget > 0 ? r.spent / r.budget : 0;

@@ -47,7 +47,11 @@ export function Insights({ local, currency }: InsightsProps): JSX.Element | null
       {models.length > 0 && totalCost > 0 ? (
         <div className="kv">
           <span>Models</span>
-          <b>{models.map((m) => `${m.label} ${formatPct((m.costUSD / totalCost) * 100)}`).join(' · ')}</b>
+          <b>
+            {models
+              .map((m) => `${m.label} ${formatPct((m.costUSD / totalCost) * 100)}`)
+              .join(' · ')}
+          </b>
         </div>
       ) : null}
       {peak && peak.tokens.total > 0 ? (

@@ -1,3 +1,7 @@
+import { formatDurationShort } from '../../shared/duration';
+
+export { formatDurationShort };
+
 /** Compact token count: 12.3M, 4.5k, 999. */
 export function formatCompact(n: number): string {
   const abs = Math.abs(n);
@@ -12,11 +16,13 @@ export function formatInt(n: number): string {
 }
 
 export function formatUSD(n: number, currency = 'USD'): string {
-  const maximumFractionDigits = n < 10 ? 2 : n < 1000 ? 1 : 0;
+  // Cents or nothing: "$61.7" reads as a typo, not a price.
+  const maximumFractionDigits = Math.abs(n) < 1000 ? 2 : 0;
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',
       currency,
+      minimumFractionDigits: maximumFractionDigits,
       maximumFractionDigits,
     }).format(n);
   } catch {
@@ -26,19 +32,6 @@ export function formatUSD(n: number, currency = 'USD'): string {
 
 export function formatPct(n: number, digits = 0): string {
   return `${n.toFixed(digits)}%`;
-}
-
-/** "2d 3h", "3h 12m", "12m", "45s". */
-export function formatDurationShort(ms: number): string {
-  if (ms <= 0) return '0m';
-  const s = Math.floor(ms / 1000);
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m`;
-  return `${s}s`;
 }
 
 /** Countdown: "hh:mm:ss" under a day, "2d 3h" beyond, "now" at/under zero. */
@@ -67,8 +60,23 @@ export function formatRelative(ts: number, now: number = Date.now()): string {
 
 export function formatClock(ts: number): string {
   try {
-    return new Date(ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
   } catch {
     return '';
   }
+}
+
+/**
+ * A reset moment as people say it: "4:26 PM" today, "Thu 4:26 PM" this week,
+ * "Oct 3, 4:26 PM" beyond that.
+ */
+export function formatResetAt(ts: number, now: number = Date.now()): string {
+  const d = new Date(ts);
+  const time = formatClock(ts);
+  const sameDay = new Date(now).toDateString() === d.toDateString();
+  if (sameDay) return time;
+  if (ts - now < 6 * 24 * 60 * 60 * 1000) {
+    return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
+  }
+  return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}, ${time}`;
 }

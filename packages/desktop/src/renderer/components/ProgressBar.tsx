@@ -14,8 +14,9 @@ interface ProgressBarProps {
 }
 
 const TONE_FILL: Record<Tone, string> = {
-  default: 'var(--orange)',
-  good: 'var(--good)',
+  // Overridable so a design system can paint calm bars its own way.
+  default: 'var(--bar-default, var(--orange))',
+  good: 'var(--bar-good, var(--good))',
   warn: 'var(--warn)',
   bad: 'var(--bad)',
 };

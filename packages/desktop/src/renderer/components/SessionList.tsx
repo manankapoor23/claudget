@@ -40,13 +40,15 @@ export function SessionList({
     <div className="panel">
       <div className="panel__head">
         <span className="panel__title">Recent sessions</span>
+        <span className="panel__spacer" />
+        <span className="badge">{activeSessions.length} live</span>
       </div>
       <div className="sessions">
         {rows.map((s) => {
           const live = liveIds.has(s.sessionId);
           return (
             <div className="session" key={s.sessionId} title={sessionTooltip(s)}>
-              <span className="session__dot" />
+              <span className={live ? 'session__dot session__dot--live' : 'session__dot'} />
               <span className="session__name">{sessionLabel(s)}</span>
               <span className="session__val">{formatCompact(s.tokens.total)}</span>
               <span className="session__time">{live ? 'live' : formatRelative(s.lastAt)}</span>

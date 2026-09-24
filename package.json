@@ -2,7 +2,7 @@
   "name": "claude-widget",
   "version": "0.1.0",
   "private": true,
-  "description": "A lightweight, always-on-top desktop widget for monitoring Claude Code usage in real time.",
+  "description": "claudget: your Claude Code usage limits in the menu bar.",
   "license": "MIT",
   "workspaces": [
     "packages/*"
@@ -19,7 +19,7 @@
     "package": "npm run build:core && npm run package -w @claude-widget/desktop",
     "package:dir": "npm run build:core && npm run package:dir -w @claude-widget/desktop",
     "typecheck": "npm run typecheck -w @claude-widget/core && npm run typecheck -w @claude-widget/desktop",
-    "test": "npm run test -w @claude-widget/core",
+    "test": "npm run test -w @claude-widget/core && npm run test -w @claude-widget/desktop",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,md}\""

@@ -1,47 +1,58 @@
-import { LogoMark } from "../icons";
+import { IconGitHub } from "../icons";
 import { REPO_URL } from "../constants";
 import ThemeToggle from "./ThemeToggle";
 
+/** In page order; Download is the header's own button instead. */
 const NAV = [
-  { id: "app", label: "The app" },
-  { id: "how", label: "How it works" },
+  { id: "features", label: "Features" },
+  { id: "privacy", label: "Privacy" },
   { id: "changelog", label: "Changelog" },
-  { id: "download", label: "Download" },
 ];
 
-export default function Shell({ children }: { children: React.ReactNode }) {
+export default function Shell({
+  children,
+  footer,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
   return (
     <div className="shell">
       <header className="header">
-        <div className="header__inner">
-          <a href="#top" className="header__brand">
-            <LogoMark style={{ width: 18, height: 18 }} />
+        <div className="wrap header__inner">
+          <a href="#top" className="brand">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/app-icon.png" alt="" width={26} height={26} />
             claudget
           </a>
-          <span className="header__spacer" />
-          <nav className="header__nav">
+          <nav className="nav" aria-label="Sections">
             {NAV.map(({ id, label }) => (
-              <a key={id} href={`#${id}`} className="header__link">
+              <a key={id} href={`#${id}`}>
                 {label}
               </a>
             ))}
           </nav>
           <div className="header__right">
+            <a className="btn btn--primary btn--xs header__cta" href="#download">
+              Download
+            </a>
             <a
-              className="btn"
+              className="icon-btn"
               href={REPO_URL}
               target="_blank"
               rel="noreferrer"
-              aria-label="Source on GitHub"
+              aria-label="claudget on GitHub"
+              title="Source on GitHub"
             >
-              GitHub
+              <IconGitHub />
             </a>
             <ThemeToggle />
           </div>
         </div>
       </header>
 
-      <main className="main">{children}</main>
+      <main>{children}</main>
+      {footer}
     </div>
   );
 }

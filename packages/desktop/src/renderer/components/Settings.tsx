@@ -1,13 +1,20 @@
-import type { ChangeEvent, JSX, ReactNode } from 'react';
-import type { AppInfo, WidgetConfig } from '@shared/ipc';
+import { useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
+import type { WidgetConfig } from '@shared/ipc';
+import { IS_MAC as MAC } from '../lib/platform';
+import { useStore } from '../store';
 import { getBridge } from '../lib/api';
-import { ExternalIcon } from './icons';
+import { useTheme } from '../lib/theme';
+import { BellIcon, DataIcon, ExternalIcon, InfoIcon, SettingsIcon } from './icons';
+import logoUrl from '../assets/claudget-logo.png';
 
-interface SettingsProps {
-  config: WidgetConfig;
-  appInfo: AppInfo | null;
-  onChange: (patch: Partial<WidgetConfig>) => void;
-}
+type Tab = 'general' | 'alerts' | 'data' | 'about';
+
+const TABS: Array<{ id: Tab; label: string; Icon: typeof SettingsIcon }> = [
+  { id: 'general', label: 'General', Icon: SettingsIcon },
+  { id: 'alerts', label: 'Alerts', Icon: BellIcon },
+  { id: 'data', label: 'Data', Icon: DataIcon },
+  { id: 'about', label: 'About', Icon: InfoIcon },
+];
 
 interface Option<T> {
   value: T;
@@ -15,13 +22,12 @@ interface Option<T> {
 }
 
 const POLL_OPTIONS: Option<number>[] = [
-  { value: 180_000, label: 'Every 3 min' },
-  { value: 300_000, label: 'Every 5 min' },
-  { value: 600_000, label: 'Every 10 min' },
-  { value: 900_000, label: 'Every 15 min' },
-  { value: 1_800_000, label: 'Every 30 min' },
+  { value: 180_000, label: 'Every 3 minutes' },
+  { value: 300_000, label: 'Every 5 minutes' },
+  { value: 600_000, label: 'Every 10 minutes' },
+  { value: 900_000, label: 'Every 15 minutes' },
+  { value: 1_800_000, label: 'Every 30 minutes' },
 ];
-
 const HISTORY_OPTIONS: Option<number>[] = [
   { value: 6, label: '6 hours' },
   { value: 12, label: '12 hours' },
@@ -30,76 +36,99 @@ const HISTORY_OPTIONS: Option<number>[] = [
   { value: 72, label: '3 days' },
   { value: 168, label: '1 week' },
 ];
-
-const SESSION_OPTIONS: Option<number>[] = [
-  { value: 5, label: '5' },
-  { value: 8, label: '8' },
-  { value: 12, label: '12' },
-  { value: 20, label: '20' },
-  { value: 50, label: '50' },
-];
-
+const SESSION_OPTIONS: Option<number>[] = [5, 8, 12, 20, 50].map((n) => ({
+  value: n,
+  label: String(n),
+}));
 const THEME_OPTIONS: Option<WidgetConfig['theme']>[] = [
   { value: 'system', label: 'System' },
-  { value: 'dark', label: 'Dark' },
   { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
 ];
-
 const LOG_OPTIONS: Option<WidgetConfig['logLevel']>[] = [
-  { value: 'error', label: 'Error' },
-  { value: 'warn', label: 'Warn' },
+  { value: 'error', label: 'Errors only' },
+  { value: 'warn', label: 'Warnings' },
   { value: 'info', label: 'Info' },
   { value: 'debug', label: 'Debug' },
 ];
+const THRESHOLD_CHOICES = [50, 70, 80, 90, 95, 100];
 
-function Field({
+/** A titled inset group of rows, as in System Settings. */
+function Group({ title, children }: { title?: string; children: ReactNode }): JSX.Element {
+  return (
+    <section className="sgroup">
+      {title ? <h2 className="sgroup__title">{title}</h2> : null}
+      <div className="sgroup__rows">{children}</div>
+    </section>
+  );
+}
+
+function Row({
   label,
   hint,
+  htmlFor,
   children,
 }: {
   label: string;
   hint?: string;
+  htmlFor?: string;
   children: ReactNode;
 }): JSX.Element {
   return (
-    <div className="field">
-      <div className="field__label">
-        {label}
-        {hint ? <div className="field__hint">{hint}</div> : null}
+    <div className="srow">
+      <div className="srow__text">
+        <label className="srow__label" htmlFor={htmlFor}>
+          {label}
+        </label>
+        {hint ? <span className="srow__hint">{hint}</span> : null}
       </div>
-      {children}
+      <div className="srow__control">{children}</div>
     </div>
   );
 }
 
-function Toggle({ on, onClick }: { on: boolean; onClick: () => void }): JSX.Element {
+function Toggle({
+  id,
+  on,
+  onChange,
+}: {
+  id: string;
+  on: boolean;
+  onChange: (on: boolean) => void;
+}): JSX.Element {
   return (
     <button
+      id={id}
       className={on ? 'switch switch--on' : 'switch'}
       type="button"
       role="switch"
       aria-checked={on}
-      onClick={onClick}
+      onClick={() => onChange(!on)}
     />
   );
 }
 
-function NumberSelect({
+function Select<T extends string | number>({
+  id,
   value,
   options,
   onChange,
 }: {
-  value: number;
-  options: Option<number>[];
-  onChange: (v: number) => void;
+  id: string;
+  value: T;
+  options: Option<T>[];
+  onChange: (v: T) => void;
 }): JSX.Element {
   const known = options.some((o) => o.value === value);
-  const handle = (e: ChangeEvent<HTMLSelectElement>): void => onChange(Number(e.target.value));
+  const handle = (e: ChangeEvent<HTMLSelectElement>): void => {
+    const raw = e.target.value;
+    onChange((typeof value === 'number' ? Number(raw) : raw) as T);
+  };
   return (
-    <select className="select" value={value} onChange={handle}>
-      {known ? null : <option value={value}>{value}</option>}
+    <select id={id} className="select" value={String(value)} onChange={handle}>
+      {known ? null : <option value={String(value)}>{String(value)}</option>}
       {options.map((o) => (
-        <option key={o.value} value={o.value}>
+        <option key={String(o.value)} value={String(o.value)}>
           {o.label}
         </option>
       ))}
@@ -107,206 +136,419 @@ function NumberSelect({
   );
 }
 
-function MoneyInput({
+function Segmented<T extends string>({
   value,
+  options,
   onChange,
+  label,
 }: {
-  value: number | null;
-  onChange: (v: number | null) => void;
+  value: T;
+  options: Option<T>[];
+  onChange: (v: T) => void;
+  label: string;
 }): JSX.Element {
-  const handle = (e: ChangeEvent<HTMLInputElement>): void => {
-    const raw = e.target.value.trim();
-    if (raw === '') return onChange(null);
-    const n = Number(raw);
-    onChange(Number.isFinite(n) && n >= 0 ? n : null);
-  };
   return (
-    <input
-      className="select"
-      type="number"
-      min={0}
-      step={1}
-      placeholder="off"
-      value={value ?? ''}
-      onChange={handle}
-      style={{ width: 90 }}
-    />
-  );
-}
-
-function Kv({ k, v }: { k: string; v: string }): JSX.Element {
-  return (
-    <div className="kv">
-      <span>{k}</span>
-      <b>{v}</b>
+    <div className="segmented" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          className={
+            value === o.value ? 'segmented__button segmented__button--active' : 'segmented__button'
+          }
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }
 
-export function Settings({ config, appInfo, onChange }: SettingsProps): JSX.Element {
+/** Budget amount in USD; commits on blur/enter so typing "150" isn't three saves. */
+function MoneyInput({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: number | null;
+  onChange: (v: number | null) => void;
+}): JSX.Element {
+  const [draft, setDraft] = useState(value === null ? '' : String(value));
+  useEffect(() => setDraft(value === null ? '' : String(value)), [value]);
+  const commit = (): void => {
+    const raw = draft.trim();
+    if (raw === '') return onChange(null);
+    const n = Number(raw);
+    onChange(Number.isFinite(n) && n >= 0 ? n : value);
+  };
   return (
-    <div className="body">
-      <div className="settings">
-        <div className="field__group-title">Appearance</div>
+    <span className="money">
+      <span aria-hidden>$</span>
+      <input
+        id={id}
+        className="select money__input"
+        type="number"
+        min={0}
+        step={1}
+        placeholder="Off"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit();
+        }}
+      />
+    </span>
+  );
+}
 
-        <Field label="Theme">
-          <select
-            className="select"
-            value={config.theme}
-            onChange={(e) => onChange({ theme: e.target.value as WidgetConfig['theme'] })}
-          >
-            {THEME_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Compact mode" hint="Shrink to a minimal always-on glance.">
-          <Toggle on={config.compact} onClick={() => onChange({ compact: !config.compact })} />
-        </Field>
-
-        <Field label="Always on top">
-          <Toggle
-            on={config.alwaysOnTop}
-            onClick={() => onChange({ alwaysOnTop: !config.alwaysOnTop })}
+function General({
+  c,
+  set,
+}: {
+  c: WidgetConfig;
+  set: (p: Partial<WidgetConfig>) => void;
+}): JSX.Element {
+  return (
+    <>
+      <Group>
+        <Row label="Appearance">
+          <Segmented
+            label="Appearance"
+            value={c.theme}
+            options={THEME_OPTIONS}
+            onChange={(theme) => set({ theme })}
           />
-        </Field>
-
-        <Field label="Click-through" hint="Ignore the mouse so clicks pass to windows beneath.">
-          <Toggle
-            on={config.clickThrough}
-            onClick={() => onChange({ clickThrough: !config.clickThrough })}
-          />
-        </Field>
-
-        <Field label="Show in taskbar">
-          <Toggle
-            on={config.showInTaskbar}
-            onClick={() => onChange({ showInTaskbar: !config.showInTaskbar })}
-          />
-        </Field>
-
-        <Field label="Launch on login">
-          <Toggle
-            on={config.launchOnLogin}
-            onClick={() => onChange({ launchOnLogin: !config.launchOnLogin })}
-          />
-        </Field>
-
-        <Field label={`Opacity · ${Math.round(config.opacity * 100)}%`}>
-          <input
-            className="range"
-            type="range"
-            min={0.3}
-            max={1}
-            step={0.05}
-            value={config.opacity}
-            onChange={(e) => onChange({ opacity: Number(e.target.value) })}
-          />
-        </Field>
-
-        <div className="field__group-title">Data</div>
-
-        <Field
-          label="Track plan limits"
-          hint="Optional. Adds 5-hour & weekly plan gauges by polling Anthropic. Off by default — everything else is fully local."
+        </Row>
+      </Group>
+      <Group title="Menu bar">
+        <Row
+          label="Floating pill"
+          hint="A one-line strip that stays on top. Click it for more."
+          htmlFor="set-pill"
         >
+          <Toggle id="set-pill" on={c.compact} onChange={(compact) => set({ compact })} />
+        </Row>
+        <Row
+          label="Floating bar"
+          hint="Both limits and today in one strip that stays on top. Drag its edges to resize."
+          htmlFor="set-bar"
+        >
+          <Toggle id="set-bar" on={c.miniBar} onChange={(miniBar) => set({ miniBar })} />
+        </Row>
+        <Row label="Open at login" htmlFor="set-login">
           <Toggle
-            on={config.enableOfficial}
-            onClick={() => onChange({ enableOfficial: !config.enableOfficial })}
+            id="set-login"
+            on={c.launchOnLogin}
+            onChange={(launchOnLogin) => set({ launchOnLogin })}
           />
-        </Field>
-
-        {config.enableOfficial ? (
-          <Field label="Refresh limits" hint="Minimum 3 min — the endpoint is rate-limited.">
-            <NumberSelect
-              value={config.officialPollIntervalMs}
-              options={POLL_OPTIONS}
-              onChange={(v) => onChange({ officialPollIntervalMs: v })}
+        </Row>
+        {MAC ? null : (
+          <Row label="Show in taskbar" htmlFor="set-taskbar">
+            <Toggle
+              id="set-taskbar"
+              on={c.showInTaskbar}
+              onChange={(showInTaskbar) => set({ showInTaskbar })}
             />
-          </Field>
-        ) : null}
-
-        <Field label="Activity window" hint="Span shown in the activity sparkline.">
-          <NumberSelect
-            value={config.historyWindowHours}
-            options={HISTORY_OPTIONS}
-            onChange={(v) => onChange({ historyWindowHours: v })}
+          </Row>
+        )}
+      </Group>
+      <Group title="Dashboard window">
+        <Row label="Keep on top" hint="Float above other windows." htmlFor="set-top">
+          <Toggle
+            id="set-top"
+            on={c.alwaysOnTop}
+            onChange={(alwaysOnTop) => set({ alwaysOnTop })}
           />
-        </Field>
-
-        <Field label="Recent sessions">
-          <NumberSelect
-            value={config.recentSessionLimit}
-            options={SESSION_OPTIONS}
-            onChange={(v) => onChange({ recentSessionLimit: v })}
-          />
-        </Field>
-
-        <div className="field__group-title">Budgets</div>
-
-        <Field
-          label="Daily budget (USD)"
-          hint="Get a notification at 80% and 100% of today's spend. Empty = off."
+        </Row>
+        <Row
+          label="Click-through"
+          hint="Clicks pass through to the app underneath. ⌥⌘C toggles it."
+          htmlFor="set-ct"
         >
-          <MoneyInput
-            value={config.dailyBudgetUSD}
-            onChange={(v) => onChange({ dailyBudgetUSD: v })}
+          <Toggle
+            id="set-ct"
+            on={c.clickThrough}
+            onChange={(clickThrough) => set({ clickThrough })}
           />
-        </Field>
+        </Row>
+        <Row label="Opacity" htmlFor="set-opacity">
+          <span className="range-row">
+            <input
+              id="set-opacity"
+              className="range"
+              type="range"
+              min={0.3}
+              max={1}
+              step={0.05}
+              value={c.opacity}
+              onChange={(e) => set({ opacity: Number(e.target.value) })}
+            />
+            <output htmlFor="set-opacity">{Math.round(c.opacity * 100)}%</output>
+          </span>
+        </Row>
+      </Group>
+    </>
+  );
+}
 
-        <Field
-          label="Monthly budget (USD)"
-          hint="Get a notification at 80% and 100% of this month's spend. Empty = off."
+function Alerts({
+  c,
+  set,
+}: {
+  c: WidgetConfig;
+  set: (p: Partial<WidgetConfig>) => void;
+}): JSX.Element {
+  const chosen = new Set(c.limitAlertThresholds);
+  const toggle = (t: number): void => {
+    const next = new Set(chosen);
+    if (next.has(t)) next.delete(t);
+    else next.add(t);
+    if (next.size === 0) return; // keep at least one
+    set({ limitAlertThresholds: [...next].sort((a, b) => a - b) });
+  };
+  return (
+    <>
+      <Group title="Plan limits">
+        <Row
+          label="Notify me"
+          hint="Once per threshold per window, then quiet until it resets."
+          htmlFor="set-alerts"
         >
-          <MoneyInput
-            value={config.monthlyBudgetUSD}
-            onChange={(v) => onChange({ monthlyBudgetUSD: v })}
+          <Toggle
+            id="set-alerts"
+            on={c.limitAlerts}
+            onChange={(limitAlerts) => set({ limitAlerts })}
           />
-        </Field>
-
-        <div className="field__group-title">Diagnostics</div>
-
-        <Field label="Log level">
-          <select
-            className="select"
-            value={config.logLevel}
-            onChange={(e) => onChange({ logLevel: e.target.value as WidgetConfig['logLevel'] })}
-          >
-            {LOG_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        {appInfo ? (
-          <>
-            <div className="field__group-title">About</div>
-            <Kv k="Widget version" v={appInfo.appVersion} />
-            <Kv k="Claude CLI" v={appInfo.cliVersion ?? 'not detected'} />
-            <Kv k="Platform" v={appInfo.platform} />
-            <Kv k="Claude directory" v={appInfo.claudeDir} />
-            <div className="btn-row">
+        </Row>
+        <Row label="When a limit reaches">
+          <div className="chips" role="group" aria-label="Alert thresholds">
+            {THRESHOLD_CHOICES.map((t) => (
               <button
-                className="btn"
+                key={t}
                 type="button"
-                onClick={() => void getBridge()?.openConfigFile()}
+                className={chosen.has(t) ? 'chip chip--on' : 'chip'}
+                aria-pressed={chosen.has(t)}
+                disabled={!c.limitAlerts}
+                onClick={() => toggle(t)}
               >
-                <ExternalIcon /> Config file
+                {t}%
               </button>
-              <button className="btn" type="button" onClick={() => void getBridge()?.openLogs()}>
-                <ExternalIcon /> Logs
-              </button>
-            </div>
-            <div className="field__hint" style={{ marginTop: 10 }}>
-              {appInfo.pricingNote}
-            </div>
-          </>
+            ))}
+          </div>
+        </Row>
+      </Group>
+      <Group title="Budgets">
+        <Row
+          label="Daily"
+          hint="Priced at API list rates. Notifies at 80% and 100%."
+          htmlFor="set-daily"
+        >
+          <MoneyInput
+            id="set-daily"
+            value={c.dailyBudgetUSD}
+            onChange={(dailyBudgetUSD) => set({ dailyBudgetUSD })}
+          />
+        </Row>
+        <Row label="Monthly" htmlFor="set-monthly">
+          <MoneyInput
+            id="set-monthly"
+            value={c.monthlyBudgetUSD}
+            onChange={(monthlyBudgetUSD) => set({ monthlyBudgetUSD })}
+          />
+        </Row>
+      </Group>
+    </>
+  );
+}
+
+function Data({
+  c,
+  set,
+}: {
+  c: WidgetConfig;
+  set: (p: Partial<WidgetConfig>) => void;
+}): JSX.Element {
+  const official = useStore((s) => s.snapshot?.official ?? null);
+  const appInfo = useStore((s) => s.appInfo);
+  const bridge = getBridge();
+  const status =
+    !c.enableOfficial || !official
+      ? null
+      : official.available && !official.stale
+        ? 'Connected'
+        : official.stale
+          ? 'Showing cached limits'
+          : (official.message ?? 'Not connected');
+  return (
+    <>
+      <Group title="Plan limits">
+        <Row
+          label="Track plan limits"
+          hint="Reads your Claude Code login and asks Anthropic for your 5-hour and weekly limits."
+          htmlFor="set-official"
+        >
+          <Toggle
+            id="set-official"
+            on={c.enableOfficial}
+            onChange={(enableOfficial) => set({ enableOfficial })}
+          />
+        </Row>
+        {c.enableOfficial ? (
+          <Row label="Check for updates" hint={status ?? undefined} htmlFor="set-poll">
+            <Select
+              id="set-poll"
+              value={c.officialPollIntervalMs}
+              options={POLL_OPTIONS}
+              onChange={(officialPollIntervalMs) => set({ officialPollIntervalMs })}
+            />
+          </Row>
         ) : null}
+      </Group>
+      <Group title="Local usage">
+        <Row
+          label="Activity window"
+          hint="How far back the Activity chart goes."
+          htmlFor="set-window"
+        >
+          <Select
+            id="set-window"
+            value={c.historyWindowHours}
+            options={HISTORY_OPTIONS}
+            onChange={(historyWindowHours) => set({ historyWindowHours })}
+          />
+        </Row>
+        <Row label="Recent sessions" hint="How many the Sessions list keeps." htmlFor="set-recent">
+          <Select
+            id="set-recent"
+            value={c.recentSessionLimit}
+            options={SESSION_OPTIONS}
+            onChange={(recentSessionLimit) => set({ recentSessionLimit })}
+          />
+        </Row>
+        <Row label="Claude folder" hint={appInfo?.claudeDir ?? '~/.claude'}>
+          <span className="srow__static">Read only</span>
+        </Row>
+      </Group>
+      <Group title="Troubleshooting">
+        <Row label="Log detail" htmlFor="set-log">
+          <Select
+            id="set-log"
+            value={c.logLevel}
+            options={LOG_OPTIONS}
+            onChange={(logLevel) => set({ logLevel })}
+          />
+        </Row>
+        <Row label="Files">
+          <span className="btns">
+            <button className="btn2" type="button" onClick={() => void bridge?.openLogs()}>
+              Logs <ExternalIcon />
+            </button>
+            <button className="btn2" type="button" onClick={() => void bridge?.openConfigFile()}>
+              Config file <ExternalIcon />
+            </button>
+          </span>
+        </Row>
+      </Group>
+    </>
+  );
+}
+
+function About(): JSX.Element {
+  const appInfo = useStore((s) => s.appInfo);
+  return (
+    <div className="about">
+      <img className="about__icon" src={logoUrl} alt="" />
+      <h2 className="about__name">claudget</h2>
+      <p className="about__version">Version {appInfo?.appVersion ?? '—'}</p>
+      <p className="about__line">
+        Claude Code usage in your menu bar. Reads your local transcripts. The only things it fetches
+        are your plan limits, from Anthropic, and updates, from GitHub on Windows and Linux.
+      </p>
+      <Group>
+        <Row label="Claude Code">
+          <span className="srow__static">{appInfo?.cliVersion ?? 'Not detected'}</span>
+        </Row>
+        <Row label="Pricing">
+          <span className="srow__static srow__static--wrap">{appInfo?.pricingNote ?? '—'}</span>
+        </Row>
+      </Group>
+      <p className="about__links">
+        <a href="https://claudget.vercel.app" target="_blank" rel="noreferrer">
+          Website
+        </a>
+        <a href="https://github.com/manankapoor23/claudget" target="_blank" rel="noreferrer">
+          GitHub
+        </a>
+        <a
+          href="https://github.com/manankapoor23/claudget/releases/latest"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Release notes
+        </a>
+      </p>
+    </div>
+  );
+}
+
+/** The ⌘, window: toolbar tabs over grouped settings, as on the Mac. */
+export function SettingsApp(): JSX.Element {
+  const init = useStore((s) => s.init);
+  const config = useStore((s) => s.config);
+  const updateConfig = useStore((s) => s.updateConfig);
+  const [tab, setTab] = useState<Tab>('general');
+  useTheme(config?.theme);
+  useEffect(() => {
+    void init();
+  }, [init]);
+  // ⌘W closes the window like any other on the Mac.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'w') {
+        e.preventDefault();
+        void getBridge()?.windowAction({ type: 'hide' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const set = (patch: Partial<WidgetConfig>): void => void updateConfig(patch);
+
+  return (
+    <div className="app app--settings">
+      <header className="set__bar">
+        <nav className="set__tabs" role="tablist" aria-label="Settings">
+          {TABS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              className={tab === id ? 'set__tab set__tab--on' : 'set__tab'}
+              onClick={() => setTab(id)}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
+      <div className="set__body" role="tabpanel">
+        {!config ? null : tab === 'general' ? (
+          <General c={config} set={set} />
+        ) : tab === 'alerts' ? (
+          <Alerts c={config} set={set} />
+        ) : tab === 'data' ? (
+          <Data c={config} set={set} />
+        ) : (
+          <About />
+        )}
       </div>
     </div>
   );

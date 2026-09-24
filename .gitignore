@@ -38,3 +38,6 @@ DESIGN.md
 POSTMORTEM.md
 context.md
 test-electron-api.cjs
+
+# Launch-video output (brag-slim): renders, frames, stems.
+brag-output/

@@ -20,7 +20,7 @@ export function RadialGauge({ value, size = 96, label, sub }: RadialGaugeProps):
   const rotate = `rotate(135 ${center} ${center})`;
 
   return (
-    <div className="gauge" style={{ width: size }}>
+    <div className="gauge" style={{ minWidth: size }}>
       <div style={{ position: 'relative', width: size, height: size }}>
         <svg width={size} height={size}>
           {/* Flat engineering dial: ink track, orange fill, butt caps, no glow. */}
@@ -55,7 +55,9 @@ export function RadialGauge({ value, size = 96, label, sub }: RadialGaugeProps):
           </div>
         </div>
       </div>
-      <div className="gauge__label">{label}</div>
+      <div className="gauge__label" title={typeof label === 'string' ? label : undefined}>
+        {label}
+      </div>
       {sub != null ? <div className="gauge__sub">{sub}</div> : null}
     </div>
   );

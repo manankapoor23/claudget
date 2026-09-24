@@ -11,10 +11,11 @@ import { useEffect } from "react";
  * 10_15_7", so header sniffing would hand every Apple Silicon Mac the Intel
  * build. Two signals do tell the truth:
  *
- *   1. `getHighEntropyValues(['architecture'])` → "arm" | "x86". Definitive,
- *      but Chromium-only and requires a secure context.
- *   2. The WebGL renderer string, e.g. "ANGLE (Apple, ANGLE Metal Renderer:
- *      Apple M2, …)". Used only for an explicit "Apple M<n>" match.
+ *   1. The WebGL renderer string, e.g. "ANGLE (Apple, ANGLE Metal Renderer:
+ *      Apple M2, …)". An explicit "Apple M<n>" wins outright — it names the
+ *      chip even when the browser itself is an Intel build under Rosetta.
+ *   2. `getHighEntropyValues(['architecture'])` → "arm" | "x86". Chromium-only
+ *      and needs a secure context; it reports the browser's arch, not the Mac's.
  *
  * Safari implements neither — it has no `userAgentData` and masks the renderer
  * to a bare "Apple GPU", which is identical on Intel and Apple Silicon. So
@@ -28,8 +29,32 @@ import { useEffect } from "react";
 
 type Arch = "arm64" | "x64";
 
+/** "Apple M<n>" in the unmasked WebGL renderer, or null when it can't be read. */
+function gpuArch(): Arch | null {
+  try {
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl");
+    const ext = gl?.getExtension("WEBGL_debug_renderer_info");
+    if (!gl || !ext) return null;
+    const renderer = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
+    // Free the context now rather than whenever GC gets to it.
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    if (/Apple\s+M\d/i.test(renderer)) return "arm64";
+    if (/\b(Intel|AMD|Radeon)\b/i.test(renderer)) return "x64";
+  } catch {
+    // WebGL blocked — say nothing.
+  }
+  return null;
+}
+
 async function detectArch(): Promise<Arch | null> {
-  // 1. User-Agent Client Hints — authoritative where implemented.
+  // 1. An Apple-silicon GPU is decisive, and is checked first: an Intel build
+  //    of Chrome running under Rosetta reports "x86" in its client hints but
+  //    still names the real chip here.
+  const gpu = gpuArch();
+  if (gpu === "arm64") return gpu;
+
+  // 2. User-Agent Client Hints — authoritative where implemented.
   try {
     const uaData = (
       navigator as unknown as {
@@ -48,28 +73,16 @@ async function detectArch(): Promise<Arch | null> {
     // Rejected or unavailable — fall through to the GPU string.
   }
 
-  // 2. WebGL renderer. Only an explicit Apple-silicon chip counts; "Apple GPU"
+  // 3. The GPU again: an Intel or AMD part means an Intel Mac. "Apple GPU"
   //    (Safari's masked value) is ambiguous and deliberately not matched.
-  try {
-    const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl");
-    const ext = gl?.getExtension("WEBGL_debug_renderer_info");
-    if (gl && ext) {
-      const renderer = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL));
-      if (/Apple\s+M\d/i.test(renderer)) return "arm64";
-      if (/\b(Intel|AMD|Radeon)\b/i.test(renderer)) return "x64";
-    }
-  } catch {
-    // WebGL blocked — stay on universal.
-  }
-
-  return null;
+  return gpu;
 }
 
 export default function MacArch() {
   useEffect(() => {
-    // Only Macs have a choice to make here.
-    if (!/Mac/i.test(navigator.platform || navigator.userAgent || "")) return;
+    // Only Macs have a choice to make here — as layout.tsx decided before
+    // paint, which already excludes iPads presenting a Mac user agent.
+    if (document.documentElement.dataset.os !== "mac") return;
 
     let cancelled = false;
     void detectArch().then((arch) => {

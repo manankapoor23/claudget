@@ -1,5 +1,5 @@
 import { useEffect, useState, type JSX } from 'react';
-import { formatCountdown } from '../lib/format';
+import { formatCountdown, formatDurationShort } from '../lib/format';
 
 interface CountdownProps {
   /** Epoch ms target, or null when unknown. */
@@ -7,10 +7,17 @@ interface CountdownProps {
   prefix?: string;
   /** Rendered when `resetsAt` is null. */
   fallback?: string;
+  /** "1h 59m" instead of a ticking "01:59:59" — calmer for glanceable UI. */
+  short?: boolean;
 }
 
 /** Live "time until reset" that ticks once a second. */
-export function Countdown({ resetsAt, prefix, fallback = '—' }: CountdownProps): JSX.Element {
+export function Countdown({
+  resetsAt,
+  prefix,
+  fallback = '—',
+  short = false,
+}: CountdownProps): JSX.Element {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -25,7 +32,7 @@ export function Countdown({ resetsAt, prefix, fallback = '—' }: CountdownProps
   return (
     <>
       {prefix ? `${prefix} ` : ''}
-      {formatCountdown(resetsAt - now)}
+      {short ? formatDurationShort(resetsAt - now) : formatCountdown(resetsAt - now)}
     </>
   );
 }

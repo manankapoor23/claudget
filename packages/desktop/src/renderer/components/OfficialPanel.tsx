@@ -83,24 +83,33 @@ function gaugeSize(count: number): number {
   return 96;
 }
 
-function WindowKv({ w }: { w: OfficialWindow }): JSX.Element {
+/** Remaining + reset under each gauge, so a window's facts sit with its dial. */
+function GaugeSub({ w }: { w: OfficialWindow }): JSX.Element {
   const usage =
     w.used != null && w.limit != null
-      ? `${formatCompact(w.used)} / ${formatCompact(w.limit)} · `
-      : '';
+      ? `${formatCompact(w.used)} / ${formatCompact(w.limit)}`
+      : `${formatPct(w.remainingPct)} left`;
   return (
-    <div className="kv">
-      <span>{w.label}</span>
-      <b>
-        {usage}
-        <Countdown resetsAt={w.resetsAt} prefix="resets in" fallback="no reset" />
-      </b>
-    </div>
+    <>
+      <span>{usage}</span>
+      <span>
+        {w.resetsAt === null ? (
+          'no reset'
+        ) : (
+          <>
+            resets{' '}
+            <b>
+              <Countdown resetsAt={w.resetsAt} fallback="—" short />
+            </b>
+          </>
+        )}
+      </span>
+    </>
   );
 }
 
 /** The fix, as something you can actually run — click to copy. */
-function FixCommand({ command }: { command: string }): JSX.Element {
+export function FixCommand({ command }: { command: string }): JSX.Element {
   const [copied, setCopied] = useState(false);
 
   const copy = (): void => {
@@ -182,13 +191,8 @@ export function OfficialPanel({ official }: OfficialPanelProps): JSX.Element {
                 value={w.utilization}
                 size={size}
                 label={w.label}
-                sub={`${formatPct(w.remainingPct)} left`}
+                sub={<GaugeSub w={w} />}
               />
-            ))}
-          </div>
-          <div style={{ marginTop: 10 }}>
-            {official.windows.map((w) => (
-              <WindowKv key={w.key} w={w} />
             ))}
           </div>
           {/* Real numbers, but explain why they've stopped moving. */}

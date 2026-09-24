@@ -1,13 +1,17 @@
 import { create } from 'zustand';
-import type { AppInfo, UsageSnapshot, WidgetConfig } from '@shared/ipc';
+import type { AppInfo, LimitHistory, UsageSnapshot, WidgetConfig } from '@shared/ipc';
+import { EMPTY_HISTORY } from '../shared/history';
 import { getBridge } from './lib/api';
+import { createDemoData } from './demo';
 
-type View = 'main' | 'settings';
+/** Dashboard views. Settings is its own window now (⌘,), not a view. */
+export type View = 'main' | 'activity' | 'sessions' | 'insights';
 
 interface WidgetState {
   snapshot: UsageSnapshot | null;
   config: WidgetConfig | null;
   appInfo: AppInfo | null;
+  history: LimitHistory;
   loading: boolean;
   error: string | null;
   view: View;
@@ -22,6 +26,7 @@ export const useStore = create<WidgetState>()((set, get) => ({
   snapshot: null,
   config: null,
   appInfo: null,
+  history: EMPTY_HISTORY,
   loading: true,
   error: null,
   view: 'main',
@@ -35,20 +40,30 @@ export const useStore = create<WidgetState>()((set, get) => ({
 
     const api = getBridge();
     if (!api) {
-      set({ loading: false, error: 'This window must run inside the claudget app.' });
+      if (new URLSearchParams(window.location.search).has('demo')) {
+        const demo = createDemoData();
+        set({ ...demo, loading: false, error: null });
+      } else {
+        set({ loading: false, error: 'This window must run inside the claudget app.' });
+      }
       return;
     }
 
     api.onSnapshot((snapshot) => set({ snapshot }));
     api.onConfig((config) => set({ config }));
+    api.onNavigate((view) => {
+      if (view !== 'settings') set({ view });
+    });
+    api.onLimitHistory((history) => set({ history }));
 
     try {
-      const [snapshot, config, appInfo] = await Promise.all([
+      const [snapshot, config, appInfo, history] = await Promise.all([
         api.getSnapshot(),
         api.getConfig(),
         api.getAppInfo(),
+        api.getLimitHistory(),
       ]);
-      set({ snapshot, config, appInfo, loading: false, error: null });
+      set({ snapshot, config, appInfo, history, loading: false, error: null });
     } catch (err) {
       set({ loading: false, error: err instanceof Error ? err.message : String(err) });
     }
@@ -56,7 +71,13 @@ export const useStore = create<WidgetState>()((set, get) => ({
 
   updateConfig: async (patch) => {
     const api = getBridge();
-    if (!api) return;
+    if (!api) {
+      const config = get().config;
+      if (config && new URLSearchParams(window.location.search).has('demo')) {
+        set({ config: { ...config, ...patch } });
+      }
+      return;
+    }
     const config = await api.setConfig(patch);
     set({ config });
   },

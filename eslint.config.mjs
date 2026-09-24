@@ -13,6 +13,7 @@ export default tseslint.config(
       '**/*.config.*',
       '**/coverage/**',
       'website/**', // the marketing site has its own Next.js lint setup
+      'brag-output/**', // launch-video renders and their scripts (gitignored)
     ],
   },
   js.configs.recommended,

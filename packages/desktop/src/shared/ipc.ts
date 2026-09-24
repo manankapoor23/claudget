@@ -1,6 +1,7 @@
 import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
+import type { LimitHistory } from './history';
 
-export type { UsageSnapshot, WidgetConfig };
+export type { LimitHistory, UsageSnapshot, WidgetConfig };
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -16,14 +17,41 @@ export const IPC = {
   GetAppInfo: 'app:get-info',
   OpenLogs: 'app:open-logs',
   OpenConfigFile: 'app:open-config-file',
+  /** Main → dashboard: switch to a view. */
+  Navigate: 'app:navigate',
+  GetLimitHistory: 'history:get',
+  LimitHistoryPush: 'history:changed',
+  /** Open a session's project folder in the file manager. */
+  RevealProject: 'app:reveal-project',
 } as const;
 
-/** Transient window operations. Persistent toggles (always-on-top, compact,
+/**
+ * Which window a renderer is drawing. One renderer bundle serves all three,
+ * selected by the `?surface=` query main loads it with.
+ * - `popover`: the menu-bar dropdown — the everyday glance.
+ * - `pill`: the optional floating strip (config `compact`).
+ * - `dashboard`: the full window, opened on demand.
+ * - `settings`: the ⌘, window.
+ * - `minibar`: the optional floating bar (config `miniBar`).
+ */
+export type Surface = 'popover' | 'pill' | 'dashboard' | 'settings' | 'minibar';
+
+export type DashboardView = 'main' | 'activity' | 'sessions' | 'insights' | 'settings';
+
+/** Transient window operations, applied to the window that sent them unless
+ * they name another surface. Persistent toggles (always-on-top, the pill,
  * click-through, opacity) go through `setConfig` so config stays the single
  * source of truth. */
-export interface WindowAction {
-  type: 'minimize' | 'hide' | 'close';
-}
+export type WindowAction =
+  | { type: 'minimize' | 'hide' | 'close' }
+  | { type: 'open-dashboard'; view?: DashboardView }
+  | { type: 'open-settings' }
+  /** Pill: follow the cursor from this in-window offset until `end`. */
+  | { type: 'pill-drag'; phase: 'start'; offsetX: number; offsetY: number }
+  | { type: 'pill-drag'; phase: 'end' }
+  /** Popover: fit the window to this content height. */
+  | { type: 'popover-height'; height: number }
+  | { type: 'quit' };
 
 export interface AppInfo {
   appVersion: string;
@@ -33,10 +61,14 @@ export interface AppInfo {
   configFilePath: string;
   claudeDir: string;
   pricingNote: string;
+  /** True on the very first launch — the popover shows a short welcome. */
+  firstRun: boolean;
 }
 
 /** The API surface exposed to the renderer on `window.claudeWidget`. */
 export interface WidgetBridge {
+  /** `process.platform`, available synchronously so the first paint is right. */
+  readonly platform: string;
   getSnapshot(): Promise<UsageSnapshot>;
   getConfig(): Promise<WidgetConfig>;
   setConfig(patch: Partial<WidgetConfig>): Promise<WidgetConfig>;
@@ -52,4 +84,10 @@ export interface WidgetBridge {
   onSnapshot(callback: (snapshot: UsageSnapshot) => void): () => void;
   /** Subscribe to config changes (e.g. from the tray). Returns unsubscribe. */
   onConfig(callback: (config: WidgetConfig) => void): () => void;
+  /** Dashboard only: main asks to show a view. Returns unsubscribe. */
+  onNavigate(callback: (view: DashboardView) => void): () => void;
+  getLimitHistory(): Promise<LimitHistory>;
+  onLimitHistory(callback: (history: LimitHistory) => void): () => void;
+  /** Opens a session's project folder in Finder / Explorer. Resolves false if refused. */
+  revealProject(path: string): Promise<boolean>;
 }

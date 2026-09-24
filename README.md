@@ -5,8 +5,8 @@
 <h1 align="center">claudget</h1>
 
 <p align="center">
-  <b>See your Claude Code usage on your desktop — live, local, and free.</b><br/>
-  <sub>Plan limits · time-to-reset · tokens · cost · burn rate · budgets &amp; alerts — always on top, no API key.</sub>
+  <b>See your Claude Code limits before you hit them.</b><br/>
+  <sub>5-hour &amp; weekly limits in your menu bar · when you'll run out · alerts at 80% &amp; 95% · floating pill &amp; bar · dashboard — free, local, no API key.</sub>
 </p>
 
 <p align="center">
@@ -60,13 +60,14 @@ I built it because I kept alt-tabbing to a terminal just to run a usage command 
 
 ## What it does
 
-- **Live usage %** for the 5-hour and weekly windows, with a countdown to reset — pulled straight from Anthropic's usage endpoint using the token Claude Code already stored. You do nothing. Switch it off in Settings to stay 100% local.
-- **Works offline** for everything else — tokens, cost estimates, per-model breakdown, ~5h session blocks, burn rate, and an activity sparkline — all computed from your local transcripts.
-- **Budgets &amp; alerts** — set a daily or monthly spend budget and get a native notification at 80% and 100%. Turns a passive dashboard into something that actually warns you.
-- **Forecast, pace &amp; insights** — "at this rate" projected spend, an on-track / burning-fast badge vs your plan window, and a quick read on your top project, model split, and busiest hour.
-- **Stays out of your way** — frameless, translucent, draggable, always-on-top (and it follows you across every macOS Space / over fullscreen apps). Compact mode when you just want the number; click-through when it's in the way; lives in the tray with global hotkeys.
-- **Dark / light / system** theme.
-- **Read-only &amp; private** — never writes to `~/.claude`, never logs your token, never phones home anywhere except `api.anthropic.com`. ([details](#security--privacy))
+- **Lives in your menu bar** — both limits as `62% · 31%` next to the clock on macOS (a tray icon on Windows and Linux). Click it for the popover: both limits, today's tokens and rate, the last 24 hours, and your heaviest sessions. The numbers come straight from Anthropic's usage endpoint, using the login Claude Code already stored — you do nothing. Turn off **Track plan limits** in Settings to stay 100% local.
+- **Tells you when you'll run out** — each limit bar has a tick for how much of the window has passed. When your usage is past it, you're ahead of pace, and claudget shows the time you'll hit the limit (**Full by 4:01 PM**), from your average pace so far.
+- **Alerts** — a native notification at 80% and 95% of a limit by default; pick your own thresholds in **Settings → Alerts**.
+- **Floating pill &amp; floating bar** — a one-line pill that floats above your windows, its ring turning amber, then red, as you get close; or a resizable strip with both limits and today's activity that stays on top next to your editor.
+- **Dashboard** — Overview, Activity, Sessions and Insights: how close each recent 5-hour and weekly window came to the limit, how often you hit it, sessions by project, and an estimate of what it would cost at API prices (with optional daily / monthly budgets).
+- **Works offline** for everything local — tokens, sessions, per-model breakdown, ~5h blocks, burn rate and hourly activity, all computed from your transcripts.
+- **Dark / light / system** theme, and SF Pro on the Mac so it looks like part of the OS.
+- **Read-only &amp; private** — never writes to `~/.claude`, never logs your token. The only network calls are Anthropic's usage endpoint and, on Windows/Linux, update checks against GitHub Releases. ([details](#security--privacy))
 
 ## Download &amp; install
 
@@ -74,12 +75,14 @@ Grab the latest build from the **[Releases page →](https://github.com/manankap
 
 **Which file do I download?** One per machine:
 
-| Your OS | File | Notes |
-| --- | --- | --- |
-| **macOS** (Intel or Apple Silicon) | `claudget-<ver>-universal.dmg` | one file, both chips |
-| **Windows** | `claudget-<ver>-Setup-x64.exe` | installer + auto-update |
-| **Windows** (no install) | `claudget-<ver>-Portable-x64.exe` | single .exe, run anywhere |
-| **Linux** | `claudget-<ver>.AppImage` | `chmod +x` then run |
+| Your OS                       | File                              | Notes                     |
+| ----------------------------- | --------------------------------- | ------------------------- |
+| **macOS 12+** (any Mac)       | `claudget-<ver>-universal.dmg`    | one file, both chips      |
+| **macOS 12+** (Apple Silicon) | `claudget-<ver>-arm64.dmg`        | about half the size       |
+| **macOS 12+** (Intel)         | `claudget-<ver>-x64.dmg`          | about half the size       |
+| **Windows**                   | `claudget-<ver>-Setup-x64.exe`    | installer + auto-update   |
+| **Windows** (no install)      | `claudget-<ver>-Portable-x64.exe` | single .exe, run anywhere |
+| **Linux**                     | `claudget-<ver>.AppImage`         | `chmod +x` then run       |
 
 > Ignore the `.blockmap` and `latest*.yml` files — those are for the auto-updater, the app fetches them itself.
 
@@ -91,7 +94,7 @@ I'm not paying Apple/Microsoft to sign an open-source side project, so your OS w
   ```bash
   xattr -dr com.apple.quarantine /Applications/claudget.app
   ```
-  Then open it. (Or: **System Settings → Privacy &amp; Security → "claudget was blocked" → Open Anyway**.) To skip the block next time, strip quarantine from the download *before* opening it: `xattr -cr ~/Downloads/claudget-*.dmg`.
+  Then open it. (Or: **System Settings → Privacy &amp; Security → "claudget was blocked" → Open Anyway**.) To skip the block next time, strip quarantine from the download _before_ opening it: `xattr -cr ~/Downloads/claudget-*.dmg`.
 - **Windows** — SmartScreen → **More info** → **Run anyway**.
 - **Linux** — no prompt; `chmod +x` and run.
 
@@ -99,7 +102,7 @@ Auto-update works on Windows/Linux. macOS being unsigned means no auto-update �
 
 ## Screenshots
 
-There are three views — the full dashboard, compact mode, and settings.
+claudget has a menu-bar popover, a floating pill, a floating bar, the dashboard, and Settings. The [website](https://claudget.vercel.app) shows each of them as they look in the app.
 
 <!--
   Add real images for max impact. Drop them in docs/ and reference here, e.g.:
@@ -114,53 +117,59 @@ _(Until screenshots land here, the fastest way to see it is [downloading a build
 
 ## Configuration
 
-Settings live in a JSON file in the app's user-data dir. Easiest way to edit: the in-app **Settings** screen. You can also open the raw file from **Settings → About → Config file**, or find it yourself:
+Settings live in a JSON file in the app's user-data dir. Easiest way to edit: the in-app **Settings** window. You can also open the raw file from **Settings → Data → Config file** (or the tray menu), or find it yourself:
 
-| OS | Path |
-| --- | --- |
-| Windows | `%APPDATA%\claudget\config.json` |
-| macOS | `~/Library/Application Support/claudget/config.json` |
-| Linux | `~/.config/claudget/config.json` |
+| OS      | Path                                                 |
+| ------- | ---------------------------------------------------- |
+| Windows | `%APPDATA%\claudget\config.json`                     |
+| macOS   | `~/Library/Application Support/claudget/config.json` |
+| Linux   | `~/.config/claudget/config.json`                     |
 
 Hand-edit and mess up a field? That one field falls back to its default — a bad value never bricks the app. Full schema:
 
-| Key | Type / range | Default | What it does |
-| --- | --- | --- | --- |
-| `enableOfficial` | boolean | `true` | poll Anthropic for the plan-limit gauges. `false` = fully local. |
-| `dailyBudgetUSD` | number ≥ 0 \| null | `null` | daily spend budget; notifies at 80% &amp; 100%. `null` = off. |
-| `monthlyBudgetUSD` | number ≥ 0 \| null | `null` | monthly spend budget; notifies at 80% &amp; 100%. `null` = off. |
-| `officialPollIntervalMs` | int, 180000–3600000 | `300000` | how often to poll. **Floor is 180s** — the endpoint rate-limits. |
-| `localDebounceMs` | int, 200–10000 | `1000` | debounce for transcript file-change events |
-| `fullRescanIntervalMs` | int, 10000–3600000 | `120000` | periodic full rescan, catches new projects/missed FS events |
-| `recentSessionLimit` | int, 1–100 | `8` | how many recent sessions to list |
-| `historyWindowHours` | int, 1–168 | `24` | how far back the sparkline goes |
-| `blockHours` | number, 1–24 | `5` | length of a usage "block" (Claude's window is ~5h) |
-| `currency` | ISO 4217 | `"USD"` | display currency for costs |
-| `claudeDir` | string \| null | `null` | override `~/.claude` location, `null` = auto-detect |
-| `pricingOverridePath` | string \| null | `null` | point at your own pricing JSON instead of the bundled one |
-| `theme` | `system`\|`dark`\|`light` | `"system"` | color theme |
-| `alwaysOnTop` | boolean | `true` | keep window above everything |
-| `clickThrough` | boolean | `false` | let clicks pass through to whatever's underneath |
-| `compact` | boolean | `false` | minimal layout |
-| `opacity` | number, 0.3–1 | `1` | window opacity |
-| `showInTaskbar` | boolean | `true` | show in taskbar/dock |
-| `launchOnLogin` | boolean | `false` | start at login |
-| `logLevel` | `error`\|`warn`\|`info`\|`debug` | `"info"` | log verbosity |
+| Key                      | Type / range                     | Default    | What it does                                                     |
+| ------------------------ | -------------------------------- | ---------- | ---------------------------------------------------------------- |
+| `enableOfficial`         | boolean                          | `true`     | poll Anthropic for the plan-limit gauges. `false` = fully local. |
+| `limitAlerts`            | boolean                          | `true`     | notify when a plan limit crosses a threshold (once per window)   |
+| `limitAlertThresholds`   | 1–6 ints, 10–100                 | `[80, 95]` | the % used at which to notify                                    |
+| `dailyBudgetUSD`         | number ≥ 0 \| null               | `null`     | daily spend budget; notifies at 80% &amp; 100%. `null` = off.    |
+| `monthlyBudgetUSD`       | number ≥ 0 \| null               | `null`     | monthly spend budget; notifies at 80% &amp; 100%. `null` = off.  |
+| `officialPollIntervalMs` | int, 180000–3600000              | `300000`   | how often to poll. **Floor is 180s** — the endpoint rate-limits. |
+| `localDebounceMs`        | int, 200–10000                   | `1000`     | debounce for transcript file-change events                       |
+| `fullRescanIntervalMs`   | int, 10000–3600000               | `120000`   | periodic full rescan, catches new projects/missed FS events      |
+| `recentSessionLimit`     | int, 1–100                       | `8`        | how many recent sessions to list                                 |
+| `historyWindowHours`     | int, 1–168                       | `24`       | how far back the sparkline goes                                  |
+| `blockHours`             | number, 1–24                     | `5`        | length of a usage "block" (Claude's window is ~5h)               |
+| `currency`               | ISO 4217                         | `"USD"`    | display currency for costs                                       |
+| `claudeDir`              | string \| null                   | `null`     | override `~/.claude` location, `null` = auto-detect              |
+| `pricingOverridePath`    | string \| null                   | `null`     | reserved for your own pricing JSON — not read yet                |
+| `theme`                  | `system`\|`dark`\|`light`        | `"system"` | color theme                                                      |
+| `compact`                | boolean                          | `false`    | show the floating pill                                           |
+| `miniBar`                | boolean                          | `false`    | show the floating bar                                            |
+| `alwaysOnTop`            | boolean                          | `false`    | keep the dashboard window above everything                       |
+| `clickThrough`           | boolean                          | `false`    | let clicks pass through the dashboard window                     |
+| `opacity`                | number, 0.3–1                    | `1`        | dashboard window opacity                                         |
+| `showInTaskbar`          | boolean                          | `true`     | show in taskbar/dock                                             |
+| `launchOnLogin`          | boolean                          | `false`    | start at login                                                   |
+| `logLevel`               | `error`\|`warn`\|`info`\|`debug` | `"info"`   | log verbosity                                                    |
 
 **Env override:** `CLAUDE_CONFIG_DIR` sets the Claude data dir if you keep it somewhere nonstandard (the `claudeDir` config field wins if both are set).
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl/Cmd+Alt+U` | show / hide |
-| `Ctrl/Cmd+Alt+C` | toggle click-through |
+| Shortcut          | Action                                                   |
+| ----------------- | -------------------------------------------------------- |
+| `Ctrl/Cmd+Alt+U`  | open / close the popover                                 |
+| `Ctrl/Cmd+Alt+C`  | toggle dashboard click-through                           |
+| `Cmd+1` … `Cmd+4` | dashboard views (Overview, Activity, Sessions, Insights) |
+| `Cmd+,`           | Settings                                                 |
+| `Cmd+R`           | refresh now                                              |
 
-The tray icon has the same toggles plus Refresh, Open logs, Open config, and Quit.
+Left-click the tray icon for the popover. Right-click for the menu: Open dashboard, Floating pill, Floating bar, Dashboard always on top / click-through, Settings, Refresh now, Open logs, Open config file, and Quit.
 
 ## How it works
 
-Two data sources, combined into one snapshot the UI renders:
+Two data sources, combined into one snapshot that every window (popover, pill, bar, dashboard) renders:
 
 1. **Local transcripts** — `~/.claude/projects/**/*.jsonl`, parsed and aggregated into token counts, cost estimates, a per-model breakdown, ~5h blocks, burn rate, and an hourly series. Ground truth for spend, fully offline.
 2. **Official usage endpoint** — `api.anthropic.com/api/oauth/usage`, hit with the same OAuth token and `claude-code/<version>` user-agent the CLI uses. Ground truth for plan limits (% used, % left, reset time). Polled at most every 180s, with backoff on 429s.
@@ -184,9 +193,9 @@ Contributions are genuinely welcome — this is built in the open and PRs, issue
 
 ### Ways to help
 
-- **Report a bug** — [open an issue](https://github.com/manankapoor23/claudget/issues/new) with your OS, what you did, and what happened (logs help: **Settings → Logs**, or set `logLevel: "debug"`).
+- **Report a bug** — [open an issue](https://github.com/manankapoor23/claudget/issues/new) with your OS, what you did, and what happened (logs help: **Settings → Data → Logs**, or set `logLevel: "debug"`).
 - **Suggest a feature** — open an issue and describe the use case.
-- **Test on your platform** — Windows and Linux especially need real-world eyes on tray + always-on-top behavior.
+- **Test on your platform** — Windows and Linux especially need real-world eyes on the tray, the popover and the floating windows.
 - **Improve docs** — typos, unclear steps, missing screenshots.
 - **Send a PR** — see below.
 
@@ -194,10 +203,9 @@ Contributions are genuinely welcome — this is built in the open and PRs, issue
 
 A few things on the wishlist that are well-scoped to pick up:
 
-- Menu-bar mini mode (live number in the macOS menu bar)
 - CSV export of usage history
-- A first-run onboarding screen
-- Windows/Linux parity polish for the tray + window behavior
+- Refresh the bundled price table (`packages/core/src/pricing.data.ts`) and wire up `pricingOverridePath`
+- Windows/Linux parity polish for the tray + floating windows
 
 ### Dev setup
 
@@ -216,7 +224,7 @@ Run the full check suite from the repo root — CI will run these too, so green 
 
 ```bash
 npm run typecheck     # strict tsc, both workspaces
-npm test              # vitest (core)
+npm test              # vitest (core + desktop)
 npm run lint          # eslint
 npm run format:check  # prettier
 ```
@@ -226,7 +234,7 @@ Then:
 1. **Branch** off `main` with a descriptive name (`fix/tray-linux`, `feat/csv-export`).
 2. **Keep it focused** — one logical change per PR. Match the surrounding code style.
 3. **Add a test** if you touch non-trivial logic in `core` (it's vitest, no ceremony).
-4. **Write a clear PR description** — what changed and *why*; link the issue; add a screenshot/GIF for any UI change.
+4. **Write a clear PR description** — what changed and _why_; link the issue; add a screenshot/GIF for any UI change.
 5. Be kind in reviews and issues. That's the whole code of conduct.
 
 > Working against Electron/React/Vite/Zod/Vitest/tsup/chokidar APIs? Check the current docs — these shift between versions.
@@ -252,18 +260,18 @@ npx electron packages/desktop
 
 **Scripts** (all from the repo root):
 
-| Script | Does what |
-| --- | --- |
-| `npm run dev` | builds `core`, launches the app with hot reload |
-| `npm run build` | builds `core` (tsup) + desktop (electron-vite) |
-| `npm run package` | full build → installer via electron-builder |
+| Script                | Does what                                         |
+| --------------------- | ------------------------------------------------- |
+| `npm run dev`         | builds `core`, launches the app with hot reload   |
+| `npm run build`       | builds `core` (tsup) + desktop (electron-vite)    |
+| `npm run package`     | full build → installer via electron-builder       |
 | `npm run package:dir` | unpacked app dir, no installer — fast for testing |
-| `npm run typecheck` | strict `tsc --noEmit`, both workspaces |
-| `npm test` | vitest (`core` only) |
-| `npm run lint` | eslint, whole repo |
-| `npm run format` | prettier write (`format:check` to verify) |
+| `npm run typecheck`   | strict `tsc --noEmit`, both workspaces            |
+| `npm test`            | vitest (`core` and `desktop`)                     |
+| `npm run lint`        | eslint, whole repo                                |
+| `npm run format`      | prettier write (`format:check` to verify)         |
 
-**Packaging** ([`packages/desktop/electron-builder.yml`](packages/desktop/electron-builder.yml)) targets Windows NSIS + portable, macOS universal dmg, and Linux AppImage; output lands in `packages/desktop/release`. Releases are cut by pushing a tag (`npm version patch && git push --follow-tags`), which triggers the GitHub Actions workflow to build all three OSes.
+**Packaging** ([`packages/desktop/electron-builder.yml`](packages/desktop/electron-builder.yml)) targets Windows NSIS + portable, macOS dmg (universal, Apple Silicon and Intel), and Linux AppImage; output lands in `packages/desktop/release`. Releases are cut by pushing a tag (`npm version patch && git push --follow-tags`), which triggers the GitHub Actions workflow to build all three OSes.
 
 > **Windows gotcha:** electron-builder pulls a `winCodeSign` bundle containing macOS symlinks; extracting it can fail with "A required privilege is not held by the client" unless Developer Mode is on (Settings → System → For developers) or you run from an elevated shell. The macOS bits don't matter for a Windows build.
 
@@ -272,9 +280,9 @@ npx electron packages/desktop
 - **"No usage data is available yet."** — You haven't used Claude Code on this machine yet, or `~/.claude/projects` is empty. Run a session and give it a second.
 - **Plan limits stuck on "Sign in…" / "login expired".** — Run `claude` once to refresh credentials; the widget picks it up on the next poll.
 - **Plan limits showing "Cached" / rate-limited.** — Anthropic is throttling the usage endpoint (expected if you poll a lot). It backs off on its own; local data is unaffected. Raise `officialPollIntervalMs` if it persists.
-- **Cost numbers look off.** — They're estimates from a bundled price table, not official. Point `pricingOverridePath` at your own JSON for accuracy. (Plan-limit percentages come straight from Anthropic and are exact.)
+- **Cost numbers look off.** — They're estimates from a bundled price table, not official, and can lag Anthropic's current prices. (Plan-limit percentages come straight from Anthropic and are exact.)
 - **"Electron failed to install correctly."** — The Electron binary download got interrupted. Run `node node_modules/electron/install.js`, or delete `node_modules` and `npm install` again.
-- **Logs** — tray menu or **Settings → Logs**. Set `logLevel: "debug"` for more.
+- **Logs** — tray menu or **Settings → Data → Logs**. Set `logLevel: "debug"` for more.
 
 ## Project layout
 

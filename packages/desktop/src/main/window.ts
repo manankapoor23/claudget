@@ -1,10 +1,34 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, nativeTheme, screen } from 'electron';
 import fs from 'node:fs';
 import type { WidgetConfig } from '@claude-widget/core';
+import type { Surface } from '../shared/ipc';
 
-const NORMAL = { width: 360, height: 520 };
-const COMPACT = { width: 320, height: 188 };
-const MIN = { width: 260, height: 150 };
+export interface RendererSource {
+  rendererUrl: string | undefined;
+  rendererFile: string;
+}
+
+/** Loads the shared renderer bundle as a given surface (`?surface=`). */
+export function loadSurface(browser: BrowserWindow, src: RendererSource, surface: Surface): void {
+  if (src.rendererUrl) {
+    const url = new URL(src.rendererUrl);
+    url.searchParams.set('surface', surface);
+    void browser.loadURL(url.toString());
+  } else {
+    void browser.loadFile(src.rendererFile, { query: { surface } });
+  }
+}
+
+const NORMAL = { width: 980, height: 660 };
+/** Saved sizes narrower than this come from the old floating-widget era. */
+const LEGACY_MAX_WIDTH = 560;
+const MIN = { width: 320, height: 420 };
+const MAC = process.platform === 'darwin';
+
+/** The page ground for the current appearance — matches --bg in system.css. */
+function groundColour(): string {
+  return nativeTheme.shouldUseDarkColors ? '#0c0c0d' : '#fbfbfa';
+}
 const MARGIN = 24;
 
 interface PersistedState {
@@ -53,14 +77,18 @@ function computePosition(
     return { x: Math.round(saved.x), y: Math.round(saved.y) };
   }
   const wa = screen.getPrimaryDisplay().workArea;
-  return { x: wa.x + wa.width - size.width - MARGIN, y: wa.y + 48 };
+  const width = Math.min(size.width, wa.width - MARGIN * 2);
+  return {
+    x: Math.round(wa.x + (wa.width - width) / 2),
+    y: Math.round(wa.y + Math.max(MARGIN, (wa.height - size.height) / 3)),
+  };
 }
 
 /**
- * Wraps the widget's BrowserWindow and owns its mode/state: always-on-top,
- * click-through, opacity, taskbar visibility, compact sizing, and persisted
- * bounds. Compact mode shrinks (and locks) the window; toggling back restores
- * the last expanded size.
+ * The dashboard: the full window, opened on demand from the menu bar. Owns its
+ * mode/state — always-on-top, click-through, opacity, taskbar visibility and
+ * persisted bounds. (The everyday glance lives in the popover and the optional
+ * pill; see popover.ts and pill.ts.)
  */
 export class WidgetWindow {
   readonly browser: BrowserWindow;
@@ -73,12 +101,15 @@ export class WidgetWindow {
     this.statePath = deps.statePath;
     this.config = deps.config;
 
-    const saved = readState(deps.statePath);
+    let saved = readState(deps.statePath);
+    // The dashboard used to be a 360-wide floating widget. Its saved size and
+    // corner position don't suit a desktop window, so start fresh once.
+    if (typeof saved.width === 'number' && saved.width < LEGACY_MAX_WIDTH) saved = {};
     this.expanded = {
       width: saved.width ?? NORMAL.width,
       height: saved.height ?? NORMAL.height,
     };
-    const size = deps.config.compact ? COMPACT : this.expanded;
+    const size = this.expanded;
     const pos = computePosition(saved, size);
 
     this.browser = new BrowserWindow({
@@ -88,13 +119,20 @@ export class WidgetWindow {
       y: pos.y,
       minWidth: MIN.width,
       minHeight: MIN.height,
-      frame: false,
-      transparent: true,
-      backgroundColor: '#00000000',
-      resizable: !deps.config.compact,
-      maximizable: false,
+      // macOS: a real window — traffic lights inset into our title bar, native
+      // shadow and corners, opaque so it never flashes white or shows the
+      // desktop through. Elsewhere: the frameless window with its own controls.
+      ...(MAC
+        ? {
+            titleBarStyle: 'hiddenInset' as const,
+            trafficLightPosition: { x: 16, y: 14 },
+            backgroundColor: groundColour(),
+          }
+        : { frame: false, transparent: true, backgroundColor: '#00000000' }),
+      resizable: true,
+      maximizable: MAC,
       minimizable: true,
-      fullscreenable: false,
+      fullscreenable: MAC,
       skipTaskbar: !deps.config.showInTaskbar,
       hasShadow: true,
       show: false,
@@ -111,8 +149,7 @@ export class WidgetWindow {
 
     this.applyConfig(deps.config, true);
 
-    if (deps.rendererUrl) void this.browser.loadURL(deps.rendererUrl);
-    else void this.browser.loadFile(deps.rendererFile);
+    loadSurface(this.browser, deps, 'dashboard');
 
     // ponytail: recede when you're working elsewhere, snap back on focus.
     // DIM is the explicit knob — tune to taste.
@@ -130,7 +167,6 @@ export class WidgetWindow {
 
   private onBoundsChanged(): void {
     if (this.browser.isDestroyed()) return;
-    if (this.config.compact) return; // never persist the compact size as "expanded"
     const b = this.browser.getBounds();
     this.expanded = { width: b.width, height: b.height };
     if (this.saveTimer) clearTimeout(this.saveTimer);
@@ -158,6 +194,12 @@ export class WidgetWindow {
 
     const changed = (k: keyof WidgetConfig): boolean => first || config[k] !== prev[k];
 
+    // Native surfaces (menus, the tray, dialogs) follow the OS appearance, so
+    // point them at the user's theme choice too.
+    if (changed('theme')) {
+      nativeTheme.themeSource = config.theme;
+      if (MAC) this.browser.setBackgroundColor(groundColour());
+    }
     // 'screen-saver' level floats above fullscreen apps; 'floating' doesn't.
     if (changed('alwaysOnTop')) {
       this.browser.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
@@ -171,15 +213,11 @@ export class WidgetWindow {
     // Cheap and the one thing the slider is actually for — always apply.
     if (changed('opacity')) this.browser.setOpacity(config.opacity);
     if (changed('showInTaskbar')) this.browser.setSkipTaskbar(!config.showInTaskbar);
-    if (changed('compact')) {
-      this.browser.setResizable(!config.compact);
-      // The window is constructed at the right size already, so only resize on a
-      // real transition — never on the initial assert.
-      if (!first) {
-        const target = config.compact ? COMPACT : this.expanded;
-        this.browser.setSize(target.width, target.height, true);
-      }
-    }
+  }
+
+  /** Re-matches the native window ground to the current appearance (macOS). */
+  syncGround(): void {
+    if (MAC && !this.browser.isDestroyed()) this.browser.setBackgroundColor(groundColour());
   }
 
   show(): void {

@@ -6,15 +6,9 @@ interface FooterProps {
   localUpdatedAt: number | null;
   health: SnapshotHealth;
   officialEnabled: boolean;
-  files: number;
 }
 
-export function Footer({
-  localUpdatedAt,
-  health,
-  officialEnabled,
-  files,
-}: FooterProps): JSX.Element {
+export function Footer({ localUpdatedAt, health, officialEnabled }: FooterProps): JSX.Element {
   const [, setTick] = useState(0);
 
   // Re-render once a second so the "updated Ns ago" label stays current.
@@ -34,7 +28,7 @@ export function Footer({
     ? (health.lastLocalError ?? 'Local read error')
     : officialBad
       ? (health.lastOfficialError ?? 'Plan-limit check failed')
-      : 'All systems nominal';
+      : 'Up to date';
 
   return (
     <div className="footer">
@@ -43,10 +37,6 @@ export function Footer({
         {localUpdatedAt === null
           ? 'Waiting for usage data'
           : 'Updated ' + formatRelative(localUpdatedAt)}
-      </span>
-      <span className="footer__spacer" />
-      <span>
-        {files} {files === 1 ? 'transcript' : 'transcripts'}
       </span>
     </div>
   );
