@@ -19,6 +19,15 @@ const tag = (v: string) => `https://github.com/manankapoor23/claudget/releases/t
  */
 const CURATED: ReleaseHistoryEntry[] = [
   {
+    version: "0.3.0",
+    date: "Sep 2026",
+    title: "Now in your menu bar",
+    summary:
+      "claudget moves from a floating window into the menu bar, with a popover, an optional floating pill and bar, a dashboard with limit history, and alerts at 80% and 95%.",
+    changes: [],
+    url: tag("0.3.0"),
+  },
+  {
     version: "0.2.5.1",
     date: "Sep 2026",
     title: "Improved session names",

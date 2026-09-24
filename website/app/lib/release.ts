@@ -92,7 +92,7 @@ export interface ReleaseHistoryEntry {
  * always resolves to something downloadable.
  */
 const FALLBACK: Release = {
-  version: "0.2.5.1",
+  version: "0.3.0",
   published: null,
   publishedAt: null,
   assets: {},
