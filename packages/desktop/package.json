@@ -1,7 +1,7 @@
 {
   "name": "@claude-widget/desktop",
   "version": "0.2.6",
-  "description": "Always-on-top desktop widget for monitoring Claude Code usage.",
+  "description": "See your Claude Code 5-hour and weekly limits in the menu bar.",
   "license": "MIT",
   "author": "Claude Widget contributors",
   "main": "./out/main/index.js",
@@ -13,9 +13,12 @@
     "typecheck": "tsc --noEmit --composite false -p tsconfig.node.json && tsc --noEmit --composite false -p tsconfig.web.json",
     "package": "electron-vite build && electron-builder",
     "package:dir": "electron-vite build && electron-builder --dir",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
     "chokidar": "^3.6.0",
     "electron-updater": "^6.8.9",
     "zod": "^3.24.1"

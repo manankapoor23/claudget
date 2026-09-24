@@ -1,10 +1,46 @@
 import { Component, type ErrorInfo, type JSX, type ReactNode } from 'react';
 
-export function LoadingState({ message = 'Loading usage…' }: { message?: string }): JSX.Element {
+/** A placeholder block with a gentle shimmer, shaped like what's coming. */
+function Bone({ w, h, r = 4 }: { w: string | number; h: number; r?: number }): JSX.Element {
+  return <span className="bone" style={{ width: w, height: h, borderRadius: r }} />;
+}
+
+/** Stands in for the limit rows until the first reading arrives. */
+export function LimitsSkeleton(): JSX.Element {
   return (
-    <div className="center-state">
-      <div className="spinner" />
-      <div>{message}</div>
+    <div className="skel" aria-hidden>
+      {[0, 1].map((i) => (
+        <div key={i} className="skel__lim">
+          <div className="skel__row">
+            <Bone w={i === 0 ? 72 : 56} h={12} />
+            <Bone w={i === 0 ? 64 : 44} h={i === 0 ? 30 : 20} r={6} />
+          </div>
+          <Bone w="100%" h={8} r={999} />
+          <Bone w={84} h={10} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The overview's shape — limits, figures, chart — while the first scan runs. */
+export function LoadingState({
+  message = 'Reading your usage…',
+}: {
+  message?: string;
+}): JSX.Element {
+  return (
+    <div className="skel skel--page" role="status" aria-label={message}>
+      <LimitsSkeleton />
+      <div className="skel__figs">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="skel__fig">
+            <Bone w={56} h={18} r={5} />
+            <Bone w={40} h={10} />
+          </div>
+        ))}
+      </div>
+      <Bone w="100%" h={72} r={6} />
     </div>
   );
 }

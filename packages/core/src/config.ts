@@ -39,12 +39,20 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   dailyBudgetUSD: z.number().min(0).nullable().default(null),
   /** Monthly spend budget in USD. null/0 = off. */
   monthlyBudgetUSD: z.number().min(0).nullable().default(null),
+  /** Notify when a plan limit crosses a threshold (once per window, per threshold). */
+  limitAlerts: z.boolean().default(true),
+  /** Plan-limit alert thresholds, in percent used. Deduplicated and sorted on use. */
+  limitAlertThresholds: z.array(z.number().int().min(10).max(100)).min(1).max(6).default([80, 95]),
 
   // ── UI / Window (consumed by the desktop shell) ───────────────────────────
   theme: z.enum(['system', 'dark', 'light']).default('system'),
-  alwaysOnTop: z.boolean().default(true),
+  /** Dashboard window floats above others. Off: it's a normal window now. */
+  alwaysOnTop: z.boolean().default(false),
   clickThrough: z.boolean().default(false),
+  /** Show the floating pill (one line; click to expand). */
   compact: z.boolean().default(false),
+  /** Show the floating bar: both limits and today, always on top. */
+  miniBar: z.boolean().default(false),
   opacity: z.number().min(0.3).max(1).default(1),
   showInTaskbar: z.boolean().default(true),
   launchOnLogin: z.boolean().default(false),

@@ -1,3 +1,4 @@
+import { useCostCopy } from '../lib/billing';
 import type { JSX } from 'react';
 import type { LocalUsage } from '@claude-widget/core';
 import { formatUSD } from '../lib/format';
@@ -13,6 +14,7 @@ interface ForecastProps {
  * (days in month / days elapsed). Renders nothing if there's no signal yet.
  */
 export function Forecast({ local, currency }: ForecastProps): JSX.Element | null {
+  const cost = useCostCopy();
   const block = local.activeBlock;
   const monthSoFar = local.thisMonth.costUSD;
 
@@ -26,7 +28,9 @@ export function Forecast({ local, currency }: ForecastProps): JSX.Element | null
   return (
     <div className="panel">
       <div className="panel__head">
-        <span className="panel__title">At this rate</span>
+        <span className="panel__title">
+          {cost.included ? 'At this rate · API value' : 'At this rate'}
+        </span>
       </div>
       {block ? (
         <div className="kv">
