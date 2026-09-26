@@ -220,10 +220,10 @@ Architecture overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) an
 
 ### Before you open a PR
 
-Run the full check suite from the repo root — CI will run these too, so green locally = green PR:
+Run the full check suite from the repo root before you open a PR. CI only builds releases and doesn't run these:
 
 ```bash
-npm run typecheck     # strict tsc, both workspaces
+npm run typecheck     # builds core, then strict tsc on both workspaces
 npm test              # vitest (core + desktop)
 npm run lint          # eslint
 npm run format:check  # prettier
