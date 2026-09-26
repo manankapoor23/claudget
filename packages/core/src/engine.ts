@@ -28,6 +28,7 @@ import { watchTranscripts, type TranscriptWatcher } from './watch';
  */
 const SNAPSHOT_AFFECTING_KEYS = [
   'enableOfficial',
+  'enableOpenCode',
   'officialPollIntervalMs',
   'historyWindowHours',
   'blockHours',

@@ -8,9 +8,8 @@ import type {
   TimeBucket,
   TokenAndCost,
   TokenCounts,
-  UsageSnapshot,
 } from '@claude-widget/core';
-import type { AppInfo, LimitHistory, WidgetConfig } from '@shared/ipc';
+import type { AppInfo, LimitHistory, UsageSnapshot, WidgetConfig } from '@shared/ipc';
 
 function tokenCounts(total: number): TokenCounts {
   const input = Math.round(total * 0.54);
@@ -172,6 +171,31 @@ export function createDemoData(): {
       localUpdatedAt: now - 12_000,
       schemaVersion: 2,
       local,
+      opencode: {
+        status: 'available',
+        allTime: {
+          input: 1_200_000,
+          output: 430_000,
+          cacheRead: 280_000,
+          cacheWrite: 40_000,
+          total: 1_950_000,
+          costUSD: 3.72,
+          count: 26,
+        },
+        today: {
+          input: 120_000,
+          output: 43_000,
+          cacheRead: 28_000,
+          cacheWrite: 4_000,
+          total: 195_000,
+          costUSD: 0.37,
+          count: 4,
+        },
+        models: [],
+        granularity: 'request',
+        message: null,
+        updatedAt: now,
+      },
       official: {
         status: 'ok',
         available: true,
@@ -215,6 +239,7 @@ export function createDemoData(): {
     },
     config: {
       enableOfficial: true,
+      enableOpenCode: true,
       officialPollIntervalMs: 300_000,
       localDebounceMs: 1_000,
       fullRescanIntervalMs: 120_000,

@@ -411,6 +411,17 @@ function Data({
       </Group>
       <Group title="Local usage">
         <Row
+          label="OpenCode usage"
+          hint="Read saved token usage from OpenCode's local database. No account or active session needed."
+          htmlFor="set-opencode"
+        >
+          <Toggle
+            id="set-opencode"
+            on={c.enableOpenCode}
+            onChange={(enableOpenCode) => set({ enableOpenCode })}
+          />
+        </Row>
+        <Row
           label="Activity window"
           hint="How far back the Activity chart goes."
           htmlFor="set-window"

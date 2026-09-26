@@ -4,7 +4,7 @@ import { app, globalShortcut, Menu, nativeTheme, shell, type BrowserWindow } fro
 import {
   PRICING_NOTE,
   UsageEngine,
-  type UsageSnapshot,
+  type UsageSnapshot as CoreUsageSnapshot,
   type WidgetConfig,
 } from '@claude-widget/core';
 import { autoUpdater } from 'electron-updater';
@@ -17,12 +17,13 @@ import { createAppLogger } from './logger';
 import { LimitAlerter } from './limit-alerts';
 import { LimitHistoryStore } from './limit-history';
 import { MiniBar } from './minibar';
+import { scanOpenCodeUsage } from './opencode-usage';
 import { SettingsWindow } from './settings-window';
 import { Pill } from './pill';
 import { Popover } from './popover';
 import { createTray, type TrayHandle } from './tray';
 import { WidgetWindow } from './window';
-import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
+import { IPC, type AppInfo, type DashboardView, type UsageSnapshot } from '../shared/ipc';
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 
@@ -118,7 +119,11 @@ if (!singleInstanceLock) {
     const broadcast = (channel: string, payload: unknown): void => {
       for (const win of surfaces()) pushTo(win, channel, payload);
     };
-    const sendSnapshot = (snapshot: UsageSnapshot): void => broadcast(IPC.SnapshotPush, snapshot);
+    const attachOpenCode = (snapshot: CoreUsageSnapshot): UsageSnapshot =>
+      config.enableOpenCode ? { ...snapshot, opencode: scanOpenCodeUsage() } : snapshot;
+    const getSnapshot = (): UsageSnapshot => attachOpenCode(engine.getSnapshot());
+    const sendSnapshot = (snapshot: CoreUsageSnapshot): void =>
+      broadcast(IPC.SnapshotPush, attachOpenCode(snapshot));
     const sendConfig = (cfg: WidgetConfig): void => broadcast(IPC.ConfigPush, cfg);
 
     // macOS: claudget is menu-bar-only until a real window (dashboard or
@@ -247,6 +252,7 @@ if (!singleInstanceLock) {
 
     registerIpc({
       engine,
+      getSnapshot,
       getConfig: () => config,
       setConfig: applyConfig,
       getAppInfo,
@@ -290,7 +296,7 @@ if (!singleInstanceLock) {
         }
       });
       win.webContents.on('did-finish-load', () => {
-        pushTo(win, IPC.SnapshotPush, engine.getSnapshot());
+        pushTo(win, IPC.SnapshotPush, getSnapshot());
         pushTo(win, IPC.ConfigPush, config);
       });
     }

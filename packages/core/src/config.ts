@@ -17,6 +17,8 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
    * `~/.claude/.credentials.json`). Turn it off in Settings to go 100% local.
    */
   enableOfficial: z.boolean().default(true),
+  /** Read locally stored OpenCode usage from its SQLite database. */
+  enableOpenCode: z.boolean().default(false),
   /** Milliseconds between official polls. Hard floor of 180s. */
   officialPollIntervalMs: z.number().int().min(180_000).max(3_600_000).default(300_000),
   /** Debounce for coalescing transcript file-change events. */

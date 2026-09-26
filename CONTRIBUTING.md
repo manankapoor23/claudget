@@ -17,12 +17,12 @@ git clone https://github.com/manankapoor23/claudget.git
 cd claudget
 ```
 
-Choose one package manager and use it consistently in this checkout. The repository includes npm and Bun lockfiles; pnpm and Yarn can install from the workspace manifests too.
+Choose one package manager and use it consistently in this checkout. `package-lock.json` is the only committed lockfile; pnpm, Bun, and Yarn may generate local lockfiles, which are ignored.
 
 | Package manager | Install dependencies | Start development app |
 | --------------- | -------------------- | --------------------- |
 | npm             | `npm install`        | `npm run dev`         |
-| pnpm            | `pnpm install`       | `pnpm run dev`        |
+| pnpm 10+        | `pnpm install`       | `pnpm run dev`        |
 | Bun             | `bun install`        | `bun run dev`         |
 | Yarn            | `yarn install`       | `yarn run dev`        |
 
@@ -57,13 +57,14 @@ Run the relevant checks before submitting. For a full check, run all four comman
 
 ## Electron troubleshooting
 
-If Electron reports **“Electron failed to install correctly”** or **“Electron uninstall”**, its binary download may not have completed. From the repository root, run:
+If Electron reports **“Electron failed to install correctly”**, delete its package directory and download the binary manually from the repository root:
 
 ```bash
-node node_modules/electron/install.js
+rm -rf node_modules/electron
+npx install-electron --no
 ```
 
-Then retry the development command. If the install is still broken, remove `node_modules` and reinstall with the same package manager you chose above. Keep the lockfiles; do not switch package managers mid-install.
+Then retry the development command. If the install is still broken, remove `node_modules` and reinstall with the same package manager you chose above. Do not switch package managers mid-install.
 
 If the app launches but shows no usage, there may be no Claude Code transcript history on this machine yet. Plan-limit data is separate and requires Claude Code credentials; neither is a prerequisite for building the project.
 

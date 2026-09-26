@@ -6,11 +6,13 @@ import {
   type AppInfo,
   type DashboardView,
   type LimitHistory,
+  type UsageSnapshot,
   type WindowAction,
 } from '../shared/ipc';
 
 export interface IpcDeps {
   engine: UsageEngine;
+  getSnapshot: () => UsageSnapshot;
   getConfig: () => WidgetConfig;
   setConfig: (patch: Partial<WidgetConfig>) => WidgetConfig;
   getAppInfo: () => AppInfo;
@@ -29,7 +31,7 @@ export interface IpcDeps {
  * apply to the one that sent them — never to a hard-wired "the" window.
  */
 export function registerIpc(deps: IpcDeps): void {
-  ipcMain.handle(IPC.GetSnapshot, () => deps.engine.getSnapshot());
+  ipcMain.handle(IPC.GetSnapshot, () => deps.getSnapshot());
   ipcMain.handle(IPC.GetConfig, () => deps.getConfig());
   ipcMain.handle(IPC.SetConfig, (_event, patch: Partial<WidgetConfig>) =>
     deps.setConfig(patch ?? {}),

@@ -19,6 +19,14 @@ describe('resolveConfig', () => {
   });
 });
 
+describe('OpenCode usage setting', () => {
+  it('is opt-in by default and can be enabled in persisted config', () => {
+    expect(DEFAULT_CONFIG.enableOpenCode).toBe(false);
+    expect(resolveConfig({ enableOpenCode: true }).enableOpenCode).toBe(true);
+    expect(mergeConfig(DEFAULT_CONFIG, { enableOpenCode: true }).enableOpenCode).toBe(true);
+  });
+});
+
 describe('window defaults', () => {
   it('keeps the dashboard a normal window and both floating surfaces off', () => {
     expect(DEFAULT_CONFIG.alwaysOnTop).toBe(false);

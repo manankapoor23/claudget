@@ -55,6 +55,8 @@ describe('UsageEngine.updateConfig', () => {
     expect(snapshots()).toBe(2);
     engine.updateConfig({ dailyBudgetUSD: 25 });
     expect(snapshots()).toBe(3);
+    engine.updateConfig({ enableOpenCode: true });
+    expect(snapshots()).toBe(4);
   });
 
   it('does not emit when a patch sets a field to its existing value', () => {
@@ -67,6 +69,60 @@ describe('UsageEngine.updateConfig', () => {
     const { engine } = engineWithCounter();
     expect(engine.updateConfig({ opacity: 0.5 }).opacity).toBe(0.5);
     expect(engine.getConfig().opacity).toBe(0.5);
+  });
+});
+
+describe('UsageEngine local usage without account access', () => {
+  it('keeps saved transcript usage when signed out and no sessions are active', async () => {
+    const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudget-engine-'));
+    const projectsDir = path.join(claudeDir, 'projects', '-Users-test-project');
+    fs.mkdirSync(projectsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(claudeDir, '.credentials.json'),
+      JSON.stringify({ claudeAiOauth: {} }),
+    );
+    fs.writeFileSync(
+      path.join(projectsDir, 'session.jsonl'),
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-09-09T00:00:00.000Z',
+        uuid: 'request-1',
+        requestId: 'request-1',
+        sessionId: 'session-1',
+        message: {
+          id: 'message-1',
+          model: 'claude-sonnet-4-20250514',
+          usage: { input_tokens: 10, output_tokens: 5 },
+        },
+      }),
+    );
+
+    let fetchCalls = 0;
+    const engine = new UsageEngine({
+      config: { ...DEFAULT_CONFIG, enableOfficial: true, claudeDir },
+      logger: silent,
+      fetchImpl: async () => {
+        fetchCalls += 1;
+        throw new Error('No network should be used without credentials');
+      },
+    });
+
+    try {
+      await engine.fullRescan();
+      await engine.refreshOfficial(true);
+
+      const snapshot = engine.getSnapshot();
+      expect(snapshot.local.allTime.count).toBe(1);
+      expect(snapshot.local.allTime.tokens.total).toBe(15);
+      expect(snapshot.local.activeSessions).toEqual([]);
+      expect(snapshot.local.stats.entries).toBe(1);
+      expect(snapshot.official.status).toBe('signed-out');
+      expect(snapshot.health.localOk).toBe(true);
+      expect(fetchCalls).toBe(0);
+    } finally {
+      await engine.stop();
+      fs.rmSync(claudeDir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -1,7 +1,34 @@
-import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
+import type { UsageSnapshot as CoreUsageSnapshot, WidgetConfig } from '@claude-widget/core';
 import type { LimitHistory } from './history';
 
-export type { LimitHistory, UsageSnapshot, WidgetConfig };
+export interface OpenCodeUsageBucket {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+  total: number;
+  /** Cost reported in OpenCode's local records; null when it was not stored. */
+  costUSD: number | null;
+  count: number;
+}
+
+export interface OpenCodeUsageModel extends OpenCodeUsageBucket {
+  model: string;
+}
+
+export interface OpenCodeUsage {
+  status: 'available' | 'not-found' | 'error';
+  allTime: OpenCodeUsageBucket;
+  today: OpenCodeUsageBucket;
+  models: OpenCodeUsageModel[];
+  /** Session-level totals are fallback aggregates, not request counts. */
+  granularity: 'request' | 'session' | null;
+  message: string | null;
+  updatedAt: number | null;
+}
+
+export type UsageSnapshot = CoreUsageSnapshot & { opencode?: OpenCodeUsage };
+export type { LimitHistory, WidgetConfig };
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {

@@ -1,6 +1,7 @@
 import type { JSX } from 'react';
-import type { OfficialWindow, SessionStat, UsageSnapshot } from '@claude-widget/core';
-import { formatClock, formatCompact, formatResetAt } from '../lib/format';
+import type { OfficialWindow, SessionStat } from '@claude-widget/core';
+import type { OpenCodeUsage, UsageSnapshot } from '@shared/ipc';
+import { formatClock, formatCompact, formatResetAt, formatUSD } from '../lib/format';
 import { BarChart } from './BarChart';
 import { LimitHistory } from './LimitHistory';
 import { LimitsNotice } from './LimitsNotice';
@@ -66,6 +67,47 @@ export function LimitRow({ w, now }: { w: OfficialWindow; now: number }): JSX.El
 }
 
 /** Where the tokens went: the heaviest sessions active in the last day. */
+function OpenCodeHistory({ usage }: { usage: OpenCodeUsage }): JSX.Element {
+  return (
+    <section className="sect ov__day" aria-label="OpenCode local usage">
+      <h3 className="sect__title">OpenCode · local history</h3>
+      {usage.status !== 'available' || usage.message ? (
+        <p className="sect__empty">{usage.message ?? 'OpenCode local history is unavailable.'}</p>
+      ) : (
+        <>
+          <div className="figs">
+            <div className="fig">
+              <span className="fig__v">{formatCompact(usage.today.total)}</span>
+              <span className="fig__k">today · tokens</span>
+            </div>
+            <div className="fig">
+              <span className="fig__v">{formatCompact(usage.allTime.total)}</span>
+              <span className="fig__k">all time · tokens</span>
+            </div>
+            <div className="fig">
+              <span className="fig__v">
+                {usage.allTime.costUSD === null ? '—' : formatUSD(usage.allTime.costUSD, 'USD')}
+              </span>
+              <span className="fig__k">
+                {usage.allTime.costUSD === null ? 'cost not stored' : 'usage costs'}
+              </span>
+            </div>
+            <div className="fig">
+              <span className="fig__v">{usage.allTime.count}</span>
+              <span className="fig__k">usage records</span>
+            </div>
+          </div>
+          {usage.granularity === 'session' ? (
+            <p className="sect__empty">
+              Includes session-level totals where request-level usage was unavailable.
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
+  );
+}
+
 function TopSessions({
   sessions,
   live,
@@ -156,6 +198,7 @@ export function WidgetOverview({
         />
       </section>
 
+      {snapshot.opencode ? <OpenCodeHistory usage={snapshot.opencode} /> : null}
       <TopSessions sessions={local.sessions} live={live} now={now} />
       {withHistory ? <LimitHistory now={now} embedded /> : null}
     </div>
