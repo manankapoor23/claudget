@@ -18,7 +18,7 @@
     "dev:core": "npm run dev -w @claude-widget/core",
     "package": "npm run build:core && npm run package -w @claude-widget/desktop",
     "package:dir": "npm run build:core && npm run package:dir -w @claude-widget/desktop",
-    "typecheck": "npm run typecheck -w @claude-widget/core && npm run typecheck -w @claude-widget/desktop",
+    "typecheck": "npm run build:core && npm run typecheck -w @claude-widget/core && npm run typecheck -w @claude-widget/desktop",
     "test": "npm run test -w @claude-widget/core && npm run test -w @claude-widget/desktop",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,md}\"",
