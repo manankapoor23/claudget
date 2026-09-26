@@ -212,22 +212,24 @@ A few things on the wishlist that are well-scoped to pick up:
 ```bash
 git clone https://github.com/manankapoor23/claudget.git
 cd claudget
-npm install          # installs both workspaces
-npm run dev          # hot-reloading renderer + main
 ```
+
+Choose one package manager and use it consistently:
+
+| Package manager | Install dependencies | Run in development |
+| --------------- | -------------------- | ------------------ |
+| npm             | `npm install`        | `npm run dev`      |
+| pnpm            | `pnpm install`       | `pnpm run dev`     |
+| Bun             | `bun install`        | `bun run dev`      |
+| Yarn            | `yarn install`       | `yarn run dev`     |
+
+The first install or launch may download Electron. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for prerequisites, build/package commands, Electron troubleshooting, and checks to run before opening a PR.
 
 Architecture overview lives in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the layout is in [Project layout](#project-layout). The data layer (`packages/core`) is framework-agnostic and unit-tested; the Electron + React app is `packages/desktop`.
 
 ### Before you open a PR
 
-Run the full check suite from the repo root — CI will run these too, so green locally = green PR:
-
-```bash
-npm run typecheck     # strict tsc, both workspaces
-npm test              # vitest (core + desktop)
-npm run lint          # eslint
-npm run format:check  # prettier
-```
+Run the full check suite from the repo root before opening a PR. The commands for npm, pnpm, Bun, and Yarn are in [`CONTRIBUTING.md`](CONTRIBUTING.md). CI runs these checks too.
 
 Then:
 
@@ -241,37 +243,20 @@ Then:
 
 ## Building from source
 
-Requires Node ≥ 20, npm ≥ 9, and the Claude Code CLI installed and logged in (run `claude` once if you haven't). Works on macOS, Windows, Linux.
+Requires Node ≥ 20. Works on macOS, Windows, and Linux. Claude Code is not required to build or launch the app; without its local data, usage views may be empty and Anthropic plan limits unavailable.
 
-```bash
-npm install
-npm run dev            # dev mode, hot reload
+Use the same package manager you chose above. The core and desktop builds are run in order; development mode launches Electron with hot reload.
 
-npm run build          # build core (tsup) + desktop (electron-vite)
-npm start              # run the built bundle
-```
+| Package manager | Build core + desktop | Run the built app |
+| --------------- | -------------------- | ----------------- |
+| npm             | `npm run build`      | `npm start`       |
+| pnpm            | `pnpm run build`     | `pnpm start`      |
+| Bun             | `bun run build`      | `bun run start`   |
+| Yarn            | `yarn run build`     | `yarn start`      |
 
-Run the built app without packaging an installer:
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for packaging, test, type-check, lint, and formatting commands.
 
-```bash
-npm run build
-npx electron packages/desktop
-```
-
-**Scripts** (all from the repo root):
-
-| Script                | Does what                                         |
-| --------------------- | ------------------------------------------------- |
-| `npm run dev`         | builds `core`, launches the app with hot reload   |
-| `npm run build`       | builds `core` (tsup) + desktop (electron-vite)    |
-| `npm run package`     | full build → installer via electron-builder       |
-| `npm run package:dir` | unpacked app dir, no installer — fast for testing |
-| `npm run typecheck`   | strict `tsc --noEmit`, both workspaces            |
-| `npm test`            | vitest (`core` and `desktop`)                     |
-| `npm run lint`        | eslint, whole repo                                |
-| `npm run format`      | prettier write (`format:check` to verify)         |
-
-**Packaging** ([`packages/desktop/electron-builder.yml`](packages/desktop/electron-builder.yml)) targets Windows NSIS + portable, macOS dmg (universal, Apple Silicon and Intel), and Linux AppImage; output lands in `packages/desktop/release`. Releases are cut by pushing a tag (`npm version patch && git push --follow-tags`), which triggers the GitHub Actions workflow to build all three OSes.
+**Packaging** ([`packages/desktop/electron-builder.yml`](packages/desktop/electron-builder.yml)) targets Windows NSIS + portable, macOS dmg (universal, Apple Silicon and Intel), and Linux AppImage; output lands in `packages/desktop/release`. Releases are cut by pushing a tag, which triggers the GitHub Actions workflow to build all three OSes.
 
 > **Windows gotcha:** electron-builder pulls a `winCodeSign` bundle containing macOS symlinks; extracting it can fail with "A required privilege is not held by the client" unless Developer Mode is on (Settings → System → For developers) or you run from an elevated shell. The macOS bits don't matter for a Windows build.
 
@@ -281,7 +266,7 @@ npx electron packages/desktop
 - **Plan limits stuck on "Sign in…" / "login expired".** — Run `claude` once to refresh credentials; the widget picks it up on the next poll.
 - **Plan limits showing "Cached" / rate-limited.** — Anthropic is throttling the usage endpoint (expected if you poll a lot). It backs off on its own; local data is unaffected. Raise `officialPollIntervalMs` if it persists.
 - **Cost numbers look off.** — They're estimates from a bundled price table, not official, and can lag Anthropic's current prices. (Plan-limit percentages come straight from Anthropic and are exact.)
-- **"Electron failed to install correctly."** — The Electron binary download got interrupted. Run `node node_modules/electron/install.js`, or delete `node_modules` and `npm install` again.
+- **"Electron failed to install correctly."** — The Electron binary download got interrupted. Run `node node_modules/electron/install.js`, or remove `node_modules` and reinstall dependencies with your chosen package manager.
 - **Logs** — tray menu or **Settings → Data → Logs**. Set `logLevel: "debug"` for more.
 
 ## Project layout
