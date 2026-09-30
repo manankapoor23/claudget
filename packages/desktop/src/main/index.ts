@@ -259,6 +259,7 @@ if (!singleInstanceLock) {
       getLimitHistory: () => history.get(),
       startPillDrag: (x, y) => pill.startDrag(x, y),
       endPillDrag: () => pill.endDrag(),
+      nudgePill: (dx, dy) => pill.nudge(dx, dy),
       fitPopover: (h) => popover.setContentHeight(h),
       quit,
     });

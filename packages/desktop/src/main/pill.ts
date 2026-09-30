@@ -141,6 +141,17 @@ export class Pill {
     this.drag = { timer, startedAt };
   }
 
+  /** Shifts the window, e.g. to hold the pill still while it changes corners. */
+  nudge(dx: number, dy: number): void {
+    if (this.browser.isDestroyed() || this.drag) return;
+    const to = dragTarget(this.browser.getBounds(), { x: -dx, y: -dy });
+    if (!to) {
+      this.logger.warn('Ignoring pill nudge with an invalid delta', { dx, dy });
+      return;
+    }
+    this.browser.setPosition(to.x, to.y, false);
+  }
+
   endDrag(): void {
     if (!this.drag) return;
     clearInterval(this.drag.timer);
