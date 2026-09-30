@@ -87,7 +87,11 @@ if (!singleInstanceLock) {
       config,
     });
     const popover = new Popover(renderer);
-    const pill = new Pill({ ...renderer, statePath: path.join(userData, 'pill-state.json') });
+    const pill = new Pill({
+      ...renderer,
+      statePath: path.join(userData, 'pill-state.json'),
+      logger,
+    });
     const settingsWin = new SettingsWindow({ ...renderer, iconPath: resolveIconPath() });
     const miniBar = new MiniBar({
       ...renderer,

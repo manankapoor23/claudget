@@ -65,7 +65,8 @@ export function registerIpc(deps: IpcDeps): void {
         deps.openSettings();
         break;
       case 'pill-drag':
-        if (action.phase === 'start') deps.startPillDrag(action.offsetX, action.offsetY);
+        if (action.phase === 'start')
+          deps.startPillDrag(Number(action.offsetX), Number(action.offsetY));
         else deps.endPillDrag();
         break;
       case 'popover-height':
