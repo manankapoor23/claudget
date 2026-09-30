@@ -101,3 +101,13 @@ linux:
   category: Utility
   icon: build/icon.png
   maintainer: Claude Widget contributors
+  # Left unset, Linux names the binary after the npm package, so the AppImage's
+  # executable, .desktop file and icon all came out as "@claude-widgetdesktop".
+  executableName: claudget
+  # Overrides the top-level `maximum`, which makes electron-builder build the
+  # AppImage's squashfs with xz. The AppImage catalog (appimage.github.io)
+  # mounts AppImages with a squashfuse that reads only zlib and zstd, so an xz
+  # AppImage fails its test. `normal` gives gzip (zlib); electron-builder has no
+  # zstd option. It costs ~25 MB (the 0.3.0 AppImage was 91 MB, this is 116 MB).
+  # Linux ships only the AppImage, so nothing else changes.
+  compression: normal
