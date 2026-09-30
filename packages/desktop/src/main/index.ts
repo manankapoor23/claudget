@@ -87,7 +87,11 @@ if (!singleInstanceLock) {
       config,
     });
     const popover = new Popover(renderer);
-    const pill = new Pill({ ...renderer, statePath: path.join(userData, 'pill-state.json') });
+    const pill = new Pill({
+      ...renderer,
+      statePath: path.join(userData, 'pill-state.json'),
+      logger,
+    });
     const settingsWin = new SettingsWindow({ ...renderer, iconPath: resolveIconPath() });
     const miniBar = new MiniBar({
       ...renderer,
@@ -255,6 +259,7 @@ if (!singleInstanceLock) {
       getLimitHistory: () => history.get(),
       startPillDrag: (x, y) => pill.startDrag(x, y),
       endPillDrag: () => pill.endDrag(),
+      nudgePill: (dx, dy) => pill.nudge(dx, dy),
       fitPopover: (h) => popover.setContentHeight(h),
       quit,
     });

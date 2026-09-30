@@ -1,5 +1,7 @@
 import { BrowserWindow, screen } from 'electron';
 import fs from 'node:fs';
+import type { Logger } from '@claude-widget/core';
+import { dragTarget } from '../shared/pill';
 import { loadSurface, type RendererSource } from './window';
 
 /**
@@ -12,12 +14,13 @@ export const PILL_WINDOW = { width: 356, height: 180 };
 const MARGIN = 12;
 /** Cursor-follow cadence while dragging (~120 Hz keeps up with the pointer). */
 const DRAG_TICK_MS = 8;
-/** Safety stop if a drag-end message is ever lost. */
-const DRAG_MAX_MS = 30_000;
+/** Last-resort stop if the renderer never reports the release. */
+const DRAG_MAX_MS = 15_000;
 
 export interface PillDeps extends RendererSource {
   preloadPath: string;
   statePath: string;
+  logger: Logger;
 }
 
 interface PillState {
@@ -37,11 +40,13 @@ function readState(p: string): PillState {
 export class Pill {
   readonly browser: BrowserWindow;
   private readonly statePath: string;
+  private readonly logger: Logger;
   private drag: { timer: NodeJS.Timeout; startedAt: number } | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
 
   constructor(deps: PillDeps) {
     this.statePath = deps.statePath;
+    this.logger = deps.logger;
     const saved = readState(deps.statePath);
     const wa = screen.getPrimaryDisplay().workArea;
     const onScreen =
@@ -90,6 +95,8 @@ export class Pill {
     loadSurface(this.browser, deps, 'pill');
     this.browser.on('move', () => this.persist());
     this.browser.on('blur', () => this.endDrag());
+    this.browser.on('hide', () => this.endDrag());
+    this.browser.on('closed', () => this.endDrag());
   }
 
   setVisible(visible: boolean): void {
@@ -103,16 +110,46 @@ export class Pill {
    */
   startDrag(offsetX: number, offsetY: number): void {
     this.endDrag();
+    const offset = { x: offsetX, y: offsetY };
+    if (this.browser.isDestroyed() || !dragTarget({ x: 0, y: 0 }, offset)) {
+      this.logger.warn('Ignoring pill drag with an invalid offset', { offsetX, offsetY });
+      return;
+    }
     const startedAt = Date.now();
+    let last: { x: number; y: number } | null = null;
     const timer = setInterval(() => {
       if (this.browser.isDestroyed() || Date.now() - startedAt > DRAG_MAX_MS) {
         this.endDrag();
         return;
       }
-      const p = screen.getCursorScreenPoint();
-      this.browser.setPosition(Math.round(p.x - offsetX), Math.round(p.y - offsetY), false);
+      const to = dragTarget(screen.getCursorScreenPoint(), offset);
+      if (!to) return;
+      // Compare with the last request, not the window: macOS clamps it below
+      // the menu bar, and re-asking every tick just fights that.
+      if (last && to.x === last.x && to.y === last.y) return;
+      last = to;
+      try {
+        this.browser.setPosition(to.x, to.y, false);
+      } catch (err) {
+        // An error thrown from this timer would reach the uncaught-exception
+        // dialog on every tick with the pill glued to the cursor; drop the
+        // drag instead and leave a trace to fix.
+        this.logger.error('Pill drag failed; releasing', { to, err: String(err) });
+        this.endDrag();
+      }
     }, DRAG_TICK_MS);
     this.drag = { timer, startedAt };
+  }
+
+  /** Shifts the window, e.g. to hold the pill still while it changes corners. */
+  nudge(dx: number, dy: number): void {
+    if (this.browser.isDestroyed() || this.drag) return;
+    const to = dragTarget(this.browser.getBounds(), { x: -dx, y: -dy });
+    if (!to) {
+      this.logger.warn('Ignoring pill nudge with an invalid delta', { dx, dy });
+      return;
+    }
+    this.browser.setPosition(to.x, to.y, false);
   }
 
   endDrag(): void {

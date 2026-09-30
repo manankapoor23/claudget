@@ -49,6 +49,8 @@ export type WindowAction =
   /** Pill: follow the cursor from this in-window offset until `end`. */
   | { type: 'pill-drag'; phase: 'start'; offsetX: number; offsetY: number }
   | { type: 'pill-drag'; phase: 'end' }
+  /** Pill: move the window by this much (it's switching corners). */
+  | { type: 'pill-nudge'; dx: number; dy: number }
   /** Popover: fit the window to this content height. */
   | { type: 'popover-height'; height: number }
   | { type: 'quit' };

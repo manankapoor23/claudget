@@ -5,27 +5,84 @@ import { formatCompact } from '../lib/format';
 import { useTheme } from '../lib/theme';
 import { useBump } from '../lib/motion';
 import { limitLabel, rankLimits, toneOf, verdictFor } from '../../shared/limits';
+import { anchorFor, anchorShift, type Anchor, type Rect } from '../../shared/pill';
 import { Countdown } from './Countdown';
 import { CompactBar, CompactView } from './CompactView';
 
 /** A press that travels further than this is a drag, not a click. */
 const DRAG_THRESHOLD_PX = 3;
+const ANCHOR_KEY = 'claudget.pill.anchor';
 
-type Anchor = { x: 'left' | 'right'; y: 'top' | 'bottom' };
+function savedAnchor(): Anchor | null {
+  try {
+    const a = JSON.parse(localStorage.getItem(ANCHOR_KEY) ?? 'null') as Anchor | null;
+    if ((a?.x === 'left' || a?.x === 'right') && (a.y === 'top' || a.y === 'bottom')) return a;
+  } catch {
+    // Unreadable storage: fall back to the window's position below.
+  }
+  return null;
+}
 
 /**
- * Which corner of the (fixed-size, transparent) window the pill sits in, so
- * the card always opens toward the middle of the screen, never off its edge.
+ * The corner to start in. It's remembered rather than re-derived, because
+ * near the middle of the screen both corners are self-consistent and picking
+ * the other one would put the pill a hundred pixels from where it was left.
  */
-function anchorFor(): Anchor {
+function initialAnchor(): Anchor {
   const scr = window.screen as Screen & { availLeft?: number; availTop?: number };
-  const left = scr.availLeft ?? 0;
-  const top = scr.availTop ?? 0;
-  const cx = window.screenX + window.innerWidth / 2;
-  const cy = window.screenY + window.innerHeight / 2;
+  return (
+    savedAnchor() ??
+    anchorFor(
+      {
+        x: window.screenX,
+        y: window.screenY,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      },
+      {
+        x: scr.availLeft ?? 0,
+        y: scr.availTop ?? 0,
+        width: scr.availWidth,
+        height: scr.availHeight,
+      },
+    )
+  );
+}
+
+/** The pill's rectangle on screen, and the work area of the screen it's on. */
+function geometry(shell: HTMLElement): { pill: Rect; workArea: Rect } {
+  const scr = window.screen as Screen & { availLeft?: number; availTop?: number };
   return {
-    x: cx > left + scr.availWidth / 2 ? 'right' : 'left',
-    y: cy > top + scr.availHeight / 2 ? 'bottom' : 'top',
+    pill: {
+      x: window.screenX + shell.offsetLeft,
+      y: window.screenY + shell.offsetTop,
+      width: shell.offsetWidth,
+      height: shell.offsetHeight,
+    },
+    workArea: {
+      x: scr.availLeft ?? 0,
+      y: scr.availTop ?? 0,
+      width: scr.availWidth,
+      height: scr.availHeight,
+    },
+  };
+}
+
+/** Slack between the pill and its window: how far it travels between corners. */
+function roomIn(shell: HTMLElement): { x: number; y: number } {
+  const win = shell.parentElement!;
+  const cs = getComputedStyle(win);
+  return {
+    x:
+      win.clientWidth -
+      parseFloat(cs.paddingLeft) -
+      parseFloat(cs.paddingRight) -
+      shell.offsetWidth,
+    y:
+      win.clientHeight -
+      parseFloat(cs.paddingTop) -
+      parseFloat(cs.paddingBottom) -
+      shell.offsetHeight,
   };
 }
 
@@ -41,7 +98,8 @@ export function PillApp(): JSX.Element {
   useTheme(config?.theme);
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [anchor, setAnchor] = useState<Anchor>(() => anchorFor());
+  const [anchor, setAnchor] = useState<Anchor>(initialAnchor);
+  const anchorRef = useRef(anchor);
   const shell = useRef<HTMLDivElement>(null);
   const press = useRef<{ x: number; y: number; offX: number; offY: number; drag: boolean } | null>(
     null,
@@ -79,6 +137,46 @@ export function PillApp(): JSX.Element {
     };
   }, [setCapture]);
 
+  /**
+   * After a drop, face the card toward the middle of the screen. Switching
+   * corners moves the pill inside its window, so the window moves the other
+   * way by the same amount and the pill stays exactly where it was dropped.
+   */
+  const reanchor = useCallback((): void => {
+    const el = shell.current;
+    if (!el) return;
+    const { pill, workArea } = geometry(el);
+    const prev = anchorRef.current;
+    const next = anchorFor(pill, workArea);
+    if (prev.x === next.x && prev.y === next.y) return;
+    const shift = anchorShift(prev, next, roomIn(el));
+    void bridge?.windowAction({ type: 'pill-nudge', dx: shift.x, dy: shift.y });
+    anchorRef.current = next;
+    setAnchor(next);
+    try {
+      localStorage.setItem(ANCHOR_KEY, JSON.stringify(next));
+    } catch {
+      // Only costs remembering the corner across restarts.
+    }
+  }, [bridge]);
+
+  const endDrag = useCallback((): void => {
+    const p = press.current;
+    press.current = null;
+    if (!p?.drag) return;
+    setDragging(false);
+    void bridge?.windowAction({ type: 'pill-drag', phase: 'end' });
+    // Let the last move land before measuring where the pill is.
+    window.setTimeout(reanchor, 60);
+  }, [bridge, reanchor]);
+
+  // Main moves the window until told to stop, so every way a press can end
+  // has to say so — a lost release is a pill glued to the cursor (#15).
+  useEffect(() => {
+    window.addEventListener('blur', endDrag);
+    return () => window.removeEventListener('blur', endDrag);
+  }, [endDrag]);
+
   const onPointerDown = (e: PointerEvent<HTMLDivElement>): void => {
     if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -86,7 +184,13 @@ export function PillApp(): JSX.Element {
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>): void => {
     const p = press.current;
-    if (!p || p.drag) return;
+    if (!p) return;
+    // The button came up without a pointerup reaching us.
+    if ((e.buttons & 1) === 0) {
+      endDrag();
+      return;
+    }
+    if (p.drag) return;
     if (Math.hypot(e.screenX - p.x, e.screenY - p.y) < DRAG_THRESHOLD_PX) return;
     p.drag = true;
     setDragging(true);
@@ -99,15 +203,11 @@ export function PillApp(): JSX.Element {
   };
   const onPointerUp = (): void => {
     const p = press.current;
-    press.current = null;
     if (!p) return;
     if (p.drag) {
-      setDragging(false);
-      void bridge?.windowAction({ type: 'pill-drag', phase: 'end' });
-      // The window has moved; re-aim which way the card will open.
-      window.setTimeout(() => setAnchor(anchorFor()), 60);
+      endDrag();
     } else {
-      setAnchor(anchorFor());
+      press.current = null;
       setOpen((o) => !o);
     }
   };
@@ -127,7 +227,8 @@ export function PillApp(): JSX.Element {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={endDrag}
+        onLostPointerCapture={endDrag}
         role="button"
         aria-expanded={open}
         aria-label={open ? 'Collapse' : 'Expand'}

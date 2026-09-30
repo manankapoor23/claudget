@@ -19,6 +19,7 @@ export interface IpcDeps {
   getLimitHistory: () => LimitHistory;
   startPillDrag: (offsetX: number, offsetY: number) => void;
   endPillDrag: () => void;
+  nudgePill: (dx: number, dy: number) => void;
   fitPopover: (height: number) => void;
   quit: () => void;
 }
@@ -65,8 +66,12 @@ export function registerIpc(deps: IpcDeps): void {
         deps.openSettings();
         break;
       case 'pill-drag':
-        if (action.phase === 'start') deps.startPillDrag(action.offsetX, action.offsetY);
+        if (action.phase === 'start')
+          deps.startPillDrag(Number(action.offsetX), Number(action.offsetY));
         else deps.endPillDrag();
+        break;
+      case 'pill-nudge':
+        deps.nudgePill(Number(action.dx), Number(action.dy));
         break;
       case 'popover-height':
         deps.fitPopover(action.height);
