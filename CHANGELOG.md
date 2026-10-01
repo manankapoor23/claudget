@@ -5,6 +5,27 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.1] — 2026-10-01
+
+### Fixed
+
+- **Dragging the pill could crash the app.** Dragging it against the top or
+  left edge of a screen showed an "Error processing argument at index 1" dialog
+  over and over. Positions are now cleaned up before the window moves, and a
+  move that still fails is logged and ends the drag. (#14)
+- **The pill could stick to the cursor or move on its own.** A drag now ends
+  however you let go, even outside the pill or when the window loses focus. The
+  pill stays exactly where you drop it, and keeps that place after a restart.
+  (#15)
+- **Activity shows the last 24 hours.** The chart under "Last 24 hours" showed
+  every hour of history; it now shows exactly 24 bars.
+
+### Changed
+
+- **The Linux AppImage can now be listed in the AppImage catalog.** It's
+  built with gzip instead of xz, which the catalog can read, and its program,
+  icon and launcher entry are named `claudget`. It's about 25 MB larger.
+
 ## [0.3.0] — 2026-09-25
 
 ### Changed
@@ -146,6 +167,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.1
 [0.3.0]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.0
 [0.2.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5
 [0.2.5.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5.1
