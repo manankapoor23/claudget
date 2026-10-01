@@ -19,6 +19,15 @@ const tag = (v: string) => `https://github.com/manankapoor23/claudget/releases/t
  */
 const CURATED: ReleaseHistoryEntry[] = [
   {
+    version: "0.3.1",
+    date: "Oct 2026",
+    title: "A steadier floating pill",
+    summary:
+      "Dragging the pill no longer crashes the app at the top or left edge of the screen, no longer sticks to the cursor, and it stays where you drop it.",
+    changes: [],
+    url: tag("0.3.1"),
+  },
+  {
     version: "0.3.0",
     date: "Sep 2026",
     title: "Now in your menu bar",
