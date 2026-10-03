@@ -61,6 +61,7 @@ export default function SurfacePicker({ surfaces }: { surfaces: Surface[] }) {
             role="tab"
             id={`${uid}-tab-${s.id}`}
             className="picker__tab"
+            data-label={s.name}
             aria-selected={i === active}
             aria-controls={`${uid}-panel-${s.id}`}
             tabIndex={i === active ? 0 : -1}
