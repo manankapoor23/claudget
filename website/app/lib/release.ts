@@ -3,7 +3,7 @@ import { REPO_URL, RELEASES_URL } from "../constants";
 /* The newest release, read from GitHub: its version, date, title and installer
    links. Revalidated hourly, so a new release shows up within the hour without
    a redeploy, and every reader shares the one cached fetch. */
-const API = "https://api.github.com/repos/manankapoor23/claudget/releases?per_page=20";
+const API = "https://api.github.com/repos/manankapoor23/claudget/releases?per_page=100";
 const REVALIDATE_SECONDS = 3600;
 
 export type PlatformKey = "mac" | "macArm64" | "macX64" | "win" | "winPortable" | "linux";
@@ -43,6 +43,7 @@ interface ApiAsset {
   name?: unknown;
   size?: unknown;
   browser_download_url?: unknown;
+  download_count?: unknown;
 }
 
 interface ApiRelease {
@@ -236,6 +237,35 @@ export async function getLatestRelease(): Promise<Release> {
     assets,
     stale: false,
   };
+}
+
+/**
+ * Every installer download across every published release, as GitHub counts
+ * them. Update manifests and delta maps (fetched by the auto-updater, not by
+ * people) are left out. Null when GitHub can't be read: the page then shows no
+ * figure rather than a made-up one.
+ */
+export async function getDownloadCount(): Promise<number | null> {
+  const releases = await fetchReleases();
+  const published = releases.filter(isPublished);
+  if (published.length === 0) return null;
+  let total = 0;
+  for (const r of published) {
+    if (!Array.isArray(r.assets)) continue;
+    for (const raw of r.assets as ApiAsset[]) {
+      const name = typeof raw.name === "string" ? raw.name : "";
+      if (name && classify(name) && typeof raw.download_count === "number") {
+        total += raw.download_count;
+      }
+    }
+  }
+  return total;
+}
+
+/** "118", "1,240", then "12.4k" once the full figure stops being useful. */
+export function formatCount(n: number): string {
+  if (n < 10000) return n.toLocaleString("en-US");
+  return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
 }
 
 /** Direct asset URL when we have one, else the releases page (always works). */

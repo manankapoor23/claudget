@@ -33,7 +33,7 @@ const INK = "#f3f1ec";
 const INK_2 = "#b4b0a8";
 const LINE = "rgba(255, 255, 255, 0.13)";
 const TRACK = "rgba(255, 255, 255, 0.1)";
-const TINT = "#ff7a2e";
+const TINT = "#ff6b1f";
 const WARN = "#ffc93d";
 
 const HEADLINE = "See your Claude Code limits before you hit them.";
@@ -138,7 +138,7 @@ export async function renderOgCard() {
               borderRadius: 28,
               background: BG,
               border: `1.5px solid ${TINT}`,
-              boxShadow: "0 0 18px rgba(255, 122, 46, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.45)",
+              boxShadow: "0 0 18px rgba(255, 107, 31, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.45)",
               fontSize: 19,
               color: INK_2,
             }}

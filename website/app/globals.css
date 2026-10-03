@@ -26,9 +26,10 @@
   --fill-2: rgba(40, 30, 15, 0.08);
   --track: rgba(40, 30, 15, 0.08);
   --seg-on: #ffffff;
-  --tint: #e8601c;
-  /* Orange as type: only the pace diagram's large figure. */
-  --tint-text: #b03c0a;
+  --tint: #f25a0f;
+  /* Orange as type: only the pace diagram's 64px figure, large text, which
+     needs 3:1 (3.38:1 here). Not for body-size text. */
+  --tint-text: #ee4d00;
   /* Amber as text and as a fill: on paper a fill-strength amber is too light
      to read, so the two differ. */
   --c-warn: #8a6200;
@@ -67,31 +68,48 @@
 }
 
 /* ---- tokens: dark (only when chosen with the toggle) ------------------------ */
-/* Warm graphite, the paper's night side. */
+/* Graphite with only a breath of warmth, the paper's night side. */
 :root[data-theme="dark"] {
-  --bg: #12110f;
-  --bg-2: #1a1916;
-  --surface: #211f1c;
-  --ink: #f3f1ec;
-  --ink-2: #b4b0a8;
-  --ink-3: #9a958c;
+  --bg: #0f0f0e;
+  --bg-2: #171716;
+  --surface: #1e1e1c;
+  --ink: #f4f3f0;
+  --ink-2: #b6b4ae;
+  --ink-3: #9a9790;
   --line: rgba(255, 255, 255, 0.09);
   --line-2: rgba(255, 255, 255, 0.15);
   --fill: rgba(255, 255, 255, 0.07);
   --fill-2: rgba(255, 255, 255, 0.11);
   --track: rgba(255, 255, 255, 0.1);
   --seg-on: rgba(255, 255, 255, 0.15);
-  --tint: #ff7a2e;
-  --tint-text: #ff9152;
+  --tint: #ff6b1f;
+  --tint-text: #ff8a4c;
   --c-warn: #ffc93d;
   --c-warn-fill: #ffc93d;
   --c-bad: #ff4d4d;
   --c-good: #3fd18b;
-  --cta-bg: #f3f1ec;
+  --cta-bg: #f4f3f0;
   --cta-bg-hover: #ffffff;
-  --cta-ink: #12110f;
-  --header-bg: rgba(18, 17, 15, 0.8);
+  --cta-ink: #0f0f0e;
+  --header-bg: rgba(15, 15, 14, 0.78);
   color-scheme: dark;
+}
+
+/* Depth, not a gradient you notice: a faint lift at the top of the page. */
+:root[data-theme="dark"] body {
+  background-image: radial-gradient(
+    1400px 720px at 50% -240px,
+    rgba(255, 255, 255, 0.05),
+    transparent 70%
+  );
+  background-repeat: no-repeat;
+}
+
+/* On the dark page the product's desktop is lifted a step, so it still reads
+   as a picture set on the page rather than a hole in it. */
+:root[data-theme="dark"] .scene {
+  --wall-hero: linear-gradient(170deg, #353330 0%, #232220 100%);
+  --wall: linear-gradient(170deg, #353330 0%, #232220 100%);
 }
 
 /* ---- the product's own tokens ------------------------------------------------ */
@@ -112,8 +130,8 @@
   --fill-2: rgba(255, 255, 255, 0.11);
   --track: rgba(255, 255, 255, 0.1);
   --seg-on: rgba(255, 255, 255, 0.15);
-  --tint: #ff7a2e;
-  --tint-text: #ff9152;
+  --tint: #ff6b1f;
+  --tint-text: #ff8a4c;
   --c-warn: #ffc93d;
   --c-warn-fill: #ffc93d;
   --c-bad: #ff4d4d;
@@ -359,6 +377,38 @@ code {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Downloads so far, from GitHub: the mark, the figure, the word. */
+.gh-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition:
+    background var(--dur-press) var(--ease-std),
+    color var(--dur-press) var(--ease-std);
+}
+
+.gh-count:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.gh-count svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.gh-count__n {
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .icon-btn {
@@ -915,39 +965,41 @@ code {
   color: var(--ink-2);
 }
 
+/* Every build is its own button, with its size: nothing tucked away. */
 .dl__actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.dl__alts {
-  color: var(--ink-3);
-  white-space: nowrap;
-}
-
-.dl__alts a {
-  color: var(--ink-3);
-  transition: color var(--dur-press) var(--ease-std);
-}
-
-.dl__alts a:hover {
-  color: var(--ink);
-}
-
-/* The row this computer should take gets the filled ink button. */
-:root[data-os="mac"] .dl--mac .dl__get,
-:root[data-os="win"] .dl--win .dl__get,
-:root[data-os="linux"] .dl--linux .dl__get {
+/* The row this computer should take fills its default build in ink: the
+   installer, the AppImage, or on a Mac the universal build, until MacArch
+   knows the chip and moves the fill to that chip's smaller build. */
+:root[data-os="mac"] .dl--mac .dl__get--default,
+:root[data-os="win"] .dl--win .dl__get--default,
+:root[data-os="linux"] .dl--linux .dl__get--default,
+:root[data-os="mac"][data-arch="arm64"] .dl--mac .dl__get--macArm64,
+:root[data-os="mac"][data-arch="x64"] .dl--mac .dl__get--macX64 {
   background: var(--cta-bg);
   color: var(--cta-ink);
 }
 
-:root[data-os="mac"] .dl--mac .dl__get:hover,
-:root[data-os="win"] .dl--win .dl__get:hover,
-:root[data-os="linux"] .dl--linux .dl__get:hover {
+:root[data-os="mac"] .dl--mac .dl__get--default:hover,
+:root[data-os="win"] .dl--win .dl__get--default:hover,
+:root[data-os="linux"] .dl--linux .dl__get--default:hover,
+:root[data-os="mac"][data-arch="arm64"] .dl--mac .dl__get--macArm64:hover,
+:root[data-os="mac"][data-arch="x64"] .dl--mac .dl__get--macX64:hover {
   background: var(--cta-bg-hover);
+}
+
+:root[data-os="mac"][data-arch] .dl--mac .dl__get--default {
+  background: var(--fill-2);
+  color: var(--ink);
+}
+
+:root[data-os="mac"][data-arch] .dl--mac .dl__get--default:hover {
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
 }
 
 /* First launch: the visitor's own platform only, once the page knows it.
@@ -1184,13 +1236,9 @@ code {
   }
 
   .dl__actions {
+    flex-direction: column;
     align-items: stretch;
     margin-top: 8px;
-  }
-
-  .dl__alts {
-    text-align: center;
-    white-space: normal;
   }
 
   .dl-meta {
@@ -1201,6 +1249,19 @@ code {
 @media (max-width: 640px) {
   :root {
     --gutter: 16px;
+  }
+
+  /* The mark and the figure say it; the word goes on a phone. */
+  .gh-count__label {
+    display: none;
+  }
+}
+
+/* The smallest phones: the hero's own Download button is right below, so the
+   header keeps the count and lets its button go. */
+@media (max-width: 400px) {
+  .header__cta {
+    display: none;
   }
 
   .hero {

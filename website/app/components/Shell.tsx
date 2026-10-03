@@ -1,4 +1,5 @@
 import ThemeToggle from "./ThemeToggle";
+import { DownloadCount } from "./Download";
 
 /** In page order; Download is the header's own button instead. */
 const NAV = [
@@ -30,6 +31,7 @@ export default function Shell({
             ))}
           </nav>
           <div className="header__right">
+            <DownloadCount />
             <a className="btn btn--xs header__cta" href="#download">
               Download
             </a>

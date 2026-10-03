@@ -1,9 +1,18 @@
-import { IconApple, IconWindows, IconLinux, IconDownload, IconArrowRight } from "../icons";
+import {
+  IconApple,
+  IconWindows,
+  IconLinux,
+  IconDownload,
+  IconArrowRight,
+  IconGitHub,
+} from "../icons";
 import CopyButton from "./CopyButton";
 import {
   MAC_VARIANTS,
   REPO_URL,
   downloadHref,
+  formatCount,
+  getDownloadCount,
   getLatestRelease,
   type PlatformKey,
   type Release,
@@ -143,13 +152,33 @@ export async function ReleaseMeta() {
   );
 }
 
-/** One row per platform. The visitor's own gets the filled ink button (CSS, data-os). */
+/** The builds a row offers, in order. The first is the row's default. */
+function buildsFor(key: Os, release: Release): { key: PlatformKey; label: string }[] {
+  if (key === "mac") {
+    // Universal first: it's the default, correct on every Mac. MacArch moves
+    // the highlight to the smaller per-arch build when it knows the chip.
+    const perArch = MAC_VARIANTS.filter((v) => v.key !== "mac" && release.assets[v.key]);
+    return [{ key: "mac", label: "Universal" }, ...perArch];
+  }
+  if (key === "win") {
+    return release.assets.winPortable
+      ? [
+          { key: "win", label: "Installer" },
+          { key: "winPortable", label: "Portable" },
+        ]
+      : [{ key: "win", label: "Installer" }];
+  }
+  return [{ key: "linux", label: "AppImage" }];
+}
+
+/**
+ * One row per platform, every build as its own button with its size, so none
+ * is tucked away. The visitor's own platform gets the filled ink button on its
+ * default build (CSS, data-os), or on the matching chip's build (data-arch).
+ */
 function Row({ meta, release }: { meta: PlatformMeta; release: Release }) {
   const { key, os, Icon, requires } = meta;
-  const asset = release.assets[key];
-  const portable = key === "win" ? release.assets.winPortable : undefined;
-  const macBuilds =
-    key === "mac" && release.assets.macArm64 && release.assets.macX64 ? MAC_VARIANTS : [];
+  const builds = buildsFor(key, release);
 
   return (
     <div className={`dl dl--${key}`}>
@@ -159,45 +188,46 @@ function Row({ meta, release }: { meta: PlatformMeta; release: Release }) {
       </div>
       <p className="dl__req">{requires}</p>
       <div className="dl__actions">
-        {/* Every row's visible label is just "Download", so without this a
-            screen reader reading the link list can't tell the platforms apart. */}
-        <a
-          className="btn dl__get"
-          href={downloadHref(release, key)}
-          aria-label={`Download claudget ${release.version} for ${os}`}
-          {...external(release, key)}
-          {...archSwap(release, key)}
-        >
-          <IconDownload />
-          Download
-          {asset ? (
-            <span className="dl-cta__size" data-arch-size="">
-              {asset.size}
-            </span>
-          ) : null}
-        </a>
-        {macBuilds.length > 0 || portable ? (
-          <p className="dl__alts">
-            {macBuilds.map((v, i) => (
-              <span key={v.key}>
-                {i > 0 ? " · " : ""}
-                <a
-                  href={downloadHref(release, v.key)}
-                  aria-label={`Download the ${v.label} build for macOS`}
-                >
-                  {v.label}
-                </a>
-              </span>
-            ))}
-            {portable ? (
-              <a href={portable.url} aria-label="Download the portable .exe for Windows">
-                Portable .exe
-              </a>
-            ) : null}
-          </p>
-        ) : null}
+        {builds.map((b, i) => {
+          const asset = release.assets[b.key];
+          return (
+            <a
+              key={b.key}
+              className={`btn dl__get dl__get--${b.key}${i === 0 ? " dl__get--default" : ""}`}
+              href={downloadHref(release, b.key)}
+              aria-label={`Download claudget ${release.version} for ${os}, ${b.label}${asset ? `, ${asset.size}` : ""}`}
+              {...external(release, b.key)}
+            >
+              <IconDownload />
+              {b.label}
+              {asset ? <span className="dl-cta__size">{asset.size}</span> : null}
+            </a>
+          );
+        })}
       </div>
     </div>
+  );
+}
+
+/**
+ * Every installer download so far, from GitHub's own counts, linking to the
+ * releases. Renders nothing when GitHub can't be read: no made-up figure.
+ */
+export async function DownloadCount() {
+  const count = await getDownloadCount();
+  if (count === null) return null;
+  return (
+    <a
+      className="gh-count"
+      href={ALL_RELEASES_URL}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={`${formatCount(count)} downloads on GitHub`}
+    >
+      <IconGitHub />
+      <span className="gh-count__n">{formatCount(count)}</span>
+      <span className="gh-count__label">downloads</span>
+    </a>
   );
 }
 
