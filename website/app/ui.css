@@ -571,6 +571,11 @@
   box-shadow: 0 0 0 3px var(--bg-2);
 }
 
+/* The page's one large moment of orange. */
+.anatomy .lim__pct {
+  color: var(--tint-text);
+}
+
 .lim--xl .lim__meta {
   font-size: 15px;
 }
@@ -903,21 +908,6 @@
   --ring: var(--c-bad);
   --halo: 0.5;
   animation: halo-breathe 2.6s ease-in-out infinite;
-}
-
-/* On a light desktop a glow reads as a smudge: a crisper rim instead. */
-:root[data-theme="light"] .ui.pshell {
-  --halo: 0.12;
-  --rim: color-mix(in srgb, var(--ring) 55%, transparent);
-  --lift: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .ui.pshell {
-    --halo: 0.12;
-    --rim: color-mix(in srgb, var(--ring) 55%, transparent);
-    --lift: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
 }
 
 .ui.pshell::before {

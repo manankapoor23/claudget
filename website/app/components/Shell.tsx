@@ -30,7 +30,7 @@ export default function Shell({
             ))}
           </nav>
           <div className="header__right">
-            <a className="btn btn--primary btn--xs header__cta" href="#download">
+            <a className="btn btn--xs header__cta" href="#download">
               Download
             </a>
             <ThemeToggle />

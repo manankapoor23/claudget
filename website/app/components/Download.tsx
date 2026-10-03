@@ -143,7 +143,7 @@ export async function ReleaseMeta() {
   );
 }
 
-/** One row per platform. The visitor's own gets the coral button (CSS, data-os). */
+/** One row per platform. The visitor's own gets the filled ink button (CSS, data-os). */
 function Row({ meta, release }: { meta: PlatformMeta; release: Release }) {
   const { key, os, Icon, requires } = meta;
   const asset = release.assets[key];

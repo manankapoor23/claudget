@@ -9,8 +9,9 @@ import { ImageResponse } from "next/og";
  *
  * Rendered with next/og (Satori), so no committed binary. Satori supports a
  * subset of CSS — flexbox only, no CSS variables — hence the explicit inline
- * styles. Colours are the site's dark tokens, hardcoded for the same reason.
- * The mock on the right is the app's own pill and limit row.
+ * styles. Colours are the site's paper tokens, hardcoded for the same reason.
+ * The mock on the right is the app's own pill and limit row, in the app's dark
+ * appearance, as the site shows the product.
  *
  * Satori's bundled face has a single regular weight, so Geist (the app's face
  * off the Mac) is fetched at render time, subset to the card's own text. If
@@ -21,15 +22,19 @@ export const OG_SIZE = { width: 1200, height: 630 };
 export const OG_ALT =
   "claudget — see your Claude Code limits before you hit them. A menu bar app showing the 5-hour limit at 62%, full by 4:01 PM at the pace so far.";
 
-const BG = "#0c0c0d";
-const SURFACE = "#17171a";
-const INK = "#ededee";
-const INK_2 = "rgba(237, 237, 238, 0.66)";
-const INK_3 = "rgba(237, 237, 238, 0.5)";
+// The page: paper and ink.
+const PAPER = "#f7f5f0";
+const PAPER_INK = "#1a1917";
+const PAPER_INK_3 = "#625e58";
+// The product, in its dark appearance, as the site shows it.
+const BG = "#161514";
+const SURFACE = "#1c1b19";
+const INK = "#f3f1ec";
+const INK_2 = "#b4b0a8";
 const LINE = "rgba(255, 255, 255, 0.13)";
 const TRACK = "rgba(255, 255, 255, 0.1)";
-const TINT = "#ff7a50";
-const WARN = "#ffb020";
+const TINT = "#ff7a2e";
+const WARN = "#ffc93d";
 
 const HEADLINE = "See your Claude Code limits before you hit them.";
 const FOOT = "Free and open source · macOS, Windows, Linux";
@@ -78,9 +83,7 @@ export async function renderOgCard() {
           display: "flex",
           padding: 72,
           fontFamily: fonts.length > 0 ? "Geist" : undefined,
-          background: BG,
-          backgroundImage:
-            "radial-gradient(circle at 100% 0%, rgba(255, 128, 84, 0.26), rgba(12, 12, 13, 0) 55%)",
+          background: PAPER,
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
@@ -92,7 +95,7 @@ export async function renderOgCard() {
                 marginLeft: 26,
                 fontSize: 34,
                 fontWeight: 700,
-                color: INK,
+                color: PAPER_INK,
                 letterSpacing: -0.5,
               }}
             >
@@ -107,12 +110,12 @@ export async function renderOgCard() {
               fontWeight: 700,
               lineHeight: 1.06,
               letterSpacing: -2.2,
-              color: INK,
+              color: PAPER_INK,
             }}
           >
             {HEADLINE}
           </div>
-          <div style={{ marginTop: "auto", fontSize: 24, color: INK_3 }}>{FOOT}</div>
+          <div style={{ marginTop: "auto", fontSize: 24, color: PAPER_INK_3 }}>{FOOT}</div>
         </div>
 
         <div
@@ -124,7 +127,7 @@ export async function renderOgCard() {
             width: 380,
           }}
         >
-          {/* The floating pill, with its coral ring. */}
+          {/* The floating pill, with its orange ring. */}
           <div
             style={{
               display: "flex",
@@ -135,7 +138,7 @@ export async function renderOgCard() {
               borderRadius: 28,
               background: BG,
               border: `1.5px solid ${TINT}`,
-              boxShadow: "0 0 26px rgba(255, 122, 80, 0.45)",
+              boxShadow: "0 0 18px rgba(255, 122, 46, 0.35), 0 12px 28px -10px rgba(0, 0, 0, 0.45)",
               fontSize: 19,
               color: INK_2,
             }}
@@ -159,6 +162,7 @@ export async function renderOgCard() {
               borderRadius: 20,
               background: SURFACE,
               border: `1px solid ${LINE}`,
+              boxShadow: "0 20px 44px -18px rgba(0, 0, 0, 0.45)",
             }}
           >
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
