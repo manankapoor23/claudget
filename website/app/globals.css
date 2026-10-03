@@ -387,7 +387,7 @@ code {
 
 .nav a {
   color: var(--ink-2);
-  transition: color 0.15s ease;
+  transition: color var(--dur-press) var(--ease-std);
 }
 
 .nav a:hover {
@@ -412,8 +412,9 @@ code {
   color: var(--ink-2);
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background var(--dur-press) var(--ease-std),
+    color var(--dur-press) var(--ease-std),
+    transform var(--dur-press) var(--ease-std);
 }
 
 .icon-btn:hover {
@@ -468,8 +469,8 @@ code {
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background 0.15s ease,
-    transform 0.15s ease;
+    background var(--dur-press) var(--ease-std),
+    transform var(--dur-press) var(--ease-std);
 }
 
 .btn:hover {
@@ -511,13 +512,13 @@ code {
   align-items: center;
   gap: 6px;
   color: var(--ink-2);
-  transition: color 0.15s ease;
+  transition: color var(--dur-press) var(--ease-std);
 }
 
 .more svg {
   width: 14px;
   height: 14px;
-  transition: transform 0.15s ease;
+  transition: transform var(--dur-press) var(--ease-std);
 }
 
 .more:hover {
@@ -775,9 +776,10 @@ code {
   white-space: nowrap;
   cursor: pointer;
   transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+    background var(--dur-fade) var(--ease-std),
+    color var(--dur-fade) var(--ease-std),
+    box-shadow var(--dur-fade) var(--ease-std),
+    transform var(--dur-press) var(--ease-std);
 }
 
 .picker__tab::after {
@@ -821,14 +823,14 @@ code {
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 0.22s ease,
-    visibility 0s linear 0.22s;
+    opacity var(--dur-fade) var(--ease-std),
+    visibility 0s linear var(--dur-fade);
 }
 
 .picker__panel[data-active] {
   opacity: 1;
   visibility: visible;
-  transition: opacity 0.22s ease;
+  transition: opacity var(--dur-fade) var(--ease-std);
 }
 
 .picker__panel:focus-visible {
@@ -918,7 +920,7 @@ code {
 
 .dl-meta a {
   color: var(--ink-2);
-  transition: color 0.15s ease;
+  transition: color var(--dur-press) var(--ease-std);
 }
 
 .dl-meta a:hover {
@@ -974,7 +976,7 @@ code {
 
 .dl__alts a {
   color: var(--ink-3);
-  transition: color 0.15s ease;
+  transition: color var(--dur-press) var(--ease-std);
 }
 
 .dl__alts a:hover {
@@ -1045,7 +1047,7 @@ code {
   color: var(--ink-2);
   list-style: none;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color var(--dur-press) var(--ease-std);
 }
 
 .install__more > summary::-webkit-details-marker {
@@ -1064,7 +1066,7 @@ code {
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
   transform: rotate(45deg) translate(-2px, -2px);
-  transition: transform 0.2s ease;
+  transition: transform var(--dur-fade) var(--ease-std);
 }
 
 .install__more[open] > summary::after {
@@ -1116,7 +1118,7 @@ code {
   font-family: var(--sans);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--dur-press) var(--ease-std);
 }
 
 .copy:hover {
@@ -1159,7 +1161,7 @@ code {
 
 .footer__links a {
   color: var(--ink-2);
-  transition: color 0.15s ease;
+  transition: color var(--dur-press) var(--ease-std);
 }
 
 .footer__links a:hover {

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "./ui.css";
+import "./motion.css";
 import { getLatestRelease } from "./lib/release";
 import { Analytics } from "@vercel/analytics/next";
 
@@ -94,6 +95,14 @@ const THEME_BOOT = `(function(){try{var t=localStorage.getItem('claudget-theme')
 // real Mac reports none).
 const OS_BOOT = `(function(){try{var n=navigator,u=n.userAgent||"",p=(n.userAgentData&&n.userAgentData.platform)||n.platform||"",s=p+" "+u,o="";if(/android/i.test(s)){}else if(/iphone|ipad|ipod/i.test(s)){}else if(/mac/i.test(s)){if(!(n.maxTouchPoints>1)){o="mac";}}else if(/win/i.test(s)){o="win";}else if(/linux|x11|cros/i.test(s)){o="linux";}if(o){document.documentElement.dataset.os=o;}}catch(e){}})();`;
 
+// Scroll entrances, as progressive enhancement. Only when this script runs, the
+// observer exists and motion is welcome does `data-motion` go on <html>; only
+// then does motion.css hold a [data-reveal] unit at its first frame until it
+// scrolls into view (the bottom 18% of the viewport doesn't count, so it plays
+// where it can be seen). With JS off, or if anything here throws, nothing is
+// ever held back.
+const MOTION_BOOT = `(function(){try{var d=document.documentElement;if(!("IntersectionObserver" in window)||matchMedia("(prefers-reduced-motion: reduce)").matches)return;d.dataset.motion="";document.addEventListener("DOMContentLoaded",function(){try{var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.dataset.in="";io.unobserve(e.target);}});},{rootMargin:"0px 0px -18% 0px"});document.querySelectorAll("[data-reveal]").forEach(function(el){io.observe(el);});}catch(e){delete d.dataset.motion;}});}catch(e){}})();`;
+
 // Structured data — tells Google this is a free, cross-platform downloadable app.
 // `softwareVersion` comes from the live release so it can't drift out of date.
 const jsonLd = (version: string) => ({
@@ -140,6 +149,7 @@ export default async function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: OS_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT }} />
         <script
           type="application/ld+json"
           // "<" escaped so no string in the data (a tag name, say) can close the script.
