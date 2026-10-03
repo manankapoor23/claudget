@@ -187,12 +187,13 @@ main {
 
   /* ---- 2. scroll entrances ------------------------------------------------- */
 
-  /* Held at the first frame until the unit is in view. */
+  /* Held at the first frame until the unit is in view. Important: each
+     part's own `animation` shorthand would otherwise reset it to running. */
   :root[data-motion] [data-reveal]:not([data-in]),
   :root[data-motion] [data-reveal]:not([data-in]) *,
   :root[data-motion] [data-reveal]:not([data-in]) *::before,
   :root[data-motion] [data-reveal]:not([data-in]) *::after {
-    animation-play-state: paused;
+    animation-play-state: paused !important;
   }
 
   :root[data-motion] [data-reveal="rise"] {
@@ -270,4 +271,195 @@ main {
 .picker__tab:active,
 .icon-btn:active {
   transform: scale(0.97);
+}
+
+/* =========================================================================
+   0. The opening moment — first landing of a session only (layout.tsx)
+
+   ms from first paint, on the page's own ground:
+        60  the app icon settles in: scale .9→1 + fade ............. 540
+       240  "claudget" rises 8px into place ......................... 660
+       300  two hairline limit tracks fade in ....................... 600
+       420  they fill — 62% in coral, then 31% (60ms later) ......... 1130
+      1150  hold ends → reveal (data-intro="out"):
+              the words fade (180ms), the icon flies into the header
+              logo's place (560ms), the ground fades away (420ms from
+              +100ms), and the hero's own sequence starts underneath
+     ~1750  done: the overlay is gone and the real header logo shows
+
+   Until the reveal, the hero's animations are held at their first frame,
+   so the hero plays for the visitor, not under the cover.
+   ========================================================================= */
+
+.intro {
+  display: none;
+}
+
+:root[data-intro] .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: block;
+  /* A clock with no visual effect: its end is the cue to reveal. */
+  animation: intro-hold 1150ms linear both;
+}
+
+/* The ground, on its own layer so it can fade while the icon flies. */
+.intro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+
+.intro__mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding-bottom: 6vh;
+  font-family: var(--ui-sans);
+}
+
+.intro__fly {
+  display: block;
+  width: 96px;
+  height: 96px;
+}
+
+.intro__icon {
+  width: 100%;
+  height: 100%;
+}
+
+.intro__words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.intro__name {
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.intro__bars {
+  display: grid;
+  gap: 6px;
+  width: 128px;
+}
+
+.intro__bars i {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.intro__bars i::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 62%;
+  border-radius: inherit;
+  background: var(--tint);
+}
+
+.intro__bars i + i::after {
+  width: 31%;
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+}
+
+/* Until the reveal: the hero waits at its first frame, and the header logo
+   waits for the icon to land on it. */
+:root[data-intro="in"] .hero,
+:root[data-intro="in"] .hero *,
+:root[data-intro="in"] .hero *::before,
+:root[data-intro="in"] .hero *::after {
+  animation-play-state: paused !important;
+}
+
+:root[data-intro] .brand img {
+  opacity: 0;
+}
+
+@keyframes intro-hold {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes intro-icon {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  .intro__icon {
+    animation: intro-icon 480ms var(--ease-out) 60ms both;
+  }
+
+  .intro__name {
+    --m-rise: 8px;
+    display: block;
+    animation: m-rise 420ms var(--ease-out) 240ms both;
+  }
+
+  .intro__bars {
+    animation: m-fade 300ms var(--ease-std) 300ms both;
+  }
+
+  .intro__bars i::after {
+    animation: m-fill 650ms var(--ease-out) 420ms both;
+  }
+
+  .intro__bars i + i::after {
+    animation-delay: 480ms;
+  }
+
+  /* The reveal: the words go first, the icon lands in the header, the
+     ground clears. Apple's sheet curve for the flight. */
+  :root[data-intro="out"] .intro__words {
+    opacity: 0;
+    transition: opacity 180ms var(--ease-std);
+  }
+
+  :root[data-intro="out"] .intro__fly {
+    transform: translate(var(--intro-x, 0), var(--intro-y, 0)) scale(var(--intro-s, 0.3));
+    transition: transform 560ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  :root[data-intro="out"] .intro::before {
+    opacity: 0;
+    transition: opacity 420ms var(--ease-std) 100ms;
+  }
+}
+
+/* Belt and braces: never shown without motion, and never printed. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-intro] .intro {
+    display: none;
+  }
+
+  :root[data-intro] .brand img {
+    opacity: 1;
+  }
+}
+
+@media print {
+  :root[data-intro] .intro {
+    display: none;
+  }
 }
