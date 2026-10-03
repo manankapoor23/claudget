@@ -94,8 +94,8 @@ function Footer() {
           <div className="maker">
             <h2>Made by {MAKER_NAME}</h2>
             <p>
-              Built because I kept switching to a terminal to check whether I was near my limit.
-              Now it’s just there.
+              An independent project, built in the open. Found a bug or want a feature? Open an
+              issue on GitHub.
             </p>
           </div>
           <nav className="footer__links" aria-label="Project links">
