@@ -1,0 +1,465 @@
+/* =========================================================================
+   Motion — one system for the whole page
+
+   Principles
+   - Meaning first. The headline, lede and download button are static: they
+     are there, finished, in the first frame. Only the product moves.
+   - One moment per screen, and it explains the product: the popover opens
+     from its menu-bar item and its numbers roll in, the way the app's do
+     (fills: 700ms cubic-bezier(0.2, 0.8, 0.2, 1); counts: 650ms ease-out
+     cubic — renderer/styles/system.css and renderer/lib/motion.ts).
+   - Small and quick: 12–24px, 120–700ms, staggers of 10ms (a sweep of 24
+     chart bars) to 80ms (a few items). Transform, opacity and clip-path only.
+   - Play once. Scroll entrances never replay or scrub.
+   - Everything rests at its final state. Each animation only describes where
+     it starts (keyframes `from` + fill-mode both), so with motion reduced,
+     JS off, or a browser that skips it, the page is simply complete.
+
+   1. First load — the hero (ms from first paint)
+        0  headline, lede, button: static, readable
+        0  desktop scene rises 16px and fades in ............ 600
+      120  claudget's menu-bar item fades in ................ 360
+      300  the item is pressed (highlight) .................. 420
+      340  popover opens from the item: scale .94→1 + fade .. 600
+      480  5-hour bar fills to 62%, its figure counts 0→62 .. 1180
+      540  weekly bar fills to 31%, its figure counts 0→31 .. 1240
+      560  the hourly chart's bars rise, 10ms apart ......... 1170
+     1000  the current hour is tinted, last ................. 1200
+
+   2. Scroll entrances — each [data-reveal] unit, once, when its top passes
+      82% of the viewport (the observer in layout.tsx sets data-in)
+      Section titles   rise 12px + fade, 560ms
+      Pace             the bar fills to 62% and counts up (100ms), the
+                       "now" tick appears (450ms), then the callouts and
+                       "Full by" fade in (650ms)
+      Alerts           notices slide 24px in from the right like macOS
+                       notifications, older first, at 160ms and 240ms;
+                       the caption fades in at 400ms
+      Features         the picker rises 16px (80ms after its title); tabs
+                       crossfade their stages in 240ms (globals.css)
+      Privacy          facts rise 60ms apart; the Settings window rises 16px
+      Download         nothing: a list you act on shouldn't make you wait
+
+   3. Interaction — 150ms presses and hovers, buttons and tabs scale to
+      0.97–0.98 while held
+
+   4. Reduced motion and no JS — without `data-motion` (set only by the boot
+      script, only when motion is welcome) no unit is ever held back; under
+      prefers-reduced-motion every animation and transition is removed
+      (globals.css), and each element shows its final state.
+   ========================================================================= */
+
+:root {
+  /* The app's own fill curve: fast out, long soft landing. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Ease-out cubic, the app's count-up. */
+  --ease-count: cubic-bezier(0.33, 1, 0.68, 1);
+  /* Hovers, presses, colour. */
+  --ease-std: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  --dur-press: 150ms;
+  --dur-fade: 240ms;
+  --dur-pop: 260ms;
+  --dur-reveal: 560ms;
+  --dur-count: 650ms;
+  --dur-fill: 700ms;
+
+  --rise-sm: 12px;
+  --rise: 16px;
+  --slide: 24px;
+  --stagger: 80ms;
+  --stagger-tight: 60ms;
+  --stagger-sweep: 10ms;
+}
+
+/* Notices slide in from past the edge on a phone: clip, don't scroll. */
+main {
+  overflow-x: clip;
+}
+
+/* ---- keyframes: each says only where it starts ---------------------------- */
+
+@keyframes m-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes m-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--m-rise, var(--rise)));
+  }
+}
+
+@keyframes m-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+@keyframes m-slide {
+  from {
+    opacity: 0;
+    transform: translateX(var(--slide));
+  }
+}
+
+@keyframes m-fill {
+  from {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+
+@keyframes m-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes m-tick {
+  from {
+    opacity: 0;
+    transform: scaleY(0.3);
+  }
+}
+
+@keyframes m-count {
+  from {
+    --n: 0;
+  }
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  /* ---- 1. the hero --------------------------------------------------------- */
+
+  .scene--hero {
+    animation: m-rise 600ms var(--ease-out) both;
+  }
+
+  .scene--hero .mbi--claudget,
+  .scene--hero .tbi--claudget {
+    animation: m-fade var(--dur-fade) var(--ease-std) 120ms both;
+  }
+
+  .scene--hero .mbi--claudget::before,
+  .scene--hero .tbi--claudget::before {
+    animation: m-fade 120ms var(--ease-std) 300ms both;
+  }
+
+  /* Opens from its item: under it on a Mac, above the tray elsewhere. */
+  .scene--hero .ui.pop {
+    transform-origin: 50% 0;
+    animation: m-pop var(--dur-pop) var(--ease-out) 340ms both;
+  }
+
+  :root[data-os="win"] .scene--hero .ui.pop,
+  :root[data-os="linux"] .scene--hero .ui.pop {
+    transform-origin: 100% 100%;
+  }
+
+  .scene--hero .lim__fill {
+    animation: m-fill var(--dur-fill) var(--ease-out) var(--m-at, 480ms) both;
+  }
+
+  .scene--hero .lim .count {
+    animation: m-count var(--dur-count) var(--ease-count) var(--m-at, 480ms) both;
+  }
+
+  .scene--hero .lim + .lim {
+    --m-at: 540ms;
+  }
+
+  .scene--hero .chart__bar {
+    transform-origin: 50% 100%;
+    animation: m-grow 380ms var(--ease-out) calc(560ms + var(--i, 0) * var(--stagger-sweep))
+      both;
+  }
+
+  .scene--hero .chart__col--now .chart__bar::after {
+    animation: m-fade 200ms var(--ease-std) 1000ms both;
+  }
+
+  /* ---- 2. scroll entrances ------------------------------------------------- */
+
+  /* Held at the first frame until the unit is in view. Important: each
+     part's own `animation` shorthand would otherwise reset it to running. */
+  :root[data-motion] [data-reveal]:not([data-in]),
+  :root[data-motion] [data-reveal]:not([data-in]) *,
+  :root[data-motion] [data-reveal]:not([data-in]) *::before,
+  :root[data-motion] [data-reveal]:not([data-in]) *::after {
+    animation-play-state: paused !important;
+  }
+
+  :root[data-motion] [data-reveal="rise"] {
+    animation: m-rise var(--dur-reveal) var(--ease-out) var(--m-delay, 0ms) both;
+  }
+
+  :root[data-motion] .sec__head[data-reveal],
+  :root[data-motion] .sec__title[data-reveal] {
+    --m-rise: var(--rise-sm);
+  }
+
+  /* Below its title, so it follows it. */
+  :root[data-motion] .sec__head + [data-reveal="rise"] {
+    --m-delay: var(--stagger);
+  }
+
+  /* Beside its title on a wide screen. */
+  :root[data-motion] .privacy__mock[data-reveal] {
+    --m-delay: 120ms;
+  }
+
+  /* Pace: the bar fills past the clock, then the labels say what that means. */
+  :root[data-motion] .anatomy[data-reveal] .lim {
+    animation: m-fade 400ms var(--ease-std) both;
+  }
+
+  :root[data-motion] .anatomy[data-reveal] .lim__fill {
+    animation: m-fill var(--dur-fill) var(--ease-out) 100ms both;
+  }
+
+  :root[data-motion] .anatomy[data-reveal] .count {
+    animation: m-count var(--dur-count) var(--ease-count) 100ms both;
+  }
+
+  :root[data-motion] .anatomy[data-reveal] .lim__tick {
+    animation: m-tick var(--dur-fade) var(--ease-out) 450ms both;
+  }
+
+  :root[data-motion] .anatomy[data-reveal] .lim__warn,
+  :root[data-motion] .anatomy[data-reveal] .callout {
+    animation: m-fade 320ms var(--ease-std) 650ms both;
+  }
+
+  /* Alerts: in from the right like the system's own, the older one first.
+     A beat late, so beside the bar on a wide screen they follow it. */
+  :root[data-motion] .alerts[data-reveal] .notice {
+    animation: m-slide 480ms var(--ease-out) 160ms both;
+  }
+
+  :root[data-motion] .alerts[data-reveal] .stage__notices > :first-child {
+    animation-delay: calc(160ms + var(--stagger));
+  }
+
+  :root[data-motion] .alerts[data-reveal] .caption {
+    animation: m-fade 400ms var(--ease-std) 400ms both;
+  }
+
+  /* Privacy: the three facts, one after another. */
+  :root[data-motion] .facts[data-reveal] > div {
+    --m-rise: var(--rise-sm);
+    animation: m-rise var(--dur-reveal) var(--ease-out) both;
+  }
+
+  :root[data-motion] .facts[data-reveal] > div:nth-child(2) {
+    animation-delay: var(--stagger-tight);
+  }
+
+  :root[data-motion] .facts[data-reveal] > div:nth-child(3) {
+    animation-delay: calc(var(--stagger-tight) * 2);
+  }
+}
+
+/* ---- 3. interaction ------------------------------------------------------- */
+
+.picker__tab:active,
+.icon-btn:active {
+  transform: scale(0.97);
+}
+
+/* =========================================================================
+   0. The opening moment — first landing of a session only (layout.tsx)
+
+   ms from first paint, on the page's own ground:
+        60  the app icon settles in: scale .9→1 + fade ............. 540
+       240  "claudget" rises 8px into place ......................... 660
+       300  two hairline limit tracks fade in ....................... 600
+       420  they fill — 62% in coral, then 31% (60ms later) ......... 1130
+      1150  hold ends → reveal (data-intro="out"):
+              the words fade (180ms), the icon flies into the header
+              logo's place (560ms), the ground fades away (420ms from
+              +100ms), and the hero's own sequence starts underneath
+     ~1750  done: the overlay is gone and the real header logo shows
+
+   Until the reveal, the hero's animations are held at their first frame,
+   so the hero plays for the visitor, not under the cover.
+   ========================================================================= */
+
+.intro {
+  display: none;
+}
+
+:root[data-intro] .intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: block;
+  /* A clock with no visual effect: its end is the cue to reveal. */
+  animation: intro-hold 1150ms linear both;
+}
+
+/* The ground, on its own layer so it can fade while the icon flies. */
+.intro::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+
+.intro__mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding-bottom: 6vh;
+  font-family: var(--ui-sans);
+}
+
+.intro__fly {
+  display: block;
+  width: 96px;
+  height: 96px;
+}
+
+.intro__icon {
+  width: 100%;
+  height: 100%;
+}
+
+.intro__words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.intro__name {
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.intro__bars {
+  display: grid;
+  gap: 6px;
+  width: 128px;
+}
+
+.intro__bars i {
+  position: relative;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--track);
+}
+
+.intro__bars i::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 62%;
+  border-radius: inherit;
+  background: var(--tint);
+}
+
+.intro__bars i + i::after {
+  width: 31%;
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
+}
+
+/* Until the reveal: the hero waits at its first frame, and the header logo
+   waits for the icon to land on it. */
+:root[data-intro="in"] .hero,
+:root[data-intro="in"] .hero *,
+:root[data-intro="in"] .hero *::before,
+:root[data-intro="in"] .hero *::after {
+  animation-play-state: paused !important;
+}
+
+:root[data-intro] .brand img {
+  opacity: 0;
+}
+
+@keyframes intro-hold {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes intro-icon {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@media screen and (prefers-reduced-motion: no-preference) {
+  .intro__icon {
+    animation: intro-icon 480ms var(--ease-out) 60ms both;
+  }
+
+  .intro__name {
+    --m-rise: 8px;
+    display: block;
+    animation: m-rise 420ms var(--ease-out) 240ms both;
+  }
+
+  .intro__bars {
+    animation: m-fade 300ms var(--ease-std) 300ms both;
+  }
+
+  .intro__bars i::after {
+    animation: m-fill 650ms var(--ease-out) 420ms both;
+  }
+
+  .intro__bars i + i::after {
+    animation-delay: 480ms;
+  }
+
+  /* The reveal: the words go first, the icon lands in the header, the
+     ground clears. Apple's sheet curve for the flight. */
+  :root[data-intro="out"] .intro__words {
+    opacity: 0;
+    transition: opacity 180ms var(--ease-std);
+  }
+
+  :root[data-intro="out"] .intro__fly {
+    transform: translate(var(--intro-x, 0), var(--intro-y, 0)) scale(var(--intro-s, 0.3));
+    transition: transform 560ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  :root[data-intro="out"] .intro::before {
+    opacity: 0;
+    transition: opacity 420ms var(--ease-std) 100ms;
+  }
+}
+
+/* Belt and braces: never shown without motion, and never printed. */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-intro] .intro {
+    display: none;
+  }
+
+  :root[data-intro] .brand img {
+    opacity: 1;
+  }
+}
+
+@media print {
+  :root[data-intro] .intro {
+    display: none;
+  }
+}

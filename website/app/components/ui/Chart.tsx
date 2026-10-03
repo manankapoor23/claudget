@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { HOURLY, HOURLY_START } from "./demo";
 
 function hourLabel(hour: number): string {
@@ -23,7 +24,12 @@ export function Chart({ bare = false }: { bare?: boolean }) {
           </span>
         )}
         {HOURLY.map((v, i) => (
-          <span key={i} className={i === n - 1 ? "chart__col chart__col--now" : "chart__col"}>
+          <span
+            key={i}
+            className={i === n - 1 ? "chart__col chart__col--now" : "chart__col"}
+            // The bar's place in the sweep when it rises (motion.css).
+            style={{ "--i": i } as CSSProperties}
+          >
             <span className="chart__bar" style={{ height: `${Math.max(3, (v / max) * 100)}%` }} />
           </span>
         ))}
