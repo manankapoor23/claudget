@@ -606,7 +606,8 @@ code {
    drops below AA. The min-width keeps the button from jumping when MacArch
    swaps "176 MB" for "94 MB". */
 .dl-cta__size {
-  min-width: 6ch;
+  /* The width counts the 12px padding and the hairline. */
+  min-width: calc(6ch + 13px);
   margin-left: 4px;
   padding-left: 12px;
   border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent);
