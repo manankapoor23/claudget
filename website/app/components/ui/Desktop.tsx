@@ -44,27 +44,23 @@ export function Scene({
 
 /**
  * macOS menu bar. The claudget item is the glyph plus both limits, 5-hour
- * first (main/tray.ts). `compact` keeps only the status side, for small scenes.
- * `live` ticks the 5-hour figure up in step with the popover's.
+ * first (main/tray.ts). `live` ticks the 5-hour figure up in step with the
+ * popover's.
  */
-export function MenuBar({ compact = false, live = false }: { compact?: boolean; live?: boolean }) {
+export function MenuBar({ live = false }: { live?: boolean }) {
   return (
-    <div className={compact ? "menubar menubar--compact" : "menubar"}>
-      {compact ? null : (
-        <>
-          <span className="menubar__apple">
-            <IconApple width={14} height={14} />
-          </span>
-          <span className="menubar__app">Terminal</span>
-          <span className="menubar__menus">
-            <span>Shell</span>
-            <span>Edit</span>
-            <span>View</span>
-            <span>Window</span>
-            <span>Help</span>
-          </span>
-        </>
-      )}
+    <div className="menubar">
+      <span className="menubar__apple">
+        <IconApple width={14} height={14} />
+      </span>
+      <span className="menubar__app">Terminal</span>
+      <span className="menubar__menus">
+        <span>Shell</span>
+        <span>Edit</span>
+        <span>View</span>
+        <span>Window</span>
+        <span>Help</span>
+      </span>
       <span className="menubar__status">
         <span className={live ? "mbi mbi--claudget live-tick" : "mbi mbi--claudget"}>
           <GlyphTray width={16} height={16} />
@@ -98,28 +94,26 @@ export function MenuBar({ compact = false, live = false }: { compact?: boolean; 
  * Windows and Linux: a taskbar with the tray. The tray icon is the logo — trays
  * there don't tint template glyphs (main/tray.ts), and don't show text.
  */
-export function Taskbar({ compact = false }: { compact?: boolean }) {
+export function Taskbar() {
   return (
-    <div className={compact ? "taskbar taskbar--compact" : "taskbar"}>
-      {compact ? null : (
-        <span className="taskbar__apps">
-          <span className="tba">
-            <GlyphStart width={17} height={17} />
-          </span>
-          <span className="tba">
-            <GlyphSearch width={17} height={17} />
-          </span>
-          <span className="tba">
-            <GlyphFolder width={18} height={18} />
-          </span>
-          <span className="tba">
-            <GlyphGlobe width={18} height={18} />
-          </span>
-          <span className="tba tba--on">
-            <GlyphTerminal width={18} height={18} />
-          </span>
+    <div className="taskbar">
+      <span className="taskbar__apps">
+        <span className="tba">
+          <GlyphStart width={17} height={17} />
         </span>
-      )}
+        <span className="tba">
+          <GlyphSearch width={17} height={17} />
+        </span>
+        <span className="tba">
+          <GlyphFolder width={18} height={18} />
+        </span>
+        <span className="tba">
+          <GlyphGlobe width={18} height={18} />
+        </span>
+        <span className="tba tba--on">
+          <GlyphTerminal width={18} height={18} />
+        </span>
+      </span>
       <span className="taskbar__tray">
         <GlyphChevronUp width={14} height={14} />
         <span className="tbi tbi--claudget">
@@ -140,7 +134,8 @@ export function Taskbar({ compact = false }: { compact?: boolean }) {
 
 /**
  * The work claudget is watching: a Claude Code session, in its own idiom —
- * tool calls with their results, the reply, and the input box waiting.
+ * the request, one edit with its result, and the input box waiting. It sits
+ * behind the popover, so it stays short and quiet.
  */
 export function TerminalWindow({ className = "" }: { className?: string }) {
   return (
@@ -165,25 +160,11 @@ export function TerminalWindow({ className = "" }: { className?: string }) {
         </p>
         <p className="term__you">&gt; Polish the usage dashboard</p>
         <p className="term__tool">
-          <i>⏺</i> Read(src/renderer/components/WidgetOverview.tsx)
-        </p>
-        <p className="term__out">⎿ Read 164 lines</p>
-        <p className="term__tool">
           <i>⏺</i> Update(src/renderer/styles/system.css)
         </p>
         <p className="term__out">
           ⎿ Updated with <span className="term__add">61 additions</span> and{" "}
           <span className="term__del">24 removals</span>
-        </p>
-        <p className="term__tool">
-          <i>⏺</i> Bash(npm test)
-        </p>
-        <p className="term__out">
-          ⎿ <span className="term__add">24 passed</span>
-        </p>
-        <p className="term__say">
-          <i>⏺</i> The overview now leads with both limits. Want me to tighten the session
-          list next?
         </p>
         <div className="term__input">
           <span className="term__dim">&gt;</span> <b />

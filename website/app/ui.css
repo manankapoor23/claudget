@@ -52,49 +52,33 @@
   flex: 1 1 auto;
 }
 
-/* A stage for one surface, centred on the wallpaper. */
+/* A stage for one surface, centred on the wallpaper and sized so the product
+   fills it: no window behind, nothing else to look at. */
 .scene--stage .scene__desk {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  min-height: 460px;
-  padding: 40px 24px;
+  min-height: 480px;
+  padding: 32px 24px;
 }
 
-/* A surface floating over a terminal: "above your windows", literally. */
-.scene--over .scene__desk {
-  min-height: 560px;
+/* The pill is small; shown at 1.6x so it reads at a glance. */
+.stage__pill {
+  zoom: 1.6;
 }
 
-/* The window fills the stage from a fixed top down past its bottom edge,
-   cropped there like any window running off a screen, and the surface floats
-   on its top edge — so the composition holds at any stage height. */
-.stage__window {
-  position: absolute;
-  top: 132px;
-  bottom: -48px;
-  left: 50%;
-  width: min(760px, calc(100% - 64px));
-  transform: translateX(-50%);
+/* No wallpaper and no frame: a mock set straight on the page. The figure
+   keeps its label for screen readers. */
+.scene--bare {
+  overflow: visible;
+  border-radius: 0;
+  background: none;
 }
 
-.stage__float {
-  position: absolute;
-  z-index: 3;
-}
-
-.stage__float--pill {
-  top: -22px;
-  right: 28px;
-}
-
-.stage__float--bar {
-  top: -56px;
-  left: 50%;
-  width: min(580px, 100%);
-  transform: translateX(-50%);
+.scene--bare::before,
+.scene--bare::after {
+  display: none;
 }
 
 /* ---- the hero: menu bar (or taskbar), a terminal, the popover ------------ */
@@ -152,10 +136,6 @@
   margin-left: auto;
 }
 
-.menubar--compact {
-  padding: 0 8px;
-}
-
 .mbi {
   display: inline-flex;
   align-items: center;
@@ -169,10 +149,6 @@
 /* Pressed: its popover is open. */
 .mbi--claudget {
   background: var(--mb-press);
-}
-
-.menubar--compact .mbi--claudget {
-  background: none;
 }
 
 .taskbar {
@@ -245,10 +221,6 @@
   background: var(--mb-press);
 }
 
-.taskbar--compact .tbi--claudget {
-  background: none;
-}
-
 .taskbar__clock {
   display: flex;
   flex-direction: column;
@@ -293,13 +265,9 @@
   line-height: 1.7;
 }
 
-/* Behind a floating surface on a stage. */
-.term--backdrop {
-  position: relative;
-  top: auto;
-  left: auto;
-  width: 100%;
-  height: 100%;
+/* Context, not content: it sits back so the popover leads. */
+.scene--hero .term {
+  opacity: 0.6;
 }
 
 :root[data-os="win"] .scene--hero .term,
@@ -344,8 +312,7 @@
   color: var(--ink-2);
 }
 
-.term__tool i,
-.term__say i {
+.term__tool i {
   display: inline-block;
   width: 1.5em;
   font-style: normal;
@@ -362,17 +329,6 @@
 
 .term__out + .term__tool {
   margin-top: 6px !important;
-}
-
-.term__say {
-  margin-top: 10px !important;
-  padding-left: 1.5em;
-  text-indent: -1.5em;
-}
-
-.term__say i {
-  color: var(--ink);
-  text-indent: 0;
 }
 
 .term__add {
@@ -1488,41 +1444,12 @@
 
 /* ---- notifications ------------------------------------------------------------------- */
 
-.scene--alerts .scene__desk {
-  justify-content: flex-start;
-  align-items: flex-end;
-  min-height: 380px;
-  padding: 46px 14px 64px;
-}
-
-:root[data-os="win"] .scene--alerts .scene__desk,
-:root[data-os="linux"] .scene--alerts .scene__desk {
-  justify-content: flex-end;
-  padding: 56px 14px 62px;
-}
-
 .stage__notices {
   display: flex;
   flex-direction: column;
   gap: 10px;
   width: 100%;
   max-width: 356px;
-}
-
-.stage__caption {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
-  font-size: 14px;
-  color: var(--mb-ink);
-  opacity: 0.82;
-}
-
-:root[data-os="win"] .scene--alerts .stage__caption,
-:root[data-os="linux"] .scene--alerts .stage__caption {
-  top: 18px;
-  bottom: auto;
 }
 
 .ui.notice {
@@ -1577,11 +1504,6 @@
 }
 
 /* ---- settings window (Data tab) ------------------------------------------------------- */
-
-.scene--settings .scene__desk {
-  min-height: 520px;
-  padding: 48px 24px;
-}
 
 .ui.swin {
   width: 480px;
@@ -1770,21 +1692,21 @@
   justify-content: center;
 }
 
-@container (max-width: 1000px) {
-  .stage-fit .ui.dwin {
-    zoom: 0.9;
-  }
+.stage-fit .ui.dwin {
+  zoom: 0.75;
 }
 
-@container (max-width: 900px) {
-  .stage-fit .ui.dwin {
-    zoom: 0.8;
-  }
+.stage-fit .ui.mb {
+  zoom: 1.25;
 }
 
-@container (max-width: 780px) {
+@container (max-width: 860px) {
   .stage-fit .ui.dwin {
     zoom: 0.7;
+  }
+
+  .stage-fit .ui.mb {
+    zoom: 1;
   }
 }
 
@@ -1792,7 +1714,7 @@
    thumbnail — its sidebar and limits, running off the edge. */
 @container (max-width: 640px) {
   .stage-fit .ui.dwin {
-    zoom: 0.62;
+    zoom: 0.5;
   }
 
   .stage-fit__inner:has(.dwin) {
@@ -1893,35 +1815,13 @@
     display: none;
   }
 
-  /* No room for a window behind the floating surfaces: just the surface. */
-  .term--backdrop {
-    display: none;
+  .scene--stage .scene__desk {
+    min-height: 320px;
+    padding: 24px 12px;
   }
 
-  .stage__window,
-  .stage__float {
-    position: static;
-    width: 100%;
-    transform: none;
-  }
-
-  .stage__float--pill {
-    display: flex;
-    justify-content: center;
-  }
-
-  .scene--stage .scene__desk,
-  .scene--over .scene__desk {
-    min-height: 300px;
-    padding: 32px 12px;
-  }
-
-  .scene--settings .scene__desk {
-    min-height: 0;
-  }
-
-  .scene--alerts .scene__desk {
-    min-height: 330px;
+  .stage__pill {
+    zoom: 1.25;
   }
 }
 

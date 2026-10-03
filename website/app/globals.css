@@ -203,7 +203,7 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--sans);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -253,7 +253,6 @@ svg {
 
 code {
   font-family: var(--code);
-  font-size: 0.87em;
 }
 
 ::selection {
@@ -312,6 +311,19 @@ code {
 }
 
 /* =========================================================================
+   Type — four sizes outside the mocks, two weights
+
+   56  the hero title (40 on phones)
+   40  section titles (30 on phones)
+   19  ledes and captions
+   15  everything else: nav, rows, notes, footer
+
+   600 for headings and button labels, 400 for everything else. Prose is the
+   0.66 grey, headings full ink, and coral is kept for the primary button,
+   active states and data.
+   ========================================================================= */
+
+/* =========================================================================
    Header
    ========================================================================= */
 
@@ -357,7 +369,6 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font-size: 15px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -375,7 +386,6 @@ code {
 }
 
 .nav a {
-  font-size: 14px;
   color: var(--ink-2);
   transition: color 0.15s ease;
 }
@@ -387,11 +397,7 @@ code {
 .header__right {
   display: flex;
   align-items: center;
-  gap: 2px;
-}
-
-.header__cta {
-  margin-right: 8px;
+  gap: 8px;
 }
 
 .icon-btn {
@@ -452,15 +458,13 @@ code {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 20px;
+  height: 40px;
+  padding: 0 18px;
   border: 0;
   border-radius: 999px;
   background: var(--fill-2);
   color: var(--ink);
-  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.005em;
   white-space: nowrap;
   cursor: pointer;
   transition:
@@ -477,8 +481,8 @@ code {
 }
 
 .btn svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   flex: 0 0 auto;
 }
 
@@ -492,26 +496,13 @@ code {
 }
 
 .btn--lg {
-  height: 50px;
-  padding: 0 24px 0 22px;
-  font-size: 16px;
-}
-
-.btn--sm {
-  height: 36px;
-  padding: 0 15px;
-  font-size: 14px;
-}
-
-.btn--sm svg {
-  width: 15px;
-  height: 15px;
+  height: 48px;
+  padding: 0 22px 0 20px;
 }
 
 .btn--xs {
   height: 32px;
   padding: 0 14px;
-  font-size: 13.5px;
 }
 
 /* Quiet inline link with an arrow. */
@@ -519,15 +510,13 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
-  font-weight: 500;
   color: var(--ink-2);
   transition: color 0.15s ease;
 }
 
 .more svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   transition: transform 0.15s ease;
 }
 
@@ -540,49 +529,34 @@ code {
 }
 
 /* =========================================================================
-   Hero — short enough that the product clears the fold on a laptop
+   Hero
    ========================================================================= */
 
 .hero {
-  padding-top: clamp(32px, 5.5vw, 72px);
+  padding-top: 96px;
 }
 
 .hero__copy {
-  max-width: 820px;
-}
-
-/* App icon + name: how a Mac app introduces itself. Part of the h1, since the
-   name is what people search for. */
-.hero__app {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.hero__app img {
-  width: 44px;
-  height: 44px;
-  margin: -4px;
+  text-align: center;
 }
 
 .hero__title {
-  display: block;
+  max-width: 13em;
   font-family: var(--display);
-  font-size: clamp(38px, 4.6vw, 60px);
+  font-size: 56px;
   font-weight: 600;
-  line-height: 1.05;
+  line-height: 1.07;
   letter-spacing: -0.022em;
   text-wrap: balance;
 }
 
 .hero__lede {
-  margin-top: 18px;
-  max-width: 54ch;
-  font-size: clamp(17px, 1.45vw, 19px);
+  margin-top: 20px;
+  max-width: 34em;
+  font-size: 19px;
   line-height: 1.5;
   color: var(--ink-2);
 }
@@ -591,18 +565,18 @@ code {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  margin-top: 28px;
+  justify-content: center;
+  gap: 16px 28px;
+  margin-top: 32px;
 }
 
 .hero__meta {
-  margin-top: 14px;
-  font-size: 14px;
+  margin-top: 16px;
   color: var(--ink-3);
 }
 
 .hero__stage {
-  margin-top: clamp(36px, 4.5vw, 56px);
+  margin-top: 64px;
 }
 
 /* =========================================================================
@@ -627,7 +601,7 @@ code {
   display: inline-flex;
 }
 
-/* Full-strength ink behind a hairline divider: any transparency on the coral
+/* The size, behind a hairline. Full-strength ink: any transparency on the coral
    drops below AA. The min-width keeps the button from jumping when MacArch
    swaps "176 MB" for "94 MB". */
 .dl-cta__size {
@@ -635,12 +609,7 @@ code {
   margin-left: 4px;
   padding-left: 12px;
   border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-  font-weight: 500;
   font-variant-numeric: tabular-nums;
-}
-
-.dl-cta--any .dl-cta__size {
-  min-width: 0;
 }
 
 /* =========================================================================
@@ -648,140 +617,34 @@ code {
    ========================================================================= */
 
 .sec {
-  padding-top: clamp(88px, 11vw, 150px);
+  --sec-pad: clamp(96px, 12vw, 160px);
+  padding-top: var(--sec-pad);
+  /* A jump to a section lands on its title, not on its empty top padding. */
+  scroll-margin-top: calc(32px - var(--sec-pad));
 }
 
 .sec__head {
-  max-width: 700px;
-  margin-bottom: clamp(32px, 4.5vw, 52px);
+  margin-bottom: 48px;
 }
 
-.sec__head--row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px 24px;
-  max-width: none;
+.sec__head--center {
+  text-align: center;
 }
 
 .sec__title {
   font-family: var(--display);
-  font-size: clamp(30px, 3.2vw, 42px);
+  font-size: 40px;
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
-/* Utility sections (download, changelog) speak quieter than the product. */
-.sec__title--sm {
-  font-size: clamp(26px, 2.4vw, 30px);
-  letter-spacing: -0.016em;
-}
-
-.sec__lede {
-  margin-top: 14px;
-  max-width: 58ch;
-  font-size: clamp(17px, 1.35vw, 18px);
-  line-height: 1.55;
-  color: var(--ink-2);
-}
-
-/* ---- features: a segmented control over one wide stage ------------------- */
-
-.picker {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.picker__tabs {
-  display: inline-flex;
-  align-self: flex-start;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--fill);
-}
-
-.picker__tab {
-  height: 36px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--ink-2);
-  font-size: 15px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.picker__tab:hover {
-  color: var(--ink);
-}
-
-.picker__tab[aria-selected="true"] {
-  background: var(--seg-on);
-  color: var(--ink);
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 0.5px var(--line-2);
-}
-
-/* Panels stack in one grid cell, so the stage is as tall as the tallest and
-   never jumps when the selection changes. Off screen it isn't rendered at all,
-   which also stops the pill's ring from costing anything. */
-.picker__stage {
-  display: grid;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 700px;
-}
-
-.picker__panel {
-  grid-area: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity 0.22s ease,
-    visibility 0s linear 0.22s;
-}
-
-.picker__panel[data-active] {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity 0.22s ease;
-}
-
-.picker__panel:focus-visible {
-  outline-offset: 6px;
-  border-radius: 24px;
-}
-
-.picker__panel > .scene {
-  flex: 1;
-}
-
-/* Hidden panels keep still. */
-.picker__panel:not([data-active]) *,
-.picker__panel:not([data-active]) *::before,
-.picker__panel:not([data-active]) *::after {
-  animation-play-state: paused !important;
-}
-
-.picker__caption {
-  max-width: 64ch;
-  padding: 0 4px;
-  font-size: 16px;
+/* Ledes and captions. */
+.caption {
+  max-width: 34em;
+  font-size: 19px;
+  line-height: 1.5;
   color: var(--ink-2);
 }
 
@@ -790,37 +653,26 @@ code {
 .pace {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  gap: 20px;
+  align-items: center;
+  gap: 48px 64px;
 }
 
 .anatomy {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 118px 56px 132px;
-  border-radius: 22px;
-  background: var(--bg-2);
-  box-shadow: inset 0 0 0 1px var(--line);
+  padding: 8px 0 104px;
 }
 
 .anatomy__row {
   position: relative;
   width: 100%;
-  max-width: 520px;
+  max-width: 560px;
 }
 
 /* Labels on thin leaders, pointing at the thing they describe. */
 .callout {
   position: absolute;
-  font-size: 14px;
   line-height: 1.35;
   color: var(--ink-2);
   white-space: nowrap;
-}
-
-.callout b {
-  font-weight: 600;
-  color: var(--ink);
 }
 
 .callout::before,
@@ -844,23 +696,6 @@ code {
   background: var(--ink-2);
 }
 
-.callout--used {
-  right: 0;
-  bottom: calc(100% + 44px);
-  text-align: right;
-}
-
-.callout--used::before {
-  right: 50px;
-  top: calc(100% + 6px);
-  height: 34px;
-}
-
-.callout--used::after {
-  right: 48px;
-  top: calc(100% + 38px);
-}
-
 /* Anchored to the tick itself: --tick comes from the same data as the bar. */
 .callout--tick {
   right: calc(100% - var(--tick, 50%));
@@ -882,27 +717,143 @@ code {
 
 .callout--full {
   right: 0;
-  top: calc(100% + 86px);
+  top: calc(100% + 46px);
   text-align: right;
 }
 
 .callout--full::before {
   right: 62px;
   bottom: calc(100% + 4px);
-  height: 78px;
+  height: 38px;
 }
 
 .callout--full::after {
   right: 60px;
-  bottom: calc(100% + 80px);
+  bottom: calc(100% + 40px);
 }
 
 .alerts {
   display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
+/* As wide as the column allows, so the notices can shrink on a narrow phone. */
 .alerts .scene {
+  width: 100%;
+}
+
+/* ---- features: a segmented control over one stage --------------------------- */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.picker__tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--fill);
+}
+
+/* The selected tab is set in 600; a hidden bold copy of the label reserves
+   that width, so selecting a tab doesn't nudge its neighbours. */
+.picker__tab {
+  display: inline-grid;
+  align-content: center;
+  justify-items: center;
+  height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-2);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.picker__tab::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  font-weight: 600;
+  visibility: hidden;
+}
+
+.picker__tab:hover {
+  color: var(--ink);
+}
+
+.picker__tab[aria-selected="true"] {
+  background: var(--seg-on);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.18),
+    inset 0 0 0 0.5px var(--line-2);
+}
+
+/* Panels stack in one grid cell, so the stage is as tall as the tallest and
+   never jumps when the selection changes. Off screen it isn't rendered at all,
+   which also stops the pill's ring from costing anything. */
+.picker__stage {
+  display: grid;
+  width: 100%;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 560px;
+}
+
+.picker__panel {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  min-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.22s ease,
+    visibility 0s linear 0.22s;
+}
+
+.picker__panel[data-active] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.22s ease;
+}
+
+.picker__panel:focus-visible {
+  outline-offset: 6px;
+  border-radius: 24px;
+}
+
+.picker__panel > .scene {
   flex: 1;
+  align-self: stretch;
+}
+
+/* Hidden panels keep still. */
+.picker__panel:not([data-active]) *,
+.picker__panel:not([data-active]) *::before,
+.picker__panel:not([data-active]) *::after {
+  animation-play-state: paused !important;
+}
+
+.picker__caption {
+  max-width: 46em;
+  font-size: 19px;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ink-2);
 }
 
 /* ---- privacy ---------------------------------------------------------------- */
@@ -910,37 +861,42 @@ code {
 .privacy {
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  gap: 48px 56px;
-  align-items: center;
+  grid-template-areas:
+    "title mock"
+    "facts mock";
+  grid-template-rows: auto 1fr;
+  gap: 0 64px;
+  align-items: start;
 }
 
-.privacy .sec__lede {
-  margin-bottom: 32px;
+.privacy__title {
+  grid-area: title;
+  margin-bottom: 40px;
 }
 
 .facts {
+  grid-area: facts;
   display: grid;
-  gap: 22px;
+  gap: 28px;
+}
+
+.privacy__mock {
+  grid-area: mock;
+  align-self: center;
 }
 
 .facts dt {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .facts dd {
   margin-top: 4px;
-  max-width: 52ch;
+  max-width: 34em;
+  font-size: 19px;
+  line-height: 1.5;
   color: var(--ink-2);
-}
-
-.facts code {
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--fill);
-  color: var(--ink);
-  font-size: 14px;
 }
 
 /* ---- download ---------------------------------------------------------------- */
@@ -951,62 +907,35 @@ code {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px 40px;
-}
-
-.dl-head .sec__head {
-  margin-bottom: 0;
+  margin-bottom: 48px;
 }
 
 .dl-meta {
-  display: grid;
-  gap: 2px;
-  padding-bottom: 4px;
-  font-size: 15px;
+  text-align: right;
+  color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 
-.dl-meta__ver {
-  font-weight: 600;
+.dl-meta a {
+  color: var(--ink-2);
+  transition: color 0.15s ease;
 }
 
-.dl-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 14px;
-  color: var(--ink-3);
-}
-
-.dl-stats > span {
-  white-space: nowrap;
-}
-
-.dl-stats b {
-  font-weight: 600;
+.dl-meta a:hover {
   color: var(--ink);
 }
 
 .downloads {
-  margin-top: 40px;
   border-top: 1px solid var(--line);
 }
 
 .dl {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr) auto;
+  grid-template-columns: 200px minmax(0, 1fr) auto;
   align-items: center;
   gap: 24px;
-  padding: 20px 0;
+  padding: 24px 0;
   border-bottom: 1px solid var(--line);
-}
-
-/* Variant rows sit under their platform as one group: no rule between them,
-   and the group's last row closes it. */
-.dl--sub {
-  padding-top: 0;
-}
-
-.dl:has(+ .dl--sub) {
-  border-bottom-color: transparent;
 }
 
 .dl__os {
@@ -1022,105 +951,81 @@ code {
 }
 
 .dl__os h3 {
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
-.dl__file {
-  min-width: 0;
   font-size: 15px;
-  color: var(--ink-2);
-}
-
-.dl__file b {
   font-weight: 600;
-  color: var(--ink);
+  white-space: nowrap;
 }
 
-.dl__file span {
-  display: block;
-  margin-top: 3px;
-  overflow: hidden;
-  font-family: var(--code);
-  font-size: 12.5px;
-  color: var(--ink-3);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.dl__req {
+  color: var(--ink-2);
 }
 
 .dl__actions {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  justify-self: end;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 
-.dl__alt {
-  font-size: 14px;
+.dl__alts {
   color: var(--ink-3);
   white-space: nowrap;
+}
+
+.dl__alts a {
+  color: var(--ink-3);
   transition: color 0.15s ease;
 }
 
-.dl__alt:hover {
+.dl__alts a:hover {
   color: var(--ink);
 }
 
-.dl__badge {
-  display: none;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--tint-text);
-  white-space: nowrap;
-}
-
-/* The row this machine should take: badged, and its button promoted. macOS has
-   three candidates, so until the architecture is known the universal build is
-   the right answer — `:not([data-arch])` makes that the default, not a guess. */
-:root[data-os="mac"]:not([data-arch]) .dl--mac .dl__badge,
-:root[data-os="mac"][data-arch="arm64"] .dl--macArm64 .dl__badge,
-:root[data-os="mac"][data-arch="x64"] .dl--macX64 .dl__badge,
-:root[data-os="win"] .dl--win .dl__badge,
-:root[data-os="linux"] .dl--linux .dl__badge {
-  display: inline;
-}
-
-:root[data-os="mac"]:not([data-arch]) .dl--mac .dl__get,
-:root[data-os="mac"][data-arch="arm64"] .dl--macArm64 .dl__get,
-:root[data-os="mac"][data-arch="x64"] .dl--macX64 .dl__get,
+/* The row this computer should take gets the coral button. */
+:root[data-os="mac"] .dl--mac .dl__get,
 :root[data-os="win"] .dl--win .dl__get,
 :root[data-os="linux"] .dl--linux .dl__get {
   background: var(--cta-bg);
   color: var(--cta-ink);
 }
 
-/* First launch: the visitor's own platform only, once the page knows it. */
-/* minmax(0, 1fr): a long command scrolls inside its box instead of widening
+:root[data-os="mac"] .dl--mac .dl__get:hover,
+:root[data-os="win"] .dl--win .dl__get:hover,
+:root[data-os="linux"] .dl--linux .dl__get:hover {
+  background: var(--cta-bg-hover);
+}
+
+/* First launch: the visitor's own platform only, once the page knows it.
+   minmax(0, 1fr): a long command scrolls inside its box instead of widening
    the column past the screen. */
 .install {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  max-width: 780px;
-  margin-top: 40px;
+  gap: 16px;
+  max-width: 640px;
+  margin-top: 48px;
 }
 
-.install__title {
+.install__title,
+.install__os {
   font-size: 15px;
   font-weight: 600;
 }
 
-.install__note p {
+.install__note p,
+.install__more p {
+  max-width: 34em;
   color: var(--ink-2);
 }
 
-.install__note b {
-  font-weight: 600;
-  color: var(--ink);
+/* The platform's name only labels the note when all three are showing. */
+.install__os {
+  margin-bottom: 2px;
 }
 
+:root[data-os="mac"] .install__os,
+:root[data-os="win"] .install__os,
+:root[data-os="linux"] .install__os,
 :root[data-os="mac"] .install__note:not(.install__note--mac),
 :root[data-os="win"] .install__note:not(.install__note--win),
 :root[data-os="linux"] .install__note:not(.install__note--linux) {
@@ -1132,26 +1037,22 @@ code {
   border-top: 1px solid var(--line);
 }
 
-.install__more > summary,
-.log__more > summary {
+.install__more > summary {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 20px 0;
-  font-weight: 500;
   color: var(--ink-2);
   list-style: none;
   cursor: pointer;
   transition: color 0.15s ease;
 }
 
-.install__more > summary::-webkit-details-marker,
-.log__more > summary::-webkit-details-marker {
+.install__more > summary::-webkit-details-marker {
   display: none;
 }
 
-.install__more > summary:hover,
-.log__more > summary:hover {
+.install__more > summary:hover {
   color: var(--ink);
 }
 
@@ -1170,30 +1071,9 @@ code {
   transform: rotate(225deg) translate(-2px, -2px);
 }
 
-.notes {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 14px 24px;
-  padding-bottom: 8px;
-  font-size: 15px;
-}
-
-.notes dt {
-  font-weight: 600;
-}
-
-.notes dd {
-  min-width: 0;
-  max-width: 72ch;
-  color: var(--ink-2);
-}
-
-.notes code {
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--fill);
-  color: var(--ink);
-  font-size: 13px;
+.install__more p + p,
+.install__more .more {
+  margin-top: 12px;
 }
 
 /* A command: one selectable block, and a copy button beside it rather than on
@@ -1202,7 +1082,7 @@ code {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 12px;
   padding-right: 8px;
   border-radius: 12px;
   background: var(--bg-2);
@@ -1212,13 +1092,12 @@ code {
 .cmd pre {
   flex: 1;
   min-width: 0;
-  padding: 13px 4px 13px 16px;
+  padding: 12px 4px 12px 16px;
   overflow-x: auto;
   border-radius: inherit;
-  color: var(--ink);
+  color: var(--ink-2);
   font-family: var(--code);
-  font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 .cmd pre:focus-visible {
@@ -1227,16 +1106,15 @@ code {
 
 .copy {
   flex: 0 0 auto;
-  height: 30px;
-  margin-top: 8px;
+  height: 32px;
+  margin-top: 6px;
   padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: var(--fill-2);
   color: var(--ink);
   font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease;
 }
@@ -1245,107 +1123,10 @@ code {
   background: color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
-/* ---- changelog ---------------------------------------------------------------- */
-
-.log__entry {
-  display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 8px 24px;
-  padding: 28px 0;
-  border-top: 1px solid var(--line);
-}
-
-.log__meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.log__verline {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.log__ver {
-  font-size: 15px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.log__date {
-  font-size: 14px;
-  color: var(--ink-3);
-}
-
-.log__badge {
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--tint) 15%, transparent);
-  color: var(--tint-text);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.log__badge--next {
-  background: var(--fill);
-  color: var(--ink-2);
-}
-
-.log__title {
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: -0.012em;
-}
-
-.log__summary {
-  margin-top: 6px;
-  max-width: 68ch;
-  color: var(--ink-2);
-}
-
-.log__list {
-  display: grid;
-  gap: 6px;
-  margin-top: 8px;
-  padding-left: 18px;
-  max-width: 68ch;
-  list-style: disc;
-  color: var(--ink-2);
-}
-
-.log__list li::marker {
-  color: var(--ink-3);
-}
-
-.log__link {
-  margin-top: 12px;
-}
-
-.log__more {
-  border-top: 1px solid var(--line);
-}
-
-.log__more > summary {
-  padding: 24px 0;
-}
-
-.log__more > summary svg {
-  width: 15px;
-  height: 15px;
-  transform: rotate(90deg);
-  transition: transform 0.2s ease;
-}
-
-.log__more[open] > summary svg {
-  transform: rotate(-90deg);
-}
-
 /* ---- footer -------------------------------------------------------------------- */
 
 .footer {
-  margin-top: clamp(88px, 11vw, 150px);
+  margin-top: 96px;
   padding: 56px 0 40px;
   border-top: 1px solid var(--line);
   background: var(--bg-2);
@@ -1354,28 +1135,26 @@ code {
 .footer__grid {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  gap: 40px 48px;
+  gap: 32px 48px;
 }
 
 .maker h2 {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
 }
 
 .maker p {
-  margin-top: 8px;
-  max-width: 58ch;
-  font-size: 15.5px;
+  margin-top: 6px;
+  max-width: 34em;
   color: var(--ink-2);
 }
 
 .footer__links {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, max-content));
-  gap: 10px 48px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
   align-content: start;
-  justify-content: end;
-  font-size: 15px;
+  justify-content: flex-end;
 }
 
 .footer__links a {
@@ -1390,23 +1169,10 @@ code {
 .footer__base {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
   justify-content: space-between;
-  gap: 12px 24px;
-  margin-top: 56px;
-  font-size: 13px;
+  gap: 8px 24px;
+  margin-top: 48px;
   color: var(--ink-3);
-}
-
-.footer__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.footer__brand img {
-  width: 18px;
-  height: 18px;
 }
 
 /* =========================================================================
@@ -1414,13 +1180,12 @@ code {
    ========================================================================= */
 
 @media (max-width: 1080px) {
-  .pace,
-  .privacy {
+  .pace {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .alerts .scene {
-    min-height: 320px;
+  .alerts {
+    align-items: flex-start;
   }
 }
 
@@ -1430,7 +1195,21 @@ code {
   }
 
   .footer__links {
-    justify-content: start;
+    justify-content: flex-start;
+  }
+
+  /* Heading, then the window, then what it means. */
+  .privacy {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "title"
+      "mock"
+      "facts";
+    grid-template-rows: auto;
+  }
+
+  .privacy__mock {
+    margin-bottom: 40px;
   }
 }
 
@@ -1446,32 +1225,21 @@ code {
   /* Download rows become stacked blocks with a full-width button. */
   .dl {
     grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-  }
-
-  .dl--sub {
-    padding-top: 4px;
-  }
-
-  .dl__os:empty {
-    display: none;
+    gap: 8px;
   }
 
   .dl__actions {
-    justify-self: stretch;
-  }
-
-  .dl__actions .btn {
-    flex: 1;
-  }
-
-  .notes,
-  .log__entry {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .notes dd + dt {
+    align-items: stretch;
     margin-top: 8px;
+  }
+
+  .dl__alts {
+    text-align: center;
+    white-space: normal;
+  }
+
+  .dl-meta {
+    text-align: left;
   }
 }
 
@@ -1480,12 +1248,25 @@ code {
     --gutter: 16px;
   }
 
-  .hero__app {
-    margin-bottom: 16px;
+  .hero {
+    padding-top: 48px;
   }
 
-  .hero__actions .btn {
-    flex: 1 1 auto;
+  .hero__title {
+    font-size: 40px;
+  }
+
+  .hero__stage {
+    margin-top: 48px;
+  }
+
+  .sec__title {
+    font-size: 30px;
+  }
+
+  .sec__head,
+  .dl-head {
+    margin-bottom: 32px;
   }
 
   .picker__tabs {
@@ -1494,83 +1275,34 @@ code {
 
   .picker__tab {
     flex: 1;
-    padding: 0 10px;
-    font-size: 14px;
+    padding: 0 8px;
   }
 
-  /* The annotations become a list under the row: leaders need room. */
+  /* The leaders need room; on a phone the bar speaks for itself, and the
+     figure's caption still says it all to a screen reader. */
   .anatomy {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 28px;
-    padding: 36px 20px 28px;
-  }
-
-  .anatomy__row {
-    position: static;
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
+    padding: 0;
   }
 
   .callout {
-    position: relative;
-    inset: auto;
-    padding: 0 0 0 18px;
-    text-align: left;
-    white-space: normal;
-  }
-
-  .callout::before {
     display: none;
-  }
-
-  .callout::after {
-    inset: 8px auto auto 0;
-    margin: 0;
-  }
-
-  .callout--used {
-    order: 2;
-  }
-
-  .callout--tick {
-    order: 3;
-  }
-
-  .callout--full {
-    order: 4;
-  }
-}
-
-@media (max-width: 400px) {
-  .dl-cta__size {
-    display: none;
-  }
-
-  .picker__tab {
-    padding: 0 6px;
-    font-size: 13px;
   }
 }
 
 /* Fingers, not pointers: every target at least 44px. */
 @media (pointer: coarse) {
-  .icon-btn {
-    width: 44px;
+  .icon-btn,
+  .btn,
+  .picker__tab {
     height: 44px;
   }
 
-  .btn--sm {
-    height: 44px;
+  .icon-btn {
+    width: 44px;
   }
 
   .btn--xs {
     height: 40px;
-  }
-
-  .picker__tab {
-    height: 44px;
   }
 }
 
