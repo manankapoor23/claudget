@@ -38,6 +38,8 @@
 
 No setup. claudget just reads what the Claude Code CLI already keeps on your machine — the OAuth token from the macOS Keychain (or `~/.claude/.credentials.json` elsewhere). Nothing to paste in, no key to generate. **If `claude` already works for you, this will too.**
 
+I built it because I kept checking my usage again and again. I wanted something cleaner, that showed more and was easier to keep an eye on.
+
 ## Contents
 
 - [What it does](#what-it-does)

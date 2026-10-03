@@ -94,8 +94,8 @@ function Footer() {
           <div className="maker">
             <h2>Made by {MAKER_NAME}</h2>
             <p>
-              An independent project, built in the open. Found a bug or want a feature? Open an
-              issue on GitHub.
+              I kept checking my usage again and again. I wanted something cleaner, that showed
+              more and was easier to keep an eye on.
             </p>
           </div>
           <nav className="footer__links" aria-label="Project links">
