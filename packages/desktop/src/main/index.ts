@@ -504,26 +504,26 @@ if (!singleInstanceLock) {
 
     globalShortcut.register('CommandOrControl+Alt+U', () => togglePopover());
 
-    // Windows: when Explorer restarts (a crash, an update, a theme change),
-    // it puts tray icons back without their tooltips and forgets which
-    // windows asked to stay off the taskbar, so the pill and the floating bar
-    // turned up as taskbar buttons. Explorer leaving and coming back moves
-    // the taskbar out of and into the work area, which is the signal here.
+    // Windows: when Explorer restarts (a crash, an update), it puts tray
+    // icons back without their tooltips and forgets which windows asked to
+    // stay off the taskbar, so the pill and the floating bar turned up as
+    // taskbar buttons. Explorer announces itself with the registered
+    // "TaskbarCreated" message, whose number Electron can't look up for us,
+    // and no work-area or display event comes with it. So, every few seconds,
+    // re-assert both: a tooltip set to the same text and a DeleteTab on a
+    // window that has no tab are no-ops for the shell, a couple of Win32
+    // calls in all. Shown windows also re-assert when they're shown.
     if (process.platform === 'win32') {
-      let reassertTimer: NodeJS.Timeout | null = null;
-      screen.on('display-metrics-changed', (_event, _display, changed) => {
-        if (!changed.includes('workArea')) return;
-        if (reassertTimer) clearTimeout(reassertTimer);
-        reassertTimer = setTimeout(() => {
-          trayHandle?.reassert();
-          for (const w of [pill.peek(), miniBar.peek(), popover.peek()]) {
-            if (w && !w.browser.isDestroyed()) w.browser.setSkipTaskbar(true);
-          }
-          const d = dashboard.peek();
-          if (d && !d.browser.isDestroyed()) d.browser.setSkipTaskbar(!config.showInTaskbar);
-          logger.info('Work area changed; re-applied tray tooltip and taskbar state');
-        }, 1500);
-      });
+      const reassertShell = (): void => {
+        trayHandle?.reassert();
+        for (const w of [pill.peek(), miniBar.peek()]) {
+          if (w && !w.browser.isDestroyed() && w.browser.isVisible())
+            w.browser.setSkipTaskbar(true);
+        }
+        const d = dashboard.peek();
+        if (d && !d.browser.isDestroyed() && !config.showInTaskbar) d.browser.setSkipTaskbar(true);
+      };
+      setInterval(reassertShell, 10_000).unref();
     }
     globalShortcut.register('CommandOrControl+Alt+C', () =>
       applyConfig({ clickThrough: !config.clickThrough }),
