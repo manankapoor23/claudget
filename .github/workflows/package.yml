@@ -51,4 +51,4 @@ jobs:
             packages/desktop/release/*.exe
             packages/desktop/release/*.AppImage
             packages/desktop/release/*.deb
-            packages/desktop/release/*.yml
+            packages/desktop/release/latest*.yml
