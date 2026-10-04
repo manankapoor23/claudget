@@ -1576,6 +1576,10 @@ body {
 .welcome .btn2 {
   align-self: flex-start;
 }
+/* The dashboard spaces its sections itself (first-run welcome, Windows/Linux). */
+.app--dash .welcome {
+  margin-bottom: 0;
+}
 
 /* ── Sessions table ─────────────────────────────────────────────────────── */
 .st {
