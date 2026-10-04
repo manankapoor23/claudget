@@ -194,18 +194,21 @@ export class WidgetWindow {
 
     const changed = (k: keyof WidgetConfig): boolean => first || config[k] !== prev[k];
 
-    // Native surfaces (menus, the tray, dialogs) follow the OS appearance, so
-    // point them at the user's theme choice too.
-    if (changed('theme')) {
-      nativeTheme.themeSource = config.theme;
-      if (MAC) this.browser.setBackgroundColor(groundColour());
-    }
+    // nativeTheme.themeSource is set app-wide in main (this window may not
+    // exist); here just match the opaque ground to it.
+    if (changed('theme') && MAC) this.browser.setBackgroundColor(groundColour());
     // 'screen-saver' level floats above fullscreen apps; 'floating' doesn't.
     if (changed('alwaysOnTop')) {
       this.browser.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
       // setAlwaysOnTop rewrites the macOS collection behavior, so all-Spaces
       // visibility must be re-asserted right after it — but only then.
-      this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+      // skipTransformProcessType: the dashboard is created and shown while
+      // claudget is a regular app; the transform would flip it back to a
+      // Dock-less accessory under the open window.
+      this.browser.setVisibleOnAllWorkspaces(true, {
+        visibleOnFullScreen: true,
+        skipTransformProcessType: true,
+      });
     }
     if (changed('clickThrough')) {
       this.browser.setIgnoreMouseEvents(config.clickThrough, { forward: true });

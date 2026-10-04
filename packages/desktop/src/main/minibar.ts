@@ -96,13 +96,21 @@ export class MiniBar {
       },
     });
     this.browser.setAlwaysOnTop(true, 'floating');
-    this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // skipTransformProcessType: see pill.ts.
+    this.browser.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
     loadSurface(this.browser, deps, 'minibar');
     this.browser.on('move', () => this.persist());
     this.browser.on('resize', () => this.persist());
-    nativeTheme.on('updated', () => {
+    // The bar is created and destroyed as it's toggled; don't leave a theme
+    // listener behind per instance.
+    const onTheme = (): void => {
       if (!this.browser.isDestroyed()) this.browser.setBackgroundColor(ground());
-    });
+    };
+    nativeTheme.on('updated', onTheme);
+    this.browser.once('closed', () => nativeTheme.off('updated', onTheme));
   }
 
   setVisible(visible: boolean): void {

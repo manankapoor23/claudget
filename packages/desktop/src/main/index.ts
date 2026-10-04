@@ -1,6 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { app, globalShortcut, Menu, nativeTheme, shell, type BrowserWindow } from 'electron';
+import {
+  app,
+  globalShortcut,
+  Menu,
+  nativeTheme,
+  shell,
+  type BrowserWindow,
+  type Rectangle,
+} from 'electron';
 import {
   PRICING_NOTE,
   UsageEngine,
@@ -10,9 +18,12 @@ import {
 import { autoUpdater } from 'electron-updater';
 import { buildAppMenu } from './app-menu';
 import { detectCliVersion, resolveIconPath } from './app-paths';
+import { applyUserDataOverride, runPopoverSelfTest, startMemoryLog } from './diagnostics';
 import { BudgetAlerter } from './budget-alerts';
 import { ConfigStore } from './config-store';
 import { registerIpc } from './ipc';
+import { hasStatusNotifierHost, launchSurface, trayLikelyVisible } from './launch-policy';
+import { LazyWindow } from './lazy-window';
 import { createAppLogger } from './logger';
 import { LimitAlerter } from './limit-alerts';
 import { LimitHistoryStore } from './limit-history';
@@ -24,6 +35,7 @@ import { createTray, type TrayHandle } from './tray';
 import { WidgetWindow } from './window';
 import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
 
+applyUserDataOverride();
 const singleInstanceLock = app.requestSingleInstanceLock();
 
 if (!singleInstanceLock) {
@@ -76,38 +88,14 @@ if (!singleInstanceLock) {
       rendererFile: path.join(__dirname, '../renderer/index.html'),
     };
 
-    // Three surfaces, one renderer bundle:
-    //   popover   — the menu-bar dropdown, the everyday glance
-    //   pill      — the optional floating strip (config `compact`)
-    //   dashboard — the full window, opened on demand
-    const dashboard = new WidgetWindow({
-      ...renderer,
-      iconPath: resolveIconPath(),
-      statePath: path.join(userData, 'window-state.json'),
-      config,
-    });
-    const popover = new Popover(renderer);
-    const pill = new Pill({
-      ...renderer,
-      statePath: path.join(userData, 'pill-state.json'),
-      logger,
-    });
-    const settingsWin = new SettingsWindow({ ...renderer, iconPath: resolveIconPath() });
-    const miniBar = new MiniBar({
-      ...renderer,
-      statePath: path.join(userData, 'minibar-state.json'),
-    });
-    const surfaces = (): BrowserWindow[] => [
-      dashboard.browser,
-      popover.browser,
-      pill.browser,
-      settingsWin.browser,
-      miniBar.browser,
-    ];
+    // Native menus, dialogs and the tray follow the user's theme choice.
+    nativeTheme.themeSource = config.theme;
+
     const history = new LimitHistoryStore(path.join(userData, 'limit-history.json'), logger);
     const welcomed = path.join(userData, 'welcomed');
     const firstRun = !fs.existsSync(welcomed);
     let trayHandle: TrayHandle | null = null;
+    let trayAvailable = true;
 
     // The render frame can be disposed between the guard and the send (dev
     // reload, window close), so the try/catch is load-bearing, not paranoia.
@@ -119,11 +107,117 @@ if (!singleInstanceLock) {
         // frame went away mid-send — next snapshot will reach the new frame
       }
     };
+    /** Windows that have painted once; a fresh one is shown only after that. */
+    const painted = new WeakSet<BrowserWindow>();
+    const whenPainted = (win: BrowserWindow, fn: () => void): void => {
+      if (painted.has(win)) fn();
+      else win.once('ready-to-show', fn);
+    };
+
+    // Everything a surface window needs regardless of which one it is.
+    const wire = (win: BrowserWindow): void => {
+      win.once('ready-to-show', () => painted.add(win));
+      // Links (About, release notes) open in the browser — never in-app.
+      win.webContents.setWindowOpenHandler(({ url }) => {
+        if (/^https:\/\//.test(url)) void shell.openExternal(url);
+        return { action: 'deny' };
+      });
+      win.webContents.on('will-navigate', (event, url) => {
+        if (!url.startsWith('http://localhost') && !url.startsWith('file://'))
+          event.preventDefault();
+      });
+      // Closing hides; the app lives in the menu bar until Quit. A hidden
+      // dashboard or settings window is then destroyed after a few idle
+      // minutes, so reopening right away is instant and later is cheap.
+      win.on('close', (event) => {
+        if (!isQuitting) {
+          event.preventDefault();
+          win.hide();
+        }
+      });
+      win.webContents.on('did-finish-load', () => {
+        pushTo(win, IPC.SnapshotPush, engine.getSnapshot());
+        pushTo(win, IPC.ConfigPush, config);
+      });
+      // A dead renderer leaves a blank window behind for good. Drop it; the
+      // next open builds a fresh one.
+      win.webContents.on('render-process-gone', (_event, details) => {
+        logger.warn('Renderer gone; dropping its window', { reason: details.reason });
+        if (!win.isDestroyed()) win.destroy();
+        if (!isQuitting) setTimeout(syncFloating, 1000);
+      });
+    };
+
+    // Five surfaces, one renderer bundle, and each window is its own renderer
+    // process (~40-60 MB), so none exists until it's wanted:
+    //   popover   — the menu-bar dropdown, the everyday glance; created soon
+    //               after launch and kept, so a click opens it instantly
+    //   pill, bar — the optional floating surfaces; exist only while enabled
+    //   dashboard, settings — opened on demand; destroyed once they have
+    //               been closed (hidden) for a few minutes
+    const IDLE_DESTROY_MS = 3 * 60_000;
+    const dashboard = new LazyWindow({
+      create: () =>
+        new WidgetWindow({
+          ...renderer,
+          iconPath: resolveIconPath(),
+          statePath: path.join(userData, 'window-state.json'),
+          config,
+        }),
+      onCreate: (d) => {
+        wire(d.browser);
+        d.browser.on('hide', syncActivation);
+        d.browser.on('closed', syncActivation);
+      },
+      idleDestroyMs: IDLE_DESTROY_MS,
+    });
+    const settingsWin = new LazyWindow({
+      create: () => new SettingsWindow({ ...renderer, iconPath: resolveIconPath() }),
+      onCreate: (s) => {
+        wire(s.browser);
+        s.browser.on('hide', syncActivation);
+        s.browser.on('closed', syncActivation);
+      },
+      idleDestroyMs: IDLE_DESTROY_MS,
+    });
+    const popover = new LazyWindow({
+      create: () => new Popover(renderer),
+      onCreate: (p) => wire(p.browser),
+    });
+    const pill = new LazyWindow({
+      create: () =>
+        new Pill({ ...renderer, statePath: path.join(userData, 'pill-state.json'), logger }),
+      onCreate: (p) => wire(p.browser),
+    });
+    const miniBar = new LazyWindow({
+      create: () =>
+        new MiniBar({ ...renderer, statePath: path.join(userData, 'minibar-state.json') }),
+      onCreate: (m) => wire(m.browser),
+    });
+    const surfaces = (): BrowserWindow[] =>
+      [dashboard, popover, pill, settingsWin, miniBar].flatMap((w) => {
+        const live = w.peek();
+        return live ? [live.browser] : [];
+      });
+
     const broadcast = (channel: string, payload: unknown): void => {
       for (const win of surfaces()) pushTo(win, channel, payload);
     };
     const sendSnapshot = (snapshot: UsageSnapshot): void => broadcast(IPC.SnapshotPush, snapshot);
     const sendConfig = (cfg: WidgetConfig): void => broadcast(IPC.ConfigPush, cfg);
+
+    /** The pill and the floating bar exist exactly while they're switched on. */
+    const setFloating = <T extends Pill | MiniBar>(lazy: LazyWindow<T>, on: boolean): void => {
+      if (!on) return lazy.destroy();
+      const w = lazy.get();
+      whenPainted(w.browser, () => {
+        if (!w.browser.isDestroyed()) w.setVisible(true);
+      });
+    };
+    function syncFloating(): void {
+      setFloating(pill, config.compact);
+      setFloating(miniBar, config.miniBar);
+    }
 
     // macOS: claudget is menu-bar-only until a real window (dashboard or
     // settings) opens; then it's a regular app — Dock icon, app menu,
@@ -134,31 +228,54 @@ if (!singleInstanceLock) {
       void app.setActivationPolicy('regular');
       app.focus({ steal: true });
     };
-    const syncActivation = (): void => {
+    function syncActivation(): void {
       if (!MAC) return;
-      const open = [dashboard.browser, settingsWin.browser].some(
-        (w) => !w.isDestroyed() && w.isVisible(),
-      );
-      if (!open) void app.setActivationPolicy('accessory');
-    };
+      if (!dashboard.isVisible() && !settingsWin.isVisible()) {
+        void app.setActivationPolicy('accessory');
+      }
+    }
     const openDashboard = (view?: DashboardView): void => {
       if (view === 'settings') return openSettings();
-      popover.hide();
-      becomeRegular();
-      dashboard.show();
-      if (view) pushTo(dashboard.browser, IPC.Navigate, view);
+      popover.peek()?.hide();
+      const d = dashboard.get();
+      whenPainted(d.browser, () => {
+        if (d.browser.isDestroyed()) return;
+        becomeRegular();
+        d.show();
+        if (!view) return;
+        const contents = d.browser.webContents;
+        const navigate = (): void => pushTo(d.browser, IPC.Navigate, view);
+        if (contents.isLoading()) contents.once('did-finish-load', navigate);
+        else navigate();
+      });
     };
     const openSettings = (): void => {
-      popover.hide();
-      becomeRegular();
-      settingsWin.show();
+      popover.peek()?.hide();
+      const s = settingsWin.get();
+      whenPainted(s.browser, () => {
+        if (s.browser.isDestroyed()) return;
+        becomeRegular();
+        s.show();
+      });
     };
-    for (const w of [dashboard.browser, settingsWin.browser]) w.on('hide', syncActivation);
     // Clicking the Dock icon brings the dashboard back.
     app.on('activate', () => openDashboard());
-    const togglePopover = (): void => popover.toggle(trayHandle?.tray.getBounds() ?? null);
-    const showPopover = (): void => popover.show(trayHandle?.tray.getBounds() ?? null);
-    onSecondInstance = showPopover;
+    const trayBounds = (): Rectangle | null => trayHandle?.tray.getBounds() ?? null;
+    const togglePopover = (): void => {
+      const p = popover.get();
+      whenPainted(p.browser, () => {
+        if (!p.browser.isDestroyed()) p.toggle(trayBounds());
+      });
+    };
+    const showPopover = (): void => {
+      const p = popover.get();
+      whenPainted(p.browser, () => {
+        if (!p.browser.isDestroyed()) p.show(trayBounds());
+      });
+    };
+    // Relaunching shows the glance — or, with no tray to anchor it to, the
+    // dashboard, which is the only way in.
+    onSecondInstance = () => (trayAvailable ? showPopover() : openDashboard());
 
     const budgetAlerter = new BudgetAlerter(logger);
     const limitAlerter = new LimitAlerter(path.join(userData, 'limit-alerts.json'), logger);
@@ -181,9 +298,9 @@ if (!singleInstanceLock) {
       const prev = config;
       config = configStore.set(patch);
       engine.updateConfig(patch);
-      dashboard.applyConfig(config);
-      if (config.compact !== prev.compact) pill.setVisible(config.compact);
-      if (config.miniBar !== prev.miniBar) miniBar.setVisible(config.miniBar);
+      if (config.theme !== prev.theme) nativeTheme.themeSource = config.theme;
+      dashboard.peek()?.applyConfig(config);
+      if (config.compact !== prev.compact || config.miniBar !== prev.miniBar) syncFloating();
       if (config.logLevel !== prev.logLevel) logger.setLevel(config.logLevel);
       if (config.launchOnLogin !== prev.launchOnLogin) {
         app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });
@@ -247,7 +364,7 @@ if (!singleInstanceLock) {
       if (fs.existsSync(dockIcon)) app.dock?.setIcon(dockIcon);
     }
     // Keep the opaque window's ground right when the OS appearance flips.
-    nativeTheme.on('updated', () => dashboard.syncGround());
+    nativeTheme.on('updated', () => dashboard.peek()?.syncGround());
 
     registerIpc({
       engine,
@@ -257,62 +374,51 @@ if (!singleInstanceLock) {
       openDashboard,
       openSettings,
       getLimitHistory: () => history.get(),
-      startPillDrag: (x, y) => pill.startDrag(x, y),
-      endPillDrag: () => pill.endDrag(),
-      nudgePill: (dx, dy) => pill.nudge(dx, dy),
-      fitPopover: (h) => popover.setContentHeight(h),
+      startPillDrag: (x, y) => pill.peek()?.startDrag(x, y),
+      endPillDrag: () => pill.peek()?.endDrag(),
+      nudgePill: (dx, dy) => pill.peek()?.nudge(dx, dy),
+      fitPopover: (h) => popover.peek()?.setContentHeight(h),
       quit,
     });
 
-    trayHandle = createTray({
-      iconPath: resolveIconPath(),
-      getConfig: () => config,
-      setConfig: applyConfig,
-      togglePopover,
-      openDashboard: () => openDashboard(),
-      openSettings,
-      refresh: () => void engine.refresh(),
-      openLogs: () => void shell.openPath(logFilePath),
-      openConfigFile: () => void shell.openPath(configStore.filePath),
-      quit,
-    });
-
-    // Closing any surface hides it; the app lives in the menu bar until Quit.
-    for (const win of surfaces()) {
-      // Links (About, release notes) open in the browser — never in-app.
-      win.webContents.setWindowOpenHandler(({ url }) => {
-        if (/^https:\/\//.test(url)) void shell.openExternal(url);
-        return { action: 'deny' };
+    try {
+      trayHandle = createTray({
+        iconPath: resolveIconPath(),
+        getConfig: () => config,
+        setConfig: applyConfig,
+        togglePopover,
+        openDashboard: () => openDashboard(),
+        openSettings,
+        refresh: () => void engine.refresh(),
+        openLogs: () => void shell.openPath(logFilePath),
+        openConfigFile: () => void shell.openPath(configStore.filePath),
+        quit,
       });
-      win.webContents.on('will-navigate', (event, url) => {
-        if (!url.startsWith('http://localhost') && !url.startsWith('file://'))
-          event.preventDefault();
-      });
-      win.on('close', (event) => {
-        if (!isQuitting) {
-          event.preventDefault();
-          win.hide();
-        }
-      });
-      win.webContents.on('did-finish-load', () => {
-        pushTo(win, IPC.SnapshotPush, engine.getSnapshot());
-        pushTo(win, IPC.ConfigPush, config);
-      });
+    } catch (err) {
+      logger.error('Could not create the tray icon', err);
     }
-    // Nothing opens itself at launch except the pill (if enabled) — and, the
-    // very first time, the popover, so a new user can see where claudget lives.
-    pill.browser.once('ready-to-show', () => pill.setVisible(config.compact));
-    miniBar.browser.once('ready-to-show', () => miniBar.setVisible(config.miniBar));
+    // Linux: a tray icon only shows if the desktop hosts one (stock GNOME
+    // doesn't). Without one, the dashboard is the way in.
+    const sniHost = process.platform === 'linux' ? await hasStatusNotifierHost() : null;
+    trayAvailable =
+      trayHandle !== null &&
+      trayLikelyVisible(process.platform, sniHost, process.env['XDG_CURRENT_DESKTOP']);
+    logger.info('Tray', { trayAvailable, sniHost });
+
+    // Nothing opens itself at launch except the pill / bar (if enabled), plus
+    // the first-run hello (popover on macOS/Windows, dashboard on Linux), and
+    // the dashboard whenever there's no tray to reach claudget from.
+    syncFloating();
+    const atLaunch = launchSurface({ platform: process.platform, firstRun, trayAvailable });
+    // Give the tray a moment to get real bounds before anchoring under it.
+    if (atLaunch === 'popover') setTimeout(showPopover, 400);
+    else if (atLaunch === 'dashboard') openDashboard();
     if (firstRun) {
-      popover.browser.once('ready-to-show', () => {
-        // Give the tray a moment to get real bounds before anchoring under it.
-        setTimeout(showPopover, 400);
-        try {
-          fs.writeFileSync(welcomed, new Date().toISOString(), 'utf8');
-        } catch {
-          // Non-fatal: they'll just see the welcome again.
-        }
-      });
+      try {
+        fs.writeFileSync(welcomed, new Date().toISOString(), 'utf8');
+      } catch {
+        // Non-fatal: they'll just see the welcome again.
+      }
     }
 
     globalShortcut.register('CommandOrControl+Alt+U', togglePopover);
@@ -331,6 +437,16 @@ if (!singleInstanceLock) {
 
     await engine.start();
     logger.info('Engine started');
+    // Build the popover once launch has settled, so the first click on the
+    // menu-bar item shows it at once instead of waiting on a new renderer.
+    if (trayAvailable && !process.env['CLAUDGET_SELFTEST']) setTimeout(() => popover.get(), 1500);
+    startMemoryLog();
+    runPopoverSelfTest({
+      open: togglePopover,
+      close: () => popover.peek()?.hide(),
+      window: () => popover.peek()?.browser ?? null,
+      log: (msg, data) => logger.info(msg, data),
+    });
 
     // Auto-update from GitHub Releases (config comes from electron-builder's
     // publish block). Windows/Linux only: macOS builds are unsigned and

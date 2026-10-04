@@ -40,11 +40,14 @@ export class SettingsWindow {
       },
     });
     loadSurface(this.browser, deps, 'settings');
-    nativeTheme.on('updated', () => {
+    // Created on open and destroyed when closed: one theme listener per instance.
+    const onTheme = (): void => {
       if (!this.browser.isDestroyed()) {
         this.browser.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#0c0c0d' : '#fbfbfa');
       }
-    });
+    };
+    nativeTheme.on('updated', onTheme);
+    this.browser.once('closed', () => nativeTheme.off('updated', onTheme));
   }
 
   show(): void {
