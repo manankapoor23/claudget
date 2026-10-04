@@ -118,6 +118,15 @@ the size of the new lines, and a rescan that finds nothing new costs a stat per 
   before a backoff ends; only a manual Refresh does.
 - **normalize** ([`official/normalize.ts`](../packages/core/src/official/normalize.ts)) —
   defensively maps the endpoint's payload (multiple possible shapes) into `OfficialWindow[]`.
+- **estimate** ([`estimate/`](../packages/core/src/estimate)) — the live % between checks.
+  Each fresh reading calibrates a rate k = Δutilisation / Δweight per limit, where weight is
+  the API-equivalent cost of local requests; a window's first record is anchored at its start
+  (0%), so one reading is enough, and records span at most 5 hours. k is the weight-weighted
+  median of the last 8 records and persists in `limit-calibration.json` in userData. The
+  engine attaches `window.estimate` = reading + 0.9 × k × weight since the reading (at most
+  +15 points, at most 100%; after `resetsAt`, 0 plus usage since the reset) only when it
+  changes the whole-number %. `windows[].utilization` itself always stays Anthropic's number;
+  alerts and the limit history read only that.
 
 ### Engine
 

@@ -78,6 +78,28 @@ export {
   type WatchOptions,
 } from './watch';
 export {
+  CALIBRATION_WINDOWS,
+  EMPTY_CALIBRATION,
+  ESTIMATE_SAFETY,
+  FileCalibrationStore,
+  MAX_ESTIMATE_GAIN,
+  MAX_RECORD_MS,
+  estimateWindow,
+  ingestReading,
+  memoryCalibrationStore,
+  parseCalibration,
+  rateFor,
+  usageWeight,
+  weightBetween,
+  windowLengthMs,
+  type CalibrationState,
+  type CalibrationStore,
+  type CalibrationWindow,
+  type EstimateInput,
+  type OfficialReading,
+  type RateEstimate,
+} from './estimate';
+export {
   OfficialUsageClient,
   OfficialPollScheduler,
   OFFICIAL_ACTIVITY_SETTLE_MS,

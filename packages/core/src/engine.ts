@@ -9,10 +9,21 @@ import { OfficialPollScheduler, OfficialUsageClient, type PollReason } from './o
 import { claudePaths, prettifyProjectSlug, type ClaudePaths } from './paths';
 import { DEFAULT_PRICING, type PricingTable } from './pricing';
 import {
+  EMPTY_CALIBRATION,
+  estimateWindow,
+  ingestReading,
+  rateFor,
+  usageWeight,
+  weightBetween,
+  type CalibrationState,
+  type CalibrationStore,
+} from './estimate';
+import {
   SNAPSHOT_SCHEMA_VERSION,
   type AccountMeta,
   type ActiveSession,
   type OfficialUsage,
+  type OfficialWindow,
   type SnapshotHealth,
   type UsageEntry,
   type UsageSnapshot,
@@ -56,6 +67,11 @@ export interface UsageEngineOptions {
   pricing?: PricingTable;
   /** Injectable clock (for tests). */
   now?: () => number;
+  /**
+   * Where the live-estimate calibration persists across restarts. Without one
+   * it's learned afresh each run (from the first reading, see calibration.ts).
+   */
+  calibrationStore?: CalibrationStore;
 }
 
 /**
@@ -90,6 +106,13 @@ export class UsageEngine extends EventEmitter {
   private localScanStats = { files: 0, scanDurationMs: 0 };
   private localUpdatedAt: number | null = null;
 
+  private readonly calibrationStore: CalibrationStore | null;
+  private calibration: CalibrationState;
+  /** fetchedAt of the last official reading folded into the calibration. */
+  private calibratedAt: number | null = null;
+  /** The last estimate shown per limit, to log how far off it was when the reading lands. */
+  private lastEstimates = new Map<string, { utilization: number; resetsAt: number | null }>();
+
   private watcher: TranscriptWatcher | null = null;
   private officialScheduler: OfficialPollScheduler;
   private rescanTimer: NodeJS.Timeout | null = null;
@@ -112,6 +135,8 @@ export class UsageEngine extends EventEmitter {
       cliVersion: this.cliVersion,
     };
     this.official = this.createOfficialClient();
+    this.calibrationStore = opts.calibrationStore ?? null;
+    this.calibration = this.calibrationStore?.load() ?? EMPTY_CALIBRATION;
     this.officialScheduler = new OfficialPollScheduler({
       intervalMs: this.config.officialPollIntervalMs,
       poll: (reason) => this.pollOfficial(reason),
@@ -164,6 +189,11 @@ export class UsageEngine extends EventEmitter {
 
   getConfig(): WidgetConfig {
     return this.config;
+  }
+
+  /** What the live estimate has learned so far (diagnostics, tests). */
+  getCalibration(): CalibrationState {
+    return this.calibration;
   }
 
   /** Applies a config patch and reacts to any runtime-affecting changes. */
@@ -358,6 +388,7 @@ export class UsageEngine extends EventEmitter {
     }
     try {
       const usage = await this.official.getUsage({ force, maxAgeMs });
+      this.learnFrom(usage);
       this.health.officialOk = usage.status === 'ok' || (usage.available && !usage.stale);
       this.health.lastOfficialError = usage.status === 'ok' ? null : usage.message;
       await this.refreshMeta();
@@ -369,7 +400,76 @@ export class UsageEngine extends EventEmitter {
     this.emitSnapshot();
   }
 
-  private officialSection(): OfficialUsage {
+  /**
+   * Folds a fresh official reading into the calibration, once per reading, and
+   * logs how far the estimate shown just before it was from it (debug), which
+   * is what tuning ESTIMATE_SAFETY needs.
+   */
+  private learnFrom(usage: OfficialUsage): void {
+    if (usage.status !== 'ok' || usage.stale || !usage.available || usage.fetchedAt === null)
+      return;
+    if (usage.fetchedAt === this.calibratedAt) return;
+    const at = usage.fetchedAt;
+    this.calibratedAt = at;
+    const entries = this.allEntries();
+    const between = (from: number, to: number): number =>
+      weightBetween(entries, from, to, this.pricing);
+    let next = this.calibration;
+    for (const w of usage.windows) {
+      const shown = this.lastEstimates.get(w.key);
+      if (shown && shown.resetsAt === w.resetsAt) {
+        const error = (shown.utilization - w.utilization) * 100;
+        this.logger.debug(
+          `Limit estimate ${error > 0 ? 'overshot' : 'undershot'} by ${Math.abs(error).toFixed(1)} pts`,
+          { key: w.key, estimated: shown.utilization, official: w.utilization },
+        );
+      }
+      next = ingestReading(
+        next,
+        { key: w.key, utilization: w.utilization, resetsAt: w.resetsAt, at },
+        between,
+      );
+    }
+    this.lastEstimates.clear();
+    if (next !== this.calibration) {
+      this.calibration = next;
+      this.calibrationStore?.save(next);
+    }
+  }
+
+  /** Attaches a live estimate to each window that has one (see estimate.ts). */
+  private withEstimates(
+    windows: OfficialWindow[],
+    readingAt: number,
+    entries: readonly UsageEntry[],
+    now: number,
+  ): OfficialWindow[] {
+    // Only the newest entries can count; find them once for every window.
+    const earliest = Math.min(readingAt, ...windows.map((w) => w.resetsAt ?? Infinity));
+    const recent = entries.filter((e) => e.timestamp > earliest);
+    const weightSince = (from: number): number => {
+      let sum = 0;
+      for (const e of recent) if (e.timestamp > from) sum += usageWeight(e, this.pricing);
+      return sum;
+    };
+    return windows.map((w) => {
+      const estimate = estimateWindow({
+        window: w,
+        readingAt,
+        now,
+        rate: rateFor(this.calibration, w.key)?.k ?? null,
+        weightSince,
+      });
+      if (estimate && !estimate.afterReset) {
+        this.lastEstimates.set(w.key, { utilization: estimate.utilization, resetsAt: w.resetsAt });
+      } else {
+        this.lastEstimates.delete(w.key);
+      }
+      return estimate ? { ...w, estimate } : w;
+    });
+  }
+
+  private officialSection(entries: readonly UsageEntry[], now: number): OfficialUsage {
     if (!this.config.enableOfficial) {
       return {
         status: 'disabled',
@@ -388,7 +488,13 @@ export class UsageEngine extends EventEmitter {
     const last = this.official.getLast();
     // The scheduler, not the client, knows when the next check really is.
     const planned = this.officialScheduler.nextPollAt;
-    return planned !== null && last.nextFetchAt !== null ? { ...last, nextFetchAt: planned } : last;
+    const section =
+      planned !== null && last.nextFetchAt !== null ? { ...last, nextFetchAt: planned } : last;
+    if (!section.available || section.fetchedAt === null) return section;
+    return {
+      ...section,
+      windows: this.withEstimates(section.windows, section.fetchedAt, entries, now),
+    };
   }
 
   private async refreshMeta(): Promise<void> {
@@ -417,7 +523,8 @@ export class UsageEngine extends EventEmitter {
 
   getSnapshot(): UsageSnapshot {
     const now = this.now();
-    const local = buildLocalUsage(this.allEntries(), {
+    const entries = this.allEntries();
+    const local = buildLocalUsage(entries, {
       pricing: this.pricing,
       now,
       historyWindowHours: this.config.historyWindowHours,
@@ -431,7 +538,7 @@ export class UsageEngine extends EventEmitter {
       localUpdatedAt: this.localUpdatedAt,
       schemaVersion: SNAPSHOT_SCHEMA_VERSION,
       local,
-      official: this.officialSection(),
+      official: this.officialSection(entries, now),
       meta: this.meta,
       health: { ...this.health },
     };
