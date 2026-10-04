@@ -12,6 +12,7 @@ import {
   type Rectangle,
 } from 'electron';
 import {
+  FileCalibrationStore,
   PRICING_NOTE,
   UsageEngine,
   type UsageSnapshot,
@@ -86,7 +87,12 @@ if (!singleInstanceLock) {
     // tray menu is the control surface; the Dock icon would just be clutter.
     if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 
-    const engine = new UsageEngine({ config, logger, cliVersion });
+    // What the live % estimate has learned about the limits, kept across restarts.
+    const calibration = new FileCalibrationStore(
+      path.join(userData, 'limit-calibration.json'),
+      logger,
+    );
+    const engine = new UsageEngine({ config, logger, cliVersion, calibrationStore: calibration });
 
     // Linux: transparent windows need a compositor, or their clear pixels are
     // drawn black. Ask the X server before the first window is made.
@@ -535,6 +541,7 @@ if (!singleInstanceLock) {
     if (config.launchOnLogin) app.setLoginItemSettings({ openAtLogin: true });
     app.on('will-quit', () => {
       globalShortcut.unregisterAll();
+      calibration.flush();
       void engine.stop();
     });
 

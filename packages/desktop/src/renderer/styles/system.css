@@ -302,6 +302,21 @@ body {
 .lim[data-tone='bad'] .lim__pct {
   color: var(--tone);
 }
+/*
+ * A live estimate between Anthropic's checks: "~63%", dimmed, until the next
+ * check confirms it. The tilde is lighter than the digits so the number still
+ * reads first. The bar keeps its full colour: it's the same limit, just less
+ * certain, and a washed-out fill read as a different state.
+ */
+.lim__pct--est,
+.pill__text b.pill__pct--est,
+.cmeter__est {
+  opacity: 0.6;
+}
+.est-mark {
+  margin-right: 0.04em;
+  font-weight: 400;
+}
 .lim__bar {
   position: relative;
   height: 8px;

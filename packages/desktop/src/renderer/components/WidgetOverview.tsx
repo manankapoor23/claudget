@@ -6,7 +6,16 @@ import { LimitHistory } from './LimitHistory';
 import { LimitsNotice } from './LimitsNotice';
 import { projectName } from '../lib/sessions';
 import { useBump, useCountUp } from '../lib/motion';
-import { limitLabel, rankLimits, toneOf } from '../../shared/limits';
+import {
+  ESTIMATE_CAVEAT,
+  freshnessLine,
+  limitLabel,
+  pctSpoken,
+  rankLimits,
+  shownWindows,
+  toneOf,
+  type ShownWindow,
+} from '../../shared/limits';
 import { paceFor, projectedFullAt } from '../../shared/pace';
 import { formatDurationShort } from '../../shared/duration';
 
@@ -22,8 +31,20 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * One limit as data, not prose: name and %, a bar with a tick where the clock
  * is (fill past the tick = ahead of pace), then time left — and, only when the
  * current pace would fill it before reset, when that happens.
+ *
+ * Between Anthropic's checks the % is a live estimate: "~63%", in a dimmer
+ * ink, until the next check confirms it. `checkedAt` is that last check.
  */
-export function LimitRow({ w, now }: { w: OfficialWindow; now: number }): JSX.Element {
+export function LimitRow({
+  w,
+  now,
+  checkedAt = null,
+}: {
+  w: ShownWindow | OfficialWindow;
+  now: number;
+  checkedAt?: number | null;
+}): JSX.Element {
+  const estimated = 'estimated' in w && w.estimated;
   const used = Math.max(0, Math.min(1, w.utilization));
   const shown = useCountUp(used * 100);
   // Throb each time the (whole-number) percentage ticks up.
@@ -33,13 +54,28 @@ export function LimitRow({ w, now }: { w: OfficialWindow; now: number }): JSX.El
   const fullAt = projectedFullAt(w, now);
   const left = w.resetsAt === null ? null : w.resetsAt - now;
 
+  const fresh =
+    checkedAt === null
+      ? undefined
+      : estimated
+        ? `${freshnessLine(true, formatClock(checkedAt))}. ${ESTIMATE_CAVEAT}`
+        : freshnessLine(false, formatClock(checkedAt));
+  const spoken = pctSpoken({ utilization: used, estimated });
+
   return (
-    <div className={bump ? 'lim is-bump' : 'lim'} data-tone={tone}>
+    <div className={bump ? 'lim is-bump' : 'lim'} data-tone={tone} data-estimated={estimated}>
       <div className="lim__head">
         <span className="lim__name">{limitLabel(w.label)}</span>
-        <span className="lim__pct">{Math.round(shown)}%</span>
+        <span
+          className={estimated ? 'lim__pct lim__pct--est' : 'lim__pct'}
+          title={fresh}
+          aria-label={spoken}
+        >
+          {estimated ? <span className="est-mark">~</span> : null}
+          {Math.round(shown)}%
+        </span>
       </div>
-      <div className="lim__bar" role="img" aria-label={`${Math.round(used * 100)}% used`}>
+      <div className="lim__bar" role="img" aria-label={spoken}>
         <span className="lim__fill" style={{ width: `${used * 100}%` }} />
         {pace ? (
           <span
@@ -53,10 +89,17 @@ export function LimitRow({ w, now }: { w: OfficialWindow; now: number }): JSX.El
         <span title={w.resetsAt === null ? undefined : `Resets ${formatResetAt(w.resetsAt, now)}`}>
           {left === null ? 'No reset' : `${formatDurationShort(left)} left`}
         </span>
-        {used >= 1 ? (
+        {used >= 1 && !estimated ? (
           <span className="lim__warn">At limit</span>
         ) : fullAt !== null ? (
-          <span className="lim__warn" title="At your average pace so far">
+          <span
+            className="lim__warn"
+            title={
+              estimated
+                ? 'At your average pace so far, including the estimate'
+                : 'At your average pace so far'
+            }
+          >
             Full by {formatClock(fullAt)}
           </span>
         ) : null}
@@ -112,7 +155,7 @@ export function WidgetOverview({
 }: WidgetOverviewProps): JSX.Element {
   const { local, official } = snapshot;
   const now = snapshot.generatedAt;
-  const ranked = official.available ? rankLimits(official.windows) : null;
+  const ranked = official.available ? rankLimits(shownWindows(official.windows)) : null;
   const limits = ranked ? [ranked.primary, ...ranked.others] : [];
   const block = local.activeBlock;
   const live = new Set(local.activeSessions.map((s) => s.sessionId));
@@ -122,7 +165,7 @@ export function WidgetOverview({
       {limits.length > 0 ? (
         <section className="sect lims ov__lims" aria-label="Plan limits">
           {limits.map((w) => (
-            <LimitRow key={w.key} w={w} now={now} />
+            <LimitRow key={w.key} w={w} now={now} checkedAt={official.fetchedAt} />
           ))}
         </section>
       ) : (

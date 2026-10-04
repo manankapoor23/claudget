@@ -3,7 +3,7 @@ import { useStore } from '../store';
 import { useTheme } from '../lib/theme';
 import { getBridge } from '../lib/api';
 import { planName } from '../lib/billing';
-import { rankLimits, verdictFor } from '../../shared/limits';
+import { rankLimits, shownWindows, verdictFor } from '../../shared/limits';
 import { matchesShortcut, SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { PLATFORM } from '../lib/platform';
 import { Welcome } from './Welcome';
@@ -71,7 +71,9 @@ export function PopoverApp(): JSX.Element {
   }, [bridge]);
   useTheme(config?.theme);
 
-  const ranked = snapshot?.official.available ? rankLimits(snapshot.official.windows) : null;
+  const ranked = snapshot?.official.available
+    ? rankLimits(shownWindows(snapshot.official.windows))
+    : null;
   const tone = ranked && snapshot ? verdictFor(ranked, snapshot.generatedAt).tone : 'ok';
   const live = (snapshot?.local.activeBlock ?? null) !== null;
   const plan = snapshot?.meta.subscriptionType ?? null;

@@ -5,6 +5,13 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [Unreleased]
+
+### Added
+
+- **The 5-hour and weekly % now move live.** Between Anthropic's checks (at most every 3 minutes), the % is estimated from your local usage since the last check, shown as "~63%" in a dimmer ink until the next check confirms it, in the menu bar, the popover, the dashboard, the pill and the floating bar. The tooltip says when it last checked. It's learned from Anthropic's own readings, errs low, and can't see usage on other devices or claude.ai, so the real reading always wins.
+- **Choose what the pill shows** (Settings → General → Pill shows): the 5-hour limit (new default), the weekly one, or whichever is higher (the old behaviour).
+
 ## [0.3.1] — 2026-10-01
 
 ### Fixed

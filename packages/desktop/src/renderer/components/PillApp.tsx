@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useRef, useState, type JSX, type PointerEvent } from 'react';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
-import { formatCompact } from '../lib/format';
+import { formatClock, formatCompact } from '../lib/format';
 import { useTheme } from '../lib/theme';
 import { useBump } from '../lib/motion';
-import { limitLabel, rankLimits, toneOf, verdictFor } from '../../shared/limits';
+import {
+  ESTIMATE_CAVEAT,
+  freshnessLine,
+  limitLabel,
+  pctSpoken,
+  pillWindow,
+  rankLimits,
+  shownWindows,
+  toneOf,
+  verdictFor,
+} from '../../shared/limits';
 import { anchorFor, anchorShift, type Anchor, type Rect } from '../../shared/pill';
 import { PLATFORM } from '../lib/platform';
 import { Countdown } from './Countdown';
@@ -250,11 +260,23 @@ export function PillApp(): JSX.Element {
     }
   };
 
-  const ranked = snapshot?.official.available ? rankLimits(snapshot.official.windows) : null;
+  // Display only: the live estimate where there is one (marked "~").
+  const windows = snapshot?.official.available ? shownWindows(snapshot.official.windows) : [];
+  const ranked = rankLimits(windows);
   const verdict = ranked && snapshot ? verdictFor(ranked, snapshot.generatedAt) : null;
+  // The ring wears the verdict across every limit, so a weekly limit that's
+  // nearly gone still shows while the pill reads the 5-hour one.
   const tone = verdict?.tone ?? 'ok';
-  const primary = ranked?.primary ?? null;
+  // The limit chosen in Settings (5-hour by default).
+  const primary = pillWindow(windows, config?.pillLimit ?? 'fiveHour');
   const bump = useBump(primary ? Math.round(primary.utilization * 100) : 0);
+  const checkedAt = snapshot?.official.fetchedAt ?? null;
+  const pctTitle =
+    primary && checkedAt !== null
+      ? primary.estimated
+        ? `${freshnessLine(true, formatClock(checkedAt))}. ${ESTIMATE_CAVEAT}`
+        : freshnessLine(false, formatClock(checkedAt))
+      : undefined;
 
   return (
     <div className="pillwin" data-ax={anchor.x} data-ay={anchor.y}>
@@ -277,7 +299,13 @@ export function PillApp(): JSX.Element {
             <span className="pill__text">
               <span className="pill__label">{limitLabel(primary.label)}</span>
               {/* The number wears its own limit's colour; the ring wears the verdict. */}
-              <b data-tone={toneOf(primary.utilization)}>
+              <b
+                data-tone={toneOf(primary.utilization)}
+                className={primary.estimated ? 'pill__pct--est' : undefined}
+                title={pctTitle}
+                aria-label={pctSpoken(primary)}
+              >
+                {primary.estimated ? <span className="est-mark">~</span> : null}
                 {Math.round(primary.utilization * 100)}%
               </b>
               {primary.resetsAt !== null ? (

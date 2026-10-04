@@ -127,31 +127,32 @@ Settings live in a JSON file in the app's user-data dir. Easiest way to edit: th
 
 Hand-edit and mess up a field? That one field falls back to its default — a bad value never bricks the app. Full schema:
 
-| Key                      | Type / range                     | Default    | What it does                                                     |
-| ------------------------ | -------------------------------- | ---------- | ---------------------------------------------------------------- |
-| `enableOfficial`         | boolean                          | `true`     | poll Anthropic for the plan-limit gauges. `false` = fully local. |
-| `limitAlerts`            | boolean                          | `true`     | notify when a plan limit crosses a threshold (once per window)   |
-| `limitAlertThresholds`   | 1–6 ints, 10–100                 | `[80, 95]` | the % used at which to notify                                    |
-| `dailyBudgetUSD`         | number ≥ 0 \| null               | `null`     | daily spend budget; notifies at 80% &amp; 100%. `null` = off.    |
-| `monthlyBudgetUSD`       | number ≥ 0 \| null               | `null`     | monthly spend budget; notifies at 80% &amp; 100%. `null` = off.  |
-| `officialPollIntervalMs` | int, 180000–3600000              | `300000`   | how often to poll. **Floor is 180s** — the endpoint rate-limits. |
-| `localDebounceMs`        | int, 200–10000                   | `1000`     | max wait for a transcript change while a session streams         |
-| `fullRescanIntervalMs`   | int, 10000–3600000               | `120000`   | periodic full rescan, catches new projects/missed FS events      |
-| `recentSessionLimit`     | int, 1–100                       | `8`        | how many recent sessions to list                                 |
-| `historyWindowHours`     | int, 1–168                       | `24`       | how far back the sparkline goes                                  |
-| `blockHours`             | number, 1–24                     | `5`        | length of a usage "block" (Claude's window is ~5h)               |
-| `currency`               | ISO 4217                         | `"USD"`    | display currency for costs                                       |
-| `claudeDir`              | string \| null                   | `null`     | override `~/.claude` location, `null` = auto-detect              |
-| `pricingOverridePath`    | string \| null                   | `null`     | reserved for your own pricing JSON — not read yet                |
-| `theme`                  | `system`\|`dark`\|`light`        | `"system"` | color theme                                                      |
-| `compact`                | boolean                          | `false`    | show the floating pill                                           |
-| `miniBar`                | boolean                          | `false`    | show the floating bar                                            |
-| `alwaysOnTop`            | boolean                          | `false`    | keep the dashboard window above everything                       |
-| `clickThrough`           | boolean                          | `false`    | let clicks pass through the dashboard window                     |
-| `opacity`                | number, 0.3–1                    | `1`        | dashboard window opacity                                         |
-| `showInTaskbar`          | boolean                          | `true`     | show in taskbar/dock                                             |
-| `launchOnLogin`          | boolean                          | `false`    | start at login                                                   |
-| `logLevel`               | `error`\|`warn`\|`info`\|`debug` | `"info"`   | log verbosity                                                    |
+| Key                      | Type / range                     | Default      | What it does                                                     |
+| ------------------------ | -------------------------------- | ------------ | ---------------------------------------------------------------- |
+| `enableOfficial`         | boolean                          | `true`       | poll Anthropic for the plan-limit gauges. `false` = fully local. |
+| `limitAlerts`            | boolean                          | `true`       | notify when a plan limit crosses a threshold (once per window)   |
+| `limitAlertThresholds`   | 1–6 ints, 10–100                 | `[80, 95]`   | the % used at which to notify                                    |
+| `dailyBudgetUSD`         | number ≥ 0 \| null               | `null`       | daily spend budget; notifies at 80% &amp; 100%. `null` = off.    |
+| `monthlyBudgetUSD`       | number ≥ 0 \| null               | `null`       | monthly spend budget; notifies at 80% &amp; 100%. `null` = off.  |
+| `officialPollIntervalMs` | int, 180000–3600000              | `300000`     | how often to poll. **Floor is 180s** — the endpoint rate-limits. |
+| `localDebounceMs`        | int, 200–10000                   | `1000`       | max wait for a transcript change while a session streams         |
+| `fullRescanIntervalMs`   | int, 10000–3600000               | `120000`     | periodic full rescan, catches new projects/missed FS events      |
+| `recentSessionLimit`     | int, 1–100                       | `8`          | how many recent sessions to list                                 |
+| `historyWindowHours`     | int, 1–168                       | `24`         | how far back the sparkline goes                                  |
+| `blockHours`             | number, 1–24                     | `5`          | length of a usage "block" (Claude's window is ~5h)               |
+| `currency`               | ISO 4217                         | `"USD"`      | display currency for costs                                       |
+| `claudeDir`              | string \| null                   | `null`       | override `~/.claude` location, `null` = auto-detect              |
+| `pricingOverridePath`    | string \| null                   | `null`       | reserved for your own pricing JSON — not read yet                |
+| `theme`                  | `system`\|`dark`\|`light`        | `"system"`   | color theme                                                      |
+| `compact`                | boolean                          | `false`      | show the floating pill                                           |
+| `pillLimit`              | `fiveHour`\|`weekly`\|`highest`  | `"fiveHour"` | which limit the pill shows (`highest` = whichever is more used)  |
+| `miniBar`                | boolean                          | `false`      | show the floating bar                                            |
+| `alwaysOnTop`            | boolean                          | `false`      | keep the dashboard window above everything                       |
+| `clickThrough`           | boolean                          | `false`      | let clicks pass through the dashboard window                     |
+| `opacity`                | number, 0.3–1                    | `1`          | dashboard window opacity                                         |
+| `showInTaskbar`          | boolean                          | `true`       | show in taskbar/dock                                             |
+| `launchOnLogin`          | boolean                          | `false`      | start at login                                                   |
+| `logLevel`               | `error`\|`warn`\|`info`\|`debug` | `"info"`     | log verbosity                                                    |
 
 **Env override:** `CLAUDE_CONFIG_DIR` sets the Claude data dir if you keep it somewhere nonstandard (the `claudeDir` config field wins if both are set).
 
@@ -173,6 +174,8 @@ Two data sources, combined into one snapshot that every window (popover, pill, b
 
 1. **Local transcripts** — `~/.claude/projects/**/*.jsonl`, parsed and aggregated into token counts, cost estimates, a per-model breakdown, ~5h blocks, burn rate, and an hourly series. Ground truth for spend, fully offline.
 2. **Official usage endpoint** — `api.anthropic.com/api/oauth/usage`, hit with the same OAuth token and `claude-code/<version>` user-agent the CLI uses. Ground truth for plan limits (% used, % left, reset time). Polled at most every 180s, with backoff on 429s.
+
+Between those checks the % is **estimated live** from your local usage since the last one, shown with a `~` ("~63%") and dimmed until Anthropic confirms it. The rate is learned from Anthropic's own readings (API-equivalent cost of your local requests vs how far the % moved), kept slightly conservative, and replaced the moment a real reading arrives. Usage on other devices or on claude.ai isn't visible locally, so the estimate can only under-count that.
 
 If the endpoint is unreachable (offline, expired login, rate-limited), it shows the last known numbers tagged **Cached** and keeps local data flowing. Long version in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
