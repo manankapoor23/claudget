@@ -55,8 +55,9 @@ export function Live() {
 /**
  * The menu-bar popover (renderer/components/PopoverApp.tsx): brand and plan,
  * then the overview — limits, today, sessions — and the footer actions.
+ * `count` lets both percentages roll up as it opens, as the app's do.
  */
-export function Popover({ live = false }: { live?: boolean }) {
+export function Popover({ count = false }: { count?: boolean }) {
   return (
     <div className="ui pop">
       <div className="pop__bar">
@@ -67,8 +68,8 @@ export function Popover({ live = false }: { live?: boolean }) {
       </div>
       <div className="pop__body">
         <div className="sect lims">
-          <Limit limit={FIVE_HOUR} live={live} />
-          <Limit limit={WEEKLY} />
+          <Limit limit={FIVE_HOUR} count={count} />
+          <Limit limit={WEEKLY} count={count} />
         </div>
         <div className="sect">
           <Figures />

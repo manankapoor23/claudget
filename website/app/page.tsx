@@ -153,25 +153,28 @@ export default function Home() {
             className="scene--hero"
             label="claudget’s popover, opened from the menu bar or system tray: the 5-hour limit is 62% used and full by 4:01 PM at this pace, and the weekly limit is 31% used."
           >
-            <MenuBar live />
+            <MenuBar />
             <Taskbar />
             <TerminalWindow />
             <div className="scene__pop">
-              <Popover live />
+              <Popover count />
             </div>
           </Scene>
         </div>
       </section>
 
       {/* ============ PACE + ALERTS ============ */}
+      {/* data-reveal marks a unit that plays its entrance once, as it scrolls
+          into view: "rise" moves the unit itself, "" only its parts (motion.css,
+          and the observer in layout.tsx). */}
       <section id="pace" className="wrap sec" aria-labelledby="pace-title">
-        <div className="sec__head">
+        <div className="sec__head" data-reveal="rise">
           <h2 id="pace-title" className="sec__title">
             Know when you’ll run out
           </h2>
         </div>
         <div className="pace">
-          <figure className="anatomy">
+          <figure className="anatomy" data-reveal="">
             <figcaption className="sr-only">
               The 5-hour limit bar: 62% used, half of the window gone, 2 hours 30 minutes left,
               and full by {FIVE_HOUR.fullBy} at the pace so far.
@@ -181,7 +184,7 @@ export default function Home() {
               style={{ "--tick": `${FIVE_HOUR.tick}%` } as CSSProperties}
             >
               <div className="ui" aria-hidden data-nosnippet="">
-                <Limit limit={FIVE_HOUR} className="lim--xl" />
+                <Limit limit={FIVE_HOUR} count className="lim--xl" />
               </div>
               <p className="callout callout--tick" aria-hidden>
                 Half the window has passed
@@ -191,7 +194,7 @@ export default function Home() {
               </p>
             </div>
           </figure>
-          <div className="alerts">
+          <div className="alerts" data-reveal="">
             <Scene
               className="scene--bare"
               label="Two notifications from claudget: 5-hour limit almost gone, 5% left, resets in 38 minutes; and earlier, 5-hour limit at 80%, 20% left."
@@ -212,21 +215,23 @@ export default function Home() {
 
       {/* ============ FEATURES ============ */}
       <section id="features" className="wrap sec" aria-labelledby="features-title">
-        <div className="sec__head sec__head--center">
+        <div className="sec__head sec__head--center" data-reveal="rise">
           <h2 id="features-title" className="sec__title">
             Keep your limits in view
           </h2>
         </div>
-        <SurfacePicker surfaces={SURFACES} />
+        <div data-reveal="rise">
+          <SurfacePicker surfaces={SURFACES} />
+        </div>
       </section>
 
       {/* ============ PRIVACY ============ */}
       <section id="privacy" className="wrap sec" aria-labelledby="privacy-title">
         <div className="privacy">
-          <h2 id="privacy-title" className="sec__title privacy__title">
+          <h2 id="privacy-title" className="sec__title privacy__title" data-reveal="rise">
             Where the numbers come from
           </h2>
-          <dl className="facts">
+          <dl className="facts" data-reveal="">
             <div>
               <dt>Usage</dt>
               <dd>
@@ -250,6 +255,7 @@ export default function Home() {
             </div>
           </dl>
           <Scene
+            reveal
             className="scene--bare privacy__mock"
             label="claudget’s Settings, Data tab: Track plan limits is on and checks every 5 minutes; the Claude folder is read only."
           >

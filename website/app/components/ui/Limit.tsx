@@ -2,13 +2,21 @@ import type { CSSProperties } from "react";
 import { toneOf, type DemoLimit } from "./demo";
 
 /**
- * A percentage that ticks up by one a moment after load, the way a live
- * reading does, driven by `.live-tick` in ui.css. The digits are a CSS counter,
- * so the tick is a single discrete step whether or not the browser supports
- * @property, and under reduced motion it simply shows the final value.
+ * A percentage that can roll up from zero, the way the app's popover does on
+ * open (useCountUp in renderer/lib/motion.ts). The digits are a CSS counter
+ * driven by motion.css; a hidden copy of the final value reserves the width,
+ * so the count never moves its neighbours. Without motion, it simply shows
+ * the final value.
  */
-export function LiveNumber({ to, suffix = "" }: { to: number; suffix?: string }) {
-  return <span className="num-tick" data-suffix={suffix} style={{ "--to": to } as CSSProperties} />;
+export function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
+  return (
+    <span
+      className="count"
+      data-final={`${to}${suffix}`}
+      data-suffix={suffix}
+      style={{ "--to": to } as CSSProperties}
+    />
+  );
 }
 
 /**
@@ -18,23 +26,20 @@ export function LiveNumber({ to, suffix = "" }: { to: number; suffix?: string })
  */
 export function Limit({
   limit,
-  live = false,
+  count = false,
   className,
 }: {
   limit: DemoLimit;
-  /** Tick the number up by one and throb, as the app does when a limit rises. */
-  live?: boolean;
+  /** Let the percentage roll up with the fill, as the app does on open. */
+  count?: boolean;
   className?: string;
 }) {
   const { label, pct, tick, left, fullBy } = limit;
   return (
-    <div
-      className={["lim", live ? "live-tick" : "", className ?? ""].join(" ").trim()}
-      data-tone={toneOf(pct)}
-    >
+    <div className={["lim", className ?? ""].join(" ").trim()} data-tone={toneOf(pct)}>
       <div className="lim__head">
         <span className="lim__name">{label}</span>
-        <span className="lim__pct">{live ? <LiveNumber to={pct} suffix="%" /> : `${pct}%`}</span>
+        <span className="lim__pct">{count ? <CountUp to={pct} suffix="%" /> : `${pct}%`}</span>
       </div>
       <div className="lim__bar">
         <span className="lim__fill" style={{ width: `${pct}%` }} />

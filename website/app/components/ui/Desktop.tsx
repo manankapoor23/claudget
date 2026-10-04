@@ -16,7 +16,6 @@ import {
   IconMinus,
   IconSquare,
 } from "../../icons";
-import { LiveNumber } from "./Limit";
 import { CLOCK, FIVE_HOUR, WEEKLY } from "./demo";
 
 /**
@@ -27,14 +26,23 @@ import { CLOCK, FIVE_HOUR, WEEKLY } from "./demo";
 export function Scene({
   label,
   className = "",
+  reveal = false,
   children,
 }: {
   label: string;
   className?: string;
+  /** Rise into view once, as it scrolls in (motion.css). */
+  reveal?: boolean;
   children: ReactNode;
 }) {
   return (
-    <figure className={`scene ${className}`.trim()} role="img" aria-label={label} data-nosnippet="">
+    <figure
+      className={`scene ${className}`.trim()}
+      role="img"
+      aria-label={label}
+      data-nosnippet=""
+      data-reveal={reveal ? "rise" : undefined}
+    >
       <div className="scene__desk" aria-hidden>
         {children}
       </div>
@@ -44,10 +52,9 @@ export function Scene({
 
 /**
  * macOS menu bar. The claudget item is the glyph plus both limits, 5-hour
- * first (main/tray.ts). `live` ticks the 5-hour figure up in step with the
- * popover's.
+ * first (main/tray.ts), drawn pressed: its popover is open.
  */
-export function MenuBar({ live = false }: { live?: boolean }) {
+export function MenuBar() {
   return (
     <div className="menubar">
       <span className="menubar__apple">
@@ -62,11 +69,10 @@ export function MenuBar({ live = false }: { live?: boolean }) {
         <span>Help</span>
       </span>
       <span className="menubar__status">
-        <span className={live ? "mbi mbi--claudget live-tick" : "mbi mbi--claudget"}>
+        <span className="mbi mbi--claudget">
           <GlyphTray width={16} height={16} />
           <span>
-            {live ? <LiveNumber to={FIVE_HOUR.pct} suffix="%" /> : `${FIVE_HOUR.pct}%`} ·{" "}
-            {WEEKLY.pct}%
+            {FIVE_HOUR.pct}% · {WEEKLY.pct}%
           </span>
         </span>
         <span className="mbi">

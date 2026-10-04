@@ -146,8 +146,21 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Pressed: its popover is open. */
-.mbi--claudget {
+/* Pressed: its popover is open. The highlight is its own layer, so the hero
+   can press it with opacity alone (motion.css). */
+.mbi--claudget,
+.tbi--claudget {
+  position: relative;
+  isolation: isolate;
+}
+
+.mbi--claudget::before,
+.tbi--claudget::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
   background: var(--mb-press);
 }
 
@@ -215,10 +228,6 @@
   width: 32px;
   height: 32px;
   border-radius: 6px;
-}
-
-.tbi--claudget {
-  background: var(--mb-press);
 }
 
 .taskbar__clock {
@@ -476,7 +485,6 @@
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.02em;
-  transform-origin: right bottom;
 }
 
 /* The binding limit reads first. */
@@ -504,21 +512,6 @@
   inset: 0 auto 0 0;
   border-radius: inherit;
   background: var(--tone);
-}
-
-/* The ping that rings out from the end of the fill when a limit rises. */
-.lim__fill::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: -5px;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: var(--tone);
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* Where the clock is. Fill past the tick = using faster than time passes. */
@@ -578,92 +571,51 @@
   box-shadow: 0 0 0 3px var(--bg-2);
 }
 
+/* The page's one large moment of orange. */
+.anatomy .lim__pct {
+  color: var(--tint-text);
+}
+
 .lim--xl .lim__meta {
   font-size: 15px;
 }
 
-/* ---- a live reading: tick up one point and throb, as the app does -----------
-   The app throbs a limit each time its percentage rises (useBump in
-   renderer/lib/motion.ts; the keyframes are its own). Here it happens once,
-   shortly after load, in the popover and the menu bar together. */
-
+/* A figure that can roll up (CountUp in Limit.tsx). The digits are a counter
+   of --n, which rests at the final value; a hidden copy of that value sits in
+   the same grid cell, so the box is always as wide as the final figure. */
 @property --n {
   syntax: "<integer>";
   inherits: false;
   initial-value: 0;
 }
 
-.num-tick {
+.count {
   --n: var(--to);
+  display: inline-grid;
   counter-reset: n var(--n);
 }
 
-.num-tick::after {
-  content: counter(n) attr(data-suffix);
+.count::before,
+.count::after {
+  grid-area: 1 / 1;
 }
 
-.live-tick .num-tick {
-  animation: tick-up 1ms steps(1, end) 1.6s backwards;
+.count::before {
+  content: attr(data-final);
+  visibility: hidden;
 }
 
-.live-tick .lim__pct {
-  animation: throb 0.72s cubic-bezier(0.3, 1.5, 0.5, 1) 1.6s;
+/* Padded to two digits with a figure space (one tabular digit wide), so
+   neither the box nor the text in it moves while the digits change: no
+   layout shift. */
+@counter-style figures {
+  system: extends decimal;
+  pad: 2 "\2007";
 }
 
-.live-tick .lim__fill {
-  animation: flare 0.9s ease 1.6s;
-}
-
-.live-tick .lim__fill::after {
-  animation: ping 0.9s ease-out 1.6s;
-}
-
-@keyframes tick-up {
-  from,
-  to {
-    --n: calc(var(--to) - 1);
-  }
-}
-
-@keyframes throb {
-  0% {
-    transform: scale(1);
-  }
-
-  28% {
-    transform: scale(1.16);
-  }
-
-  62% {
-    transform: scale(0.97);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes flare {
-  0%,
-  100% {
-    filter: none;
-  }
-
-  30% {
-    filter: brightness(1.4) saturate(1.25);
-  }
-}
-
-@keyframes ping {
-  0% {
-    opacity: 0.85;
-    transform: scale(0.6);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(3.2);
-  }
+.count::after {
+  content: counter(n, figures) attr(data-suffix);
+  text-align: right;
 }
 
 /* ---- today ------------------------------------------------------------------- */
@@ -746,7 +698,17 @@
   background: color-mix(in srgb, var(--ink) 24%, transparent);
 }
 
+/* The current hour's tint is a layer of its own, so the hero can tint it last
+   with opacity alone (motion.css). */
 .chart__col--now .chart__bar {
+  position: relative;
+}
+
+.chart__col--now .chart__bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: var(--tint);
 }
 
@@ -946,21 +908,6 @@
   --ring: var(--c-bad);
   --halo: 0.5;
   animation: halo-breathe 2.6s ease-in-out infinite;
-}
-
-/* On a light desktop a glow reads as a smudge: a crisper rim instead. */
-:root[data-theme="light"] .ui.pshell {
-  --halo: 0.12;
-  --rim: color-mix(in srgb, var(--ring) 55%, transparent);
-  --lift: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .ui.pshell {
-    --halo: 0.12;
-    --rim: color-mix(in srgb, var(--ring) 55%, transparent);
-    --lift: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
 }
 
 .ui.pshell::before {
