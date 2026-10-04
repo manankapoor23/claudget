@@ -52,49 +52,33 @@
   flex: 1 1 auto;
 }
 
-/* A stage for one surface, centred on the wallpaper. */
+/* A stage for one surface, centred on the wallpaper and sized so the product
+   fills it: no window behind, nothing else to look at. */
 .scene--stage .scene__desk {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  min-height: 460px;
-  padding: 40px 24px;
+  min-height: 480px;
+  padding: 32px 24px;
 }
 
-/* A surface floating over a terminal: "above your windows", literally. */
-.scene--over .scene__desk {
-  min-height: 560px;
+/* The pill is small; shown at 1.6x so it reads at a glance. */
+.stage__pill {
+  zoom: 1.6;
 }
 
-/* The window fills the stage from a fixed top down past its bottom edge,
-   cropped there like any window running off a screen, and the surface floats
-   on its top edge — so the composition holds at any stage height. */
-.stage__window {
-  position: absolute;
-  top: 132px;
-  bottom: -48px;
-  left: 50%;
-  width: min(760px, calc(100% - 64px));
-  transform: translateX(-50%);
+/* No wallpaper and no frame: a mock set straight on the page. The figure
+   keeps its label for screen readers. */
+.scene--bare {
+  overflow: visible;
+  border-radius: 0;
+  background: none;
 }
 
-.stage__float {
-  position: absolute;
-  z-index: 3;
-}
-
-.stage__float--pill {
-  top: -22px;
-  right: 28px;
-}
-
-.stage__float--bar {
-  top: -56px;
-  left: 50%;
-  width: min(580px, 100%);
-  transform: translateX(-50%);
+.scene--bare::before,
+.scene--bare::after {
+  display: none;
 }
 
 /* ---- the hero: menu bar (or taskbar), a terminal, the popover ------------ */
@@ -152,10 +136,6 @@
   margin-left: auto;
 }
 
-.menubar--compact {
-  padding: 0 8px;
-}
-
 .mbi {
   display: inline-flex;
   align-items: center;
@@ -166,13 +146,22 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Pressed: its popover is open. */
-.mbi--claudget {
-  background: var(--mb-press);
+/* Pressed: its popover is open. The highlight is its own layer, so the hero
+   can press it with opacity alone (motion.css). */
+.mbi--claudget,
+.tbi--claudget {
+  position: relative;
+  isolation: isolate;
 }
 
-.menubar--compact .mbi--claudget {
-  background: none;
+.mbi--claudget::before,
+.tbi--claudget::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--mb-press);
 }
 
 .taskbar {
@@ -241,14 +230,6 @@
   border-radius: 6px;
 }
 
-.tbi--claudget {
-  background: var(--mb-press);
-}
-
-.taskbar--compact .tbi--claudget {
-  background: none;
-}
-
 .taskbar__clock {
   display: flex;
   flex-direction: column;
@@ -293,13 +274,9 @@
   line-height: 1.7;
 }
 
-/* Behind a floating surface on a stage. */
-.term--backdrop {
-  position: relative;
-  top: auto;
-  left: auto;
-  width: 100%;
-  height: 100%;
+/* Context, not content: it sits back so the popover leads. */
+.scene--hero .term {
+  opacity: 0.6;
 }
 
 :root[data-os="win"] .scene--hero .term,
@@ -344,8 +321,7 @@
   color: var(--ink-2);
 }
 
-.term__tool i,
-.term__say i {
+.term__tool i {
   display: inline-block;
   width: 1.5em;
   font-style: normal;
@@ -362,17 +338,6 @@
 
 .term__out + .term__tool {
   margin-top: 6px !important;
-}
-
-.term__say {
-  margin-top: 10px !important;
-  padding-left: 1.5em;
-  text-indent: -1.5em;
-}
-
-.term__say i {
-  color: var(--ink);
-  text-indent: 0;
 }
 
 .term__add {
@@ -520,7 +485,6 @@
   font-weight: 500;
   line-height: 1;
   letter-spacing: -0.02em;
-  transform-origin: right bottom;
 }
 
 /* The binding limit reads first. */
@@ -548,21 +512,6 @@
   inset: 0 auto 0 0;
   border-radius: inherit;
   background: var(--tone);
-}
-
-/* The ping that rings out from the end of the fill when a limit rises. */
-.lim__fill::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  right: -5px;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: var(--tone);
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* Where the clock is. Fill past the tick = using faster than time passes. */
@@ -622,92 +571,51 @@
   box-shadow: 0 0 0 3px var(--bg-2);
 }
 
+/* The page's one large moment of orange. */
+.anatomy .lim__pct {
+  color: var(--tint-text);
+}
+
 .lim--xl .lim__meta {
   font-size: 15px;
 }
 
-/* ---- a live reading: tick up one point and throb, as the app does -----------
-   The app throbs a limit each time its percentage rises (useBump in
-   renderer/lib/motion.ts; the keyframes are its own). Here it happens once,
-   shortly after load, in the popover and the menu bar together. */
-
+/* A figure that can roll up (CountUp in Limit.tsx). The digits are a counter
+   of --n, which rests at the final value; a hidden copy of that value sits in
+   the same grid cell, so the box is always as wide as the final figure. */
 @property --n {
   syntax: "<integer>";
   inherits: false;
   initial-value: 0;
 }
 
-.num-tick {
+.count {
   --n: var(--to);
+  display: inline-grid;
   counter-reset: n var(--n);
 }
 
-.num-tick::after {
-  content: counter(n) attr(data-suffix);
+.count::before,
+.count::after {
+  grid-area: 1 / 1;
 }
 
-.live-tick .num-tick {
-  animation: tick-up 1ms steps(1, end) 1.6s backwards;
+.count::before {
+  content: attr(data-final);
+  visibility: hidden;
 }
 
-.live-tick .lim__pct {
-  animation: throb 0.72s cubic-bezier(0.3, 1.5, 0.5, 1) 1.6s;
+/* Padded to two digits with a figure space (one tabular digit wide), so
+   neither the box nor the text in it moves while the digits change: no
+   layout shift. */
+@counter-style figures {
+  system: extends decimal;
+  pad: 2 "\2007";
 }
 
-.live-tick .lim__fill {
-  animation: flare 0.9s ease 1.6s;
-}
-
-.live-tick .lim__fill::after {
-  animation: ping 0.9s ease-out 1.6s;
-}
-
-@keyframes tick-up {
-  from,
-  to {
-    --n: calc(var(--to) - 1);
-  }
-}
-
-@keyframes throb {
-  0% {
-    transform: scale(1);
-  }
-
-  28% {
-    transform: scale(1.16);
-  }
-
-  62% {
-    transform: scale(0.97);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes flare {
-  0%,
-  100% {
-    filter: none;
-  }
-
-  30% {
-    filter: brightness(1.4) saturate(1.25);
-  }
-}
-
-@keyframes ping {
-  0% {
-    opacity: 0.85;
-    transform: scale(0.6);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scale(3.2);
-  }
+.count::after {
+  content: counter(n, figures) attr(data-suffix);
+  text-align: right;
 }
 
 /* ---- today ------------------------------------------------------------------- */
@@ -790,7 +698,17 @@
   background: color-mix(in srgb, var(--ink) 24%, transparent);
 }
 
+/* The current hour's tint is a layer of its own, so the hero can tint it last
+   with opacity alone (motion.css). */
 .chart__col--now .chart__bar {
+  position: relative;
+}
+
+.chart__col--now .chart__bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: var(--tint);
 }
 
@@ -990,21 +908,6 @@
   --ring: var(--c-bad);
   --halo: 0.5;
   animation: halo-breathe 2.6s ease-in-out infinite;
-}
-
-/* On a light desktop a glow reads as a smudge: a crisper rim instead. */
-:root[data-theme="light"] .ui.pshell {
-  --halo: 0.12;
-  --rim: color-mix(in srgb, var(--ring) 55%, transparent);
-  --lift: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .ui.pshell {
-    --halo: 0.12;
-    --rim: color-mix(in srgb, var(--ring) 55%, transparent);
-    --lift: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.1);
-  }
 }
 
 .ui.pshell::before {
@@ -1488,41 +1391,12 @@
 
 /* ---- notifications ------------------------------------------------------------------- */
 
-.scene--alerts .scene__desk {
-  justify-content: flex-start;
-  align-items: flex-end;
-  min-height: 380px;
-  padding: 46px 14px 64px;
-}
-
-:root[data-os="win"] .scene--alerts .scene__desk,
-:root[data-os="linux"] .scene--alerts .scene__desk {
-  justify-content: flex-end;
-  padding: 56px 14px 62px;
-}
-
 .stage__notices {
   display: flex;
   flex-direction: column;
   gap: 10px;
   width: 100%;
   max-width: 356px;
-}
-
-.stage__caption {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
-  font-size: 14px;
-  color: var(--mb-ink);
-  opacity: 0.82;
-}
-
-:root[data-os="win"] .scene--alerts .stage__caption,
-:root[data-os="linux"] .scene--alerts .stage__caption {
-  top: 18px;
-  bottom: auto;
 }
 
 .ui.notice {
@@ -1577,11 +1451,6 @@
 }
 
 /* ---- settings window (Data tab) ------------------------------------------------------- */
-
-.scene--settings .scene__desk {
-  min-height: 520px;
-  padding: 48px 24px;
-}
 
 .ui.swin {
   width: 480px;
@@ -1770,21 +1639,21 @@
   justify-content: center;
 }
 
-@container (max-width: 1000px) {
-  .stage-fit .ui.dwin {
-    zoom: 0.9;
-  }
+.stage-fit .ui.dwin {
+  zoom: 0.75;
 }
 
-@container (max-width: 900px) {
-  .stage-fit .ui.dwin {
-    zoom: 0.8;
-  }
+.stage-fit .ui.mb {
+  zoom: 1.25;
 }
 
-@container (max-width: 780px) {
+@container (max-width: 860px) {
   .stage-fit .ui.dwin {
     zoom: 0.7;
+  }
+
+  .stage-fit .ui.mb {
+    zoom: 1;
   }
 }
 
@@ -1792,7 +1661,7 @@
    thumbnail — its sidebar and limits, running off the edge. */
 @container (max-width: 640px) {
   .stage-fit .ui.dwin {
-    zoom: 0.62;
+    zoom: 0.5;
   }
 
   .stage-fit__inner:has(.dwin) {
@@ -1893,35 +1762,13 @@
     display: none;
   }
 
-  /* No room for a window behind the floating surfaces: just the surface. */
-  .term--backdrop {
-    display: none;
+  .scene--stage .scene__desk {
+    min-height: 320px;
+    padding: 24px 12px;
   }
 
-  .stage__window,
-  .stage__float {
-    position: static;
-    width: 100%;
-    transform: none;
-  }
-
-  .stage__float--pill {
-    display: flex;
-    justify-content: center;
-  }
-
-  .scene--stage .scene__desk,
-  .scene--over .scene__desk {
-    min-height: 300px;
-    padding: 32px 12px;
-  }
-
-  .scene--settings .scene__desk {
-    min-height: 0;
-  }
-
-  .scene--alerts .scene__desk {
-    min-height: 330px;
+  .stage__pill {
+    zoom: 1.25;
   }
 }
 

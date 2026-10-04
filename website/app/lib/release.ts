@@ -1,28 +1,19 @@
 import { REPO_URL, RELEASES_URL } from "../constants";
 
-/* One GitHub call serves both the download links and the download counts: the
-   release list carries per-asset `download_count`. Revalidated hourly, and both
-   readers below hit the same cached fetch, so a visit costs nothing and a new
-   release shows up within the hour without a redeploy. Reading one source also
-   means the version and the counts can never disagree with each other. */
+/* The newest release, read from GitHub: its version, date, title and installer
+   links. Revalidated hourly, so a new release shows up within the hour without
+   a redeploy, and every reader shares the one cached fetch. */
 const API = "https://api.github.com/repos/manankapoor23/claudget/releases?per_page=100";
 const REVALIDATE_SECONDS = 3600;
-/**
- * Safety ceiling on pagination — 100 releases per page, so 1000 releases.
- * Deliberately not higher: unauthenticated GitHub allows 60 requests an hour, so
- * an unbounded loop could exhaust the budget for the whole site. Reaching this
- * reports the total as partial rather than pretending it is final.
- */
-const MAX_RELEASE_PAGES = 10;
 
 export type PlatformKey = "mac" | "macArm64" | "macX64" | "win" | "winPortable" | "linux";
 
-/** macOS variants, in the order the download row lists them. */
+/** macOS builds, in the order the download row lists them. */
 export const MAC_VARIANTS = [
-  { key: "mac", label: "Universal", hint: "any Mac" },
-  { key: "macArm64", label: "Apple Silicon", hint: "M1 and later" },
-  { key: "macX64", label: "Intel", hint: "Macs with Intel chips" },
-] as const satisfies readonly { key: PlatformKey; label: string; hint: string }[];
+  { key: "macArm64", label: "Apple Silicon" },
+  { key: "macX64", label: "Intel" },
+  { key: "mac", label: "Universal" },
+] as const satisfies readonly { key: PlatformKey; label: string }[];
 
 export interface ReleaseAsset {
   /** Direct download URL for the installer itself. */
@@ -39,62 +30,60 @@ export interface Release {
   published: string | null;
   /** Raw ISO timestamp of the release, for sitemap lastmod. */
   publishedAt: string | null;
+  /** What this release is about, e.g. "A steadier floating pill". */
+  title: string | null;
+  /** This release's page on GitHub. */
+  url: string;
   assets: Partial<Record<PlatformKey, ReleaseAsset>>;
   /** True when the data is a hardcoded fallback rather than live from GitHub. */
   stale: boolean;
 }
 
-export interface DownloadStats {
-  /** Installer downloads across every published release. */
-  total: number;
-  byPlatform: { mac: number; win: number; linux: number };
-  /** True when GitHub couldn't be read, so the count must not be shown. */
-  unavailable: boolean;
-  /**
-   * True when releases were left unread (a failed page, or the page cap), making
-   * `total` a lower bound. Rendered as "1,234+" so it never overstates itself.
-   */
-  partial: boolean;
-}
-
 interface ApiAsset {
   name?: unknown;
   size?: unknown;
-  download_count?: unknown;
   browser_download_url?: unknown;
+  download_count?: unknown;
 }
 
 interface ApiRelease {
   tag_name?: unknown;
   name?: unknown;
-  body?: unknown;
   published_at?: unknown;
   draft?: unknown;
   prerelease?: unknown;
   assets?: unknown;
 }
 
-export interface ReleaseHistoryEntry {
-  version: string;
-  date: string;
-  /** The release name without its version, e.g. "Half the size on disk". */
-  title: string | null;
-  /** The notes' opening paragraph, when they open with prose. */
-  summary: string | null;
-  /** Top-level bullets, shown only when there's no summary. At most three. */
-  changes: string[];
-  url: string;
-}
+/**
+ * Hand-written titles for releases whose GitHub name leads with the bug rather
+ * than the fix. Used in place of the GitHub title for these versions, and for
+ * the fallback when GitHub can't be read. Newer releases need nothing here.
+ */
+const CURATED: Record<string, { title: string; date: string }> = {
+  "0.3.1": { title: "A steadier floating pill", date: "Oct 2026" },
+  "0.3.0": { title: "Now in your menu bar", date: "Sep 2026" },
+  "0.2.5.1": { title: "Improved session names", date: "Sep 2026" },
+  "0.2.5": { title: "Plan limits explain themselves", date: "Aug 2026" },
+  "0.2.4": { title: "Half the size on disk", date: "Aug 2026" },
+  "0.2.3": { title: "macOS reliability", date: "Aug 2026" },
+  "0.2.2": { title: "A new icon", date: "Jun 2026" },
+};
+
+const tagUrl = (version: string) => `${REPO_URL}/releases/tag/v${version}`;
 
 /**
  * Last-known-good values. Only rendered if GitHub is unreachable or rate-limited
  * at build/revalidate time — every link still points at the releases page, which
  * always resolves to something downloadable.
  */
+const FALLBACK_VERSION = "0.3.1";
 const FALLBACK: Release = {
-  version: "0.3.1",
-  published: null,
+  version: FALLBACK_VERSION,
+  published: CURATED[FALLBACK_VERSION]?.date ?? null,
   publishedAt: null,
+  title: CURATED[FALLBACK_VERSION]?.title ?? null,
+  url: tagUrl(FALLBACK_VERSION),
   assets: {},
   stale: true,
 };
@@ -107,12 +96,8 @@ function formatSize(bytes: number): string {
 
 /**
  * Maps an asset filename onto the platform it installs, or null if it isn't a
- * thing a person downloads.
- *
- * The exclusions carry weight: electron-builder also uploads `latest*.yml`
- * update manifests and `.blockmap` delta maps, which the auto-updater fetches on
- * a schedule. Those currently account for 104 of 128 asset downloads — counting
- * them would report five times the real number and call the updater a user.
+ * thing a person downloads. electron-builder also uploads `latest*.yml` update
+ * manifests and `.blockmap` delta maps for the auto-updater; those are skipped.
  */
 function classify(name: string): PlatformKey | null {
   if (name.endsWith(".blockmap") || name.endsWith(".yml")) return null;
@@ -131,38 +116,12 @@ function classify(name: string): PlatformKey | null {
   return null;
 }
 
-interface ReleasePage {
-  releases: ApiRelease[];
-  /** Absolute URL of the next page, or null when this is the last one. */
-  next: string | null;
-  ok: boolean;
-}
-
-/**
- * Pulls the `rel="next"` URL out of a Link header.
- *
- * The host is re-checked because this URL comes from a response header rather
- * than from our own code — a paginating loop should not follow it somewhere else.
- */
-function parseNextLink(header: string | null): string | null {
-  if (!header) return null;
-  const match = /<([^>]+)>;\s*rel="next"/.exec(header);
-  const url = match?.[1];
-  if (!url) return null;
-  try {
-    if (new URL(url).host !== "api.github.com") return null;
-  } catch {
-    return null;
-  }
-  return url;
-}
-
 /**
  * Whether a failed GitHub read should fail the render instead of falling back.
  * At build time and in dev the fallback keeps the site buildable offline. On an
  * hourly refresh in production, throwing is what makes Next keep serving the
  * last good page — falling back there would cache a degraded page (old
- * version, wrong "Latest" badge, no counts) for the next hour.
+ * version, no direct links) for the next hour.
  */
 function degradeOrThrow(): void {
   if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
@@ -179,55 +138,23 @@ function githubHeaders(): HeadersInit {
   };
 }
 
-/** Fetches one page of releases. Never throws. */
-async function fetchReleasePage(url: string): Promise<ReleasePage> {
+/** Releases, newest first. Never throws; an empty list means GitHub didn't answer. */
+async function fetchReleases(): Promise<ApiRelease[]> {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(API, {
       headers: githubHeaders(),
       signal: AbortSignal.timeout(8000),
       next: { revalidate: REVALIDATE_SECONDS },
     });
-    if (!res.ok) return { releases: [], next: null, ok: false };
-    const data: unknown = await res.json();
-    if (!Array.isArray(data)) return { releases: [], next: null, ok: false };
-    return {
-      releases: data as ApiRelease[],
-      next: parseNextLink(res.headers.get("link")),
-      ok: true,
-    };
+    if (res.ok) {
+      const data: unknown = await res.json();
+      if (Array.isArray(data)) return data as ApiRelease[];
+    }
   } catch {
-    return { releases: [], next: null, ok: false };
+    // Network error or timeout: fall through to the fallback.
   }
-}
-
-/** Releases are newest-first, so the first page is all the download links need. */
-async function fetchReleases(): Promise<ApiRelease[]> {
-  const page = await fetchReleasePage(API);
-  if (!page.ok) degradeOrThrow();
-  return page.releases;
-}
-
-/**
- * Walks every page of releases by following the Link header.
- *
- * `complete` is the honest part: a total that silently drops older releases
- * still looks like a total, so anything short of exhausting the pages — a failed
- * page or the safety cap — has to say so rather than pass itself off as final.
- * With one release page this loop makes exactly one request and exits.
- */
-async function fetchAllReleases(): Promise<{ releases: ApiRelease[]; complete: boolean }> {
-  const all: ApiRelease[] = [];
-  let url: string | null = API;
-
-  for (let page = 0; page < MAX_RELEASE_PAGES; page++) {
-    const { releases, next, ok } = await fetchReleasePage(url);
-    if (!ok) return { releases: all, complete: false };
-    all.push(...releases);
-    if (!next) return { releases: all, complete: true };
-    url = next;
-  }
-  // Ran out of allowed pages with more still to come.
-  return { releases: all, complete: false };
+  degradeOrThrow();
+  return [];
 }
 
 /** A release a visitor can actually download: published, not a preview. */
@@ -246,100 +173,27 @@ function releaseUrl(r: ApiRelease, version: string): string {
   return REPO_URL + "/releases/tag/" + encodeURIComponent(tag);
 }
 
-function plainReleaseText(value: string): string {
-  return value
-    .replace(/\`([^\`]+)\`/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*\s][^*]*)\*/g, "$1")
-    .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Long text cut back to its last full sentence within `max` characters. */
-function clampSentences(text: string, max: number): string {
-  if (text.length <= max) return text;
-  const cut = text.slice(0, max);
-  const end = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  return end > max / 3 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, "") + "…";
-}
-
 /**
  * "0.2.4 — half the size on disk" → "Half the size on disk". Only a plain
  * lower-case first word is capitalised, so "macOS reliability" stays as is.
  */
-function releaseTitle(r: ApiRelease): string | null {
+function releaseTitle(r: ApiRelease, version: string): string | null {
+  const curated = CURATED[version]?.title;
+  if (curated) return curated;
   const name = typeof r.name === "string" ? r.name : "";
-  const rest = plainReleaseText(name.replace(/^v?\d+(?:\.\d+)+(?:\s*[—–-]\s*)?/, ""));
+  const rest = name
+    .replace(/^v?\d+(?:\.\d+)+(?:\s*[—–-]\s*)?/, "")
+    .replace(/[`*_]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   if (!rest) return null;
   return /^[a-z]+(?:\s|$)/.test(rest) ? rest.charAt(0).toUpperCase() + rest.slice(1) : rest;
 }
 
-/** The body's lines, minus fenced code blocks (tables of numbers, commands). */
-function bodyLines(r: ApiRelease): string[] {
-  const body = typeof r.body === "string" ? r.body : "";
-  const lines: string[] = [];
-  let fenced = false;
-  for (const line of body.split(/\r?\n/)) {
-    if (/^\s*(```|~~~)/.test(line)) {
-      fenced = !fenced;
-      continue;
-    }
-    if (!fenced) lines.push(line);
-  }
-  return lines;
-}
-
 /**
- * The notes' opening paragraph. Leading headings are skipped, but anything
- * structural before the prose (a list, a table) means the notes don't open
- * with a summary — a closing remark further down is not one.
- */
-function releaseSummary(lines: string[]): string | null {
-  const para: string[] = [];
-  for (const raw of lines) {
-    const line = raw.trim();
-    if (!line) {
-      if (para.length > 0) break;
-      continue;
-    }
-    if (/^#{1,6}\s/.test(line)) {
-      if (para.length > 0) break;
-      continue;
-    }
-    if (/^([-*+]\s|\d+[.)]\s|\||>|!\[|<)/.test(line) || /^[-=_*]{3,}$/.test(line)) break;
-    para.push(line);
-  }
-  const text = plainReleaseText(para.join(" "));
-  return text ? clampSentences(text, 280) : null;
-}
-
-/**
- * Top-level bullets only: an indented bullet belongs to the one above it and
- * reads as nonsense on its own. Long ones are cut back to whole sentences.
- */
-function releaseBullets(lines: string[]): string[] {
-  return lines
-    .filter((line) => /^[-*+]\s+/.test(line))
-    .map((line) => plainReleaseText(line.replace(/^[-*+]\s+/, "")))
-    .filter(Boolean)
-    .map((text) => clampSentences(text, 160))
-    .slice(0, 3);
-}
-
-function releaseDate(r: ApiRelease): string {
-  if (typeof r.published_at === "string") {
-    const date = new Date(r.published_at);
-    if (!Number.isNaN(date.getTime())) {
-      return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
-    }
-  }
-  return "";
-}
-
-/**
- * Reads the newest published release. Never throws and never returns null — a
- * failure degrades to {@link FALLBACK} so the download section always renders.
+ * Reads the newest published release. Never throws during a build and never
+ * returns null — a failure degrades to {@link FALLBACK} so the download section
+ * always renders.
  */
 export async function getLatestRelease(): Promise<Release> {
   const releases = await fetchReleases();
@@ -374,92 +228,44 @@ export async function getLatestRelease(): Promise<Release> {
     }
   }
 
-  return { version, published, publishedAt, assets, stale: false };
-}
-
-/** Published release notes for the website changelog, newest first. */
-export async function getReleaseHistory(): Promise<ReleaseHistoryEntry[]> {
-  const { releases } = await fetchAllReleases();
-  if (releases.length === 0) degradeOrThrow();
-  return releases
-    .filter((release) => isPublished(release))
-    .map((release) => {
-      const version = versionOf(release);
-      const lines = bodyLines(release);
-      const summary = releaseSummary(lines);
-      return {
-        version,
-        date: releaseDate(release),
-        title: releaseTitle(release),
-        summary,
-        changes: summary ? [] : releaseBullets(lines),
-        url: releaseUrl(release, version),
-      };
-    })
-    .filter((release) => release.version);
+  return {
+    version,
+    published,
+    publishedAt,
+    title: releaseTitle(latest, version),
+    url: releaseUrl(latest, version),
+    assets,
+    stale: false,
+  };
 }
 
 /**
- * Totals installer downloads across every published release — the closest thing
- * to "how many people installed this" that GitHub exposes. Update manifests and
- * delta maps are excluded; see {@link classify}. Every page of releases is read,
- * and if any is missed the result is flagged `partial` rather than under-reported
- * as final.
+ * Every installer download across every published release, as GitHub counts
+ * them. Update manifests and delta maps (fetched by the auto-updater, not by
+ * people) are left out. Null when GitHub can't be read: the page then shows no
+ * figure rather than a made-up one.
  */
-export async function getDownloadStats(): Promise<DownloadStats> {
-  const { releases, complete } = await fetchAllReleases();
-  if (releases.length === 0) degradeOrThrow();
-  if (releases.length === 0) {
-    return {
-      total: 0,
-      byPlatform: { mac: 0, win: 0, linux: 0 },
-      unavailable: true,
-      partial: false,
-    };
-  }
-
-  const byPlatform = { mac: 0, win: 0, linux: 0 };
-  for (const release of releases) {
-    if (!isPublished(release) || !Array.isArray(release.assets)) continue;
-    for (const raw of release.assets as ApiAsset[]) {
+export async function getDownloadCount(): Promise<number | null> {
+  const releases = await fetchReleases();
+  const published = releases.filter(isPublished);
+  if (published.length === 0) return null;
+  let total = 0;
+  for (const r of published) {
+    if (!Array.isArray(r.assets)) continue;
+    for (const raw of r.assets as ApiAsset[]) {
       const name = typeof raw.name === "string" ? raw.name : "";
-      const count = typeof raw.download_count === "number" ? raw.download_count : 0;
-      if (!name || count <= 0) continue;
-
-      const key = classify(name);
-      // Three macOS artifacts, one platform — a download is a download.
-      if (key === "mac" || key === "macArm64" || key === "macX64") {
-        byPlatform.mac += count;
+      if (name && classify(name) && typeof raw.download_count === "number") {
+        total += raw.download_count;
       }
-      // The installer and the portable build are both "someone got it on Windows".
-      else if (key === "win" || key === "winPortable") byPlatform.win += count;
-      else if (key === "linux") byPlatform.linux += count;
     }
   }
-
-  const total = byPlatform.mac + byPlatform.win + byPlatform.linux;
-  return { total, byPlatform, unavailable: false, partial: !complete };
+  return total;
 }
 
-/** 1234 → "1,234". */
+/** "118", "1,240", then "12.4k" once the full figure stops being useful. */
 export function formatCount(n: number): string {
-  return n.toLocaleString("en-US");
-}
-
-/**
- * Compares two dotted version strings. Negative if `a` sorts before `b`, 0 if
- * equal, positive if after. Missing or non-numeric parts count as 0.
- */
-export function compareVersions(a: string, b: string): number {
-  const pa = a.split(".");
-  const pb = b.split(".");
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const x = Number(pa[i] ?? 0);
-    const y = Number(pb[i] ?? 0);
-    if (Number.isNaN(x) || Number.isNaN(y)) return 0;
-    if (x !== y) return x - y;
-  }
-  return 0;
+  if (n < 10000) return n.toLocaleString("en-US");
+  return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
 }
 
 /** Direct asset URL when we have one, else the releases page (always works). */

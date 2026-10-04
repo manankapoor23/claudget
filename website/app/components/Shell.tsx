@@ -1,12 +1,10 @@
-import { IconGitHub } from "../icons";
-import { REPO_URL } from "../constants";
 import ThemeToggle from "./ThemeToggle";
+import { DownloadCount } from "./Download";
 
 /** In page order; Download is the header's own button instead. */
 const NAV = [
   { id: "features", label: "Features" },
   { id: "privacy", label: "Privacy" },
-  { id: "changelog", label: "Changelog" },
 ];
 
 export default function Shell({
@@ -33,18 +31,9 @@ export default function Shell({
             ))}
           </nav>
           <div className="header__right">
-            <a className="btn btn--primary btn--xs header__cta" href="#download">
+            <DownloadCount />
+            <a className="btn btn--xs header__cta" href="#download">
               Download
-            </a>
-            <a
-              className="icon-btn"
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="claudget on GitHub"
-              title="Source on GitHub"
-            >
-              <IconGitHub />
             </a>
             <ThemeToggle />
           </div>
