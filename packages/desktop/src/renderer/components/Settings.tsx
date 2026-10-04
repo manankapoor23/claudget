@@ -1,6 +1,8 @@
 import { useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
 import type { WidgetConfig } from '@shared/ipc';
-import { IS_MAC as MAC } from '../lib/platform';
+import { IS_MAC as MAC, PLATFORM } from '../lib/platform';
+import { trayName } from '../../shared/copy';
+import { SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
 import { useTheme } from '../lib/theme';
@@ -225,7 +227,7 @@ function General({
           />
         </Row>
       </Group>
-      <Group title="Menu bar">
+      <Group title={MAC ? 'Menu bar' : 'System tray'}>
         <Row
           label="Floating pill"
           hint="A one-line strip that stays on top. Click it for more."
@@ -267,7 +269,7 @@ function General({
         </Row>
         <Row
           label="Click-through"
-          hint="Clicks pass through to the app underneath. ⌥⌘C toggles it."
+          hint={`Clicks pass through to the app underneath. ${shortcutLabel(SHORTCUTS.toggleClickThrough, PLATFORM)} toggles it.`}
           htmlFor="set-ct"
         >
           <Toggle
@@ -466,8 +468,9 @@ function About(): JSX.Element {
       <h2 className="about__name">claudget</h2>
       <p className="about__version">Version {appInfo?.appVersion ?? '—'}</p>
       <p className="about__line">
-        Claude Code usage in your menu bar. Reads your local transcripts. The only things it fetches
-        are your plan limits, from Anthropic, and updates, from GitHub on Windows and Linux.
+        Claude Code usage in your {trayName(PLATFORM)}. Reads your local transcripts. The only
+        things it fetches are your plan limits, from Anthropic, and updates, from GitHub on Windows
+        and Linux.
       </p>
       <Group>
         <Row label="Claude Code">

@@ -1,4 +1,6 @@
 import type { JSX, ReactNode } from 'react';
+import { PLATFORM } from '../lib/platform';
+import { trayName } from '../../shared/copy';
 import type { UsageSnapshot } from '@claude-widget/core';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
@@ -71,7 +73,7 @@ export function CompactBar(): JSX.Element {
         <button
           className="cbtn cbtn--danger"
           type="button"
-          title="Hide the floating pill (turn it back on from the menu bar)"
+          title={`Hide the floating pill (turn it back on from the ${trayName(PLATFORM)})`}
           onClick={() => void updateConfig({ compact: false })}
         >
           <CloseIcon size={12} />

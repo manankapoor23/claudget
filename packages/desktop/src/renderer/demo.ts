@@ -248,6 +248,7 @@ export function createDemoData(): {
       claudeDir: '/Users/demo/.claude',
       pricingNote: 'Demo data only',
       firstRun: new URLSearchParams(window.location.search).has('welcome'),
+      trayAvailable: true,
     },
   };
 }
