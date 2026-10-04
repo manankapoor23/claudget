@@ -120,10 +120,10 @@ linux:
   # Left unset, Linux names the binary after the npm package, so the AppImage's
   # executable, .desktop file and icon all came out as "@claude-widgetdesktop".
   executableName: claudget
-  # Overrides the top-level `maximum`. The AppImage catalog (appimage.github.io)
-  # mounts AppImages with a squashfuse that reads only zlib and zstd, so the
-  # AppImage must not be xz; with the static runtime `normal` gives zstd.
-  compression: normal
+  # No compression override here any more: the AppImage catalog
+  # (appimage.github.io) mounts AppImages with a squashfuse that reads only
+  # zlib and zstd, and the static runtime always builds zstd (it can't read
+  # xz), while a Linux-wide `normal` would reach the .deb, where fpm rejects it.
 
 deb:
   artifactName: ${productName}-${version}-${arch}.${ext}
