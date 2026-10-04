@@ -9,6 +9,7 @@ import {
   shownWindow,
   shownWindows,
   toneOf,
+  trayTitle,
   verdictFor,
 } from './limits';
 import { H, NOW, win } from './test-helpers';
@@ -63,6 +64,25 @@ describe('shownWindow', () => {
     expect(w.estimated).toBe(true);
     expect(pctText(w)).toBe('~63%');
     expect(pctSpoken(w)).toBe('about 63 percent used, estimated');
+  });
+});
+
+describe('trayTitle', () => {
+  it('reads both limits in the API order, marking only the estimated one', () => {
+    const windows = shownWindows([
+      {
+        ...win('five_hour', 0.62, 3 * H),
+        estimate: { utilization: 0.634, usedPct: 63.4, basisAt: NOW, afterReset: false },
+      },
+      win('seven_day', 0.31, 50 * H),
+    ]);
+    expect(trayTitle(windows)).toBe('~63% · 31%');
+  });
+  it('is plain when nothing is estimated, and empty with no limits', () => {
+    expect(trayTitle(shownWindows([win('five_hour', 0.62, H), win('seven_day', 0.31, H)]))).toBe(
+      '62% · 31%',
+    );
+    expect(trayTitle([])).toBe('');
   });
 });
 

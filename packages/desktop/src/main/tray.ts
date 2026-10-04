@@ -6,9 +6,9 @@ import {
   ESTIMATE_CAVEAT,
   freshnessLine,
   isDormant,
-  pctText,
   rankLimits,
   shownWindows,
+  trayTitle,
   verdictFor,
   type Tone,
 } from '../shared/limits';
@@ -231,7 +231,7 @@ export function createTray(deps: TrayDeps): TrayHandle {
 
     // Stable order (5-hour, weekly) so the eye learns where each number lives.
     // An estimated number wears a "~" of its own: "~63% · 31%".
-    applyTitle(live.length > 0 ? live.slice(0, 2).map(pctText).join(' · ') : '');
+    applyTitle(trayTitle(windows));
     // The % comes from Anthropic, polled every few minutes: say how old it is,
     // so a number that hasn't moved reads as "not re-checked yet", not "stuck",
     // and say so when it's an estimate on top of that reading.

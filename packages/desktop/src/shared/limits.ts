@@ -97,6 +97,18 @@ export function pctSpoken(w: { utilization: number; estimated?: boolean }): stri
 }
 
 /**
+ * The menu-bar title: the first two live limits in the API's stable order
+ * (5-hour, weekly), each estimated one wearing its own "~": "~63% · 31%".
+ */
+export function trayTitle(windows: ShownWindow[]): string {
+  return windows
+    .filter((w) => !isDormant(w))
+    .slice(0, 2)
+    .map(pctText)
+    .join(' · ');
+}
+
+/**
  * How fresh the numbers are, for a tooltip: "As of 14:32", or "Estimated from
  * live usage · last checked 14:32". `clock` is the reading's time, formatted.
  */
