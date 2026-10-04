@@ -22,7 +22,7 @@
  *
  * Usage on other devices or on claude.ai moves the official % but never shows
  * up locally, so it inflates k for the records where it happened. The rate is
- * a weight-weighted median across recent records to keep one such record from
+ * a weighted median across recent records to keep one such record from
  * dominating, and the estimate itself is damped (see ESTIMATE_SAFETY).
  */
 
@@ -180,13 +180,26 @@ export interface RateEstimate {
 }
 
 /**
- * The learned rate for one limit: the weight-weighted median of each recent
- * record's k. Null until at least one record has moved enough to measure.
+ * How far a record must have moved for a full say in the median: 10 points.
+ * Below that its k is limited by the endpoint's whole-percent rounding, so it
+ * counts in proportion; above it, what limits a record is that the rate drifts
+ * over time, so a long record (a week's first, anchored at its start) counts
+ * no more than a recent five-hour one.
+ */
+const FULL_VOTE_DELTA = 0.1;
+
+/**
+ * The learned rate for one limit: a weighted median of each recent record's
+ * k (see FULL_VOTE_DELTA). Null until at least one record has moved enough to
+ * measure.
  */
 export function rateFor(state: CalibrationState, key: string): RateEstimate | null {
   const samples = (state.limits[key] ?? [])
     .filter((w) => w.toU - w.fromU >= MIN_CALIBRATION_DELTA && w.weight >= MIN_CALIBRATION_WEIGHT)
-    .map((w) => ({ k: (w.toU - w.fromU) / w.weight, weight: w.weight }))
+    .map((w) => ({
+      k: (w.toU - w.fromU) / w.weight,
+      weight: Math.min(FULL_VOTE_DELTA, w.toU - w.fromU),
+    }))
     .filter((s) => Number.isFinite(s.k) && s.k > 0)
     .sort((a, b) => a.k - b.k);
   if (samples.length === 0) return null;

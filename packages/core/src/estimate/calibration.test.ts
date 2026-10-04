@@ -161,6 +161,26 @@ describe('rateFor', () => {
     expect(records[1]!.weight).toBeCloseTo(180);
   });
 
+  it("doesn't let a week's long first record outvote the recent ones", () => {
+    const week = T0 + 7 * 24 * H;
+    const records = {
+      seven_day: [
+        // Anchored at the week's start: 64 points on $741 (the week's average).
+        { resetsAt: week, fromAt: T0, fromU: 0, toAt: T0 + 80 * H, toU: 0.64, weight: 741 },
+        // Then three five-hour runs at about half that rate.
+        ...[0, 1, 2].map((i) => ({
+          resetsAt: week,
+          fromAt: T0 + (80 + 5 * i) * H,
+          fromU: 0.64 + 0.04 * i,
+          toAt: T0 + (85 + 5 * i) * H,
+          toU: 0.68 + 0.04 * i,
+          weight: 100,
+        })),
+      ].map((r) => ({ ...r, frozen: false })),
+    };
+    expect(rateFor({ version: 1, limits: records }, 'seven_day')!.k).toBeCloseTo(0.0004, 6);
+  });
+
   it('keeps only the most recent windows', () => {
     let s = EMPTY_CALIBRATION;
     for (let i = 0; i < CALIBRATION_WINDOWS + 3; i++) {
