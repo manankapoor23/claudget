@@ -1,12 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Menu, Tray, nativeImage, type NativeImage } from 'electron';
 import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
 import { isDormant, rankLimits, verdictFor, type Tone } from '../shared/limits';
 
 export interface TrayDeps {
-  iconPath: string;
+  /** resources/tray: the cropped, per-scale tray icons (Windows, Linux). */
+  trayIconDir: string;
   getConfig: () => WidgetConfig;
   setConfig: (patch: Partial<WidgetConfig>) => void;
   togglePopover: () => void;
+  showPopover: () => void;
   openDashboard: () => void;
   openSettings: () => void;
   refresh: () => void;
@@ -21,6 +25,11 @@ export interface TrayHandle {
   syncMenu: () => void;
   /** Update the menu-bar title, tooltip and state dot from a snapshot. */
   setStatus: (snapshot: UsageSnapshot) => void;
+  /**
+   * Windows: re-applies the tooltip. When Explorer restarts, Electron puts
+   * the icon back but without its tooltip.
+   */
+  reassert: () => void;
 }
 
 type Rgb = [number, number, number];
@@ -79,21 +88,40 @@ function pct(fraction: number): string {
   return `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
 }
 
+/**
+ * Windows and Linux: the app mark, cropped tight and pre-scaled (see
+ * scripts/make-tray-icons.mjs). Windows gets every scale so the notification
+ * area picks the sharp one at 100–200%; Linux panels scale the icon to fit
+ * themselves, so they get one larger image to scale down from.
+ */
+function markImage(dir: string, platform: NodeJS.Platform): NativeImage {
+  if (platform === 'linux') {
+    try {
+      return nativeImage.createFromBuffer(fs.readFileSync(path.join(dir, 'tray@2x.png')), {
+        scaleFactor: 1,
+      });
+    } catch {
+      return nativeImage.createEmpty();
+    }
+  }
+  // Loads tray.png plus its @1.25x/@1.5x/@2x/@3x siblings.
+  return nativeImage.createFromPath(path.join(dir, 'tray.png'));
+}
+
 export function createTray(deps: TrayDeps): TrayHandle {
   const mac = process.platform === 'darwin';
-  const image = nativeImage.createFromPath(deps.iconPath);
-  const logo = image.isEmpty()
-    ? nativeImage.createEmpty()
-    : image.resize({ width: 16, height: 16 });
+  const linux = process.platform === 'linux';
+  const mark = mac ? nativeImage.createEmpty() : markImage(deps.trayIconDir, process.platform);
   // macOS gets the native template glyph; other trays don't tint template
-  // images (a black glyph would vanish on a dark taskbar), so they keep the logo.
+  // images (a black glyph would vanish on a dark taskbar), so they keep the
+  // orange mark, which reads on light and dark taskbars alike.
   const icons: Record<Tone, NativeImage> = mac
     ? {
         ok: glyphImage(null),
         warn: glyphImage(GLYPH_COLOURS.warn),
         bad: glyphImage(GLYPH_COLOURS.bad),
       }
-    : { ok: logo, warn: logo, bad: logo };
+    : { ok: mark, warn: mark, bad: mark };
   const tray = new Tray(icons.ok);
   tray.setToolTip('claudget');
   let currentTone: Tone = 'ok';
@@ -103,6 +131,14 @@ export function createTray(deps: TrayDeps): TrayHandle {
   const buildMenu = (): Menu => {
     const cfg = deps.getConfig();
     return Menu.buildFromTemplate([
+      // Linux: some trays (AppIndicator) open this menu on any click and never
+      // report the click itself, so the menu has to lead to the glance too.
+      ...(linux
+        ? [
+            { label: 'Open claudget', click: () => deps.showPopover() },
+            { type: 'separator' as const },
+          ]
+        : []),
       { label: 'Open dashboard', click: () => deps.openDashboard() },
       {
         label: 'Floating pill',
@@ -139,14 +175,19 @@ export function createTray(deps: TrayDeps): TrayHandle {
     ]);
   };
   let menu = buildMenu();
+  // Linux has no popUpContextMenu: the tray host draws the menu itself, from
+  // the one handed over with setContextMenu (and needs it again on change).
+  if (linux) tray.setContextMenu(menu);
   const syncMenu = (): void => {
     menu = buildMenu();
+    if (linux) tray.setContextMenu(menu);
   };
 
   // Left click is the glance (the popover); the menu is one right-click away.
-  // Not using setContextMenu: on macOS that would hijack the left click too.
+  // Not using setContextMenu on macOS/Windows: on macOS it would hijack the
+  // left click too.
   tray.on('click', () => deps.togglePopover());
-  tray.on('right-click', () => tray.popUpContextMenu(menu));
+  if (!linux) tray.on('right-click', () => tray.popUpContextMenu(menu));
 
   const setStatus = (snapshot: UsageSnapshot): void => {
     const { official } = snapshot;
@@ -186,7 +227,12 @@ export function createTray(deps: TrayDeps): TrayHandle {
     }
   };
 
-  return { tray, syncMenu, setStatus };
+  const reassert = (): void => {
+    if (tray.isDestroyed()) return;
+    tray.setToolTip(currentTooltip);
+  };
+
+  return { tray, syncMenu, setStatus, reassert };
 }
 
 /** "\nLimits as of 14:32": a clock time, so the tooltip never needs re-rendering. */

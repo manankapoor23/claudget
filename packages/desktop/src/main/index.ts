@@ -6,6 +6,7 @@ import {
   Menu,
   nativeTheme,
   powerMonitor,
+  screen,
   shell,
   type BrowserWindow,
   type Rectangle,
@@ -18,7 +19,9 @@ import {
 } from '@claude-widget/core';
 import { autoUpdater } from 'electron-updater';
 import { buildAppMenu } from './app-menu';
-import { detectCliVersion, resolveIconPath } from './app-paths';
+import { detectCliVersion, resolveIconPath, resolveTrayIconDir } from './app-paths';
+import { probeCompositor, transparencyFor } from './compositor';
+import { readSandboxFacts, sandboxStatus } from './sandbox';
 import { applyUserDataOverride, runPopoverSelfTest, startMemoryLog } from './diagnostics';
 import { BudgetAlerter } from './budget-alerts';
 import { ConfigStore } from './config-store';
@@ -35,6 +38,7 @@ import { Popover } from './popover';
 import { createTray, type TrayHandle } from './tray';
 import { WidgetWindow } from './window';
 import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
+import { popoverAnchor } from '../shared/placement';
 
 applyUserDataOverride();
 const singleInstanceLock = app.requestSingleInstanceLock();
@@ -83,10 +87,32 @@ if (!singleInstanceLock) {
 
     const engine = new UsageEngine({ config, logger, cliVersion });
 
+    // Linux: transparent windows need a compositor, or their clear pixels are
+    // drawn black. Ask the X server before the first window is made.
+    const transparency =
+      process.platform === 'linux'
+        ? transparencyFor(
+            process.platform,
+            process.env['XDG_SESSION_TYPE'],
+            await probeCompositor().catch(() => null),
+          )
+        : 'transparent';
+    if (process.platform === 'linux') {
+      logger.info('Display', {
+        session: process.env['XDG_SESSION_TYPE'] ?? null,
+        transparency,
+        sandbox: sandboxStatus({
+          ...readSandboxFacts(),
+          noSandboxSwitch: app.commandLine.hasSwitch('no-sandbox'),
+        }).reason,
+      });
+    }
+
     const renderer = {
       preloadPath: path.join(__dirname, '../preload/index.js'),
       rendererUrl: process.env['ELECTRON_RENDERER_URL'],
       rendererFile: path.join(__dirname, '../renderer/index.html'),
+      opaque: transparency === 'opaque',
     };
 
     // Native menus, dialogs and the tray follow the user's theme choice.
@@ -272,17 +298,28 @@ if (!singleInstanceLock) {
     };
     // Clicking the Dock icon brings the dashboard back.
     app.on('activate', () => openDashboard());
-    const trayBounds = (): Rectangle | null => trayHandle?.tray.getBounds() ?? null;
-    const togglePopover = (): void => {
+    // Where to put the popover. The tray icon's bounds where the OS reports
+    // them; on Linux it reports zeros, so a click on the tray is anchored at
+    // the pointer that made it, and remembered for the keyboard shortcut.
+    let lastTrayPoint: Rectangle | null = null;
+    const popoverAt = (fromTray: boolean): Rectangle | null => {
+      const bounds = trayHandle?.tray.getBounds() ?? null;
+      const anchor = popoverAnchor(bounds, fromTray ? screen.getCursorScreenPoint() : null);
+      if (fromTray && anchor) lastTrayPoint = anchor;
+      return anchor ?? lastTrayPoint;
+    };
+    const togglePopover = (fromTray = false): void => {
+      const anchor = popoverAt(fromTray);
       const p = popover.get();
       whenPainted(p.browser, () => {
-        if (!p.browser.isDestroyed()) p.toggle(trayBounds());
+        if (!p.browser.isDestroyed()) p.toggle(anchor);
       });
     };
-    const showPopover = (): void => {
+    const showPopover = (fromTray = false): void => {
+      const anchor = popoverAt(fromTray);
       const p = popover.get();
       whenPainted(p.browser, () => {
-        if (!p.browser.isDestroyed()) p.show(trayBounds());
+        if (!p.browser.isDestroyed()) p.show(anchor);
       });
     };
     // Relaunching shows the glance — or, with no tray to anchor it to, the
@@ -347,6 +384,7 @@ if (!singleInstanceLock) {
       claudeDir: engine.getSnapshot().meta.claudeDir,
       pricingNote: PRICING_NOTE,
       firstRun,
+      trayAvailable,
     });
 
     const quit = (): void => {
@@ -396,16 +434,18 @@ if (!singleInstanceLock) {
       startPillDrag: (x, y) => pill.peek()?.startDrag(x, y),
       endPillDrag: () => pill.peek()?.endDrag(),
       nudgePill: (dx, dy) => pill.peek()?.nudge(dx, dy),
+      shapePill: (rect, radius) => pill.peek()?.setShapeFrom(rect, radius),
       fitPopover: (h) => popover.peek()?.setContentHeight(h),
       quit,
     });
 
     try {
       trayHandle = createTray({
-        iconPath: resolveIconPath(),
+        trayIconDir: resolveTrayIconDir(),
         getConfig: () => config,
         setConfig: applyConfig,
-        togglePopover,
+        togglePopover: () => togglePopover(true),
+        showPopover: () => showPopover(true),
         openDashboard: () => openDashboard(),
         openSettings,
         refresh: () => void engine.refresh(),
@@ -440,7 +480,29 @@ if (!singleInstanceLock) {
       }
     }
 
-    globalShortcut.register('CommandOrControl+Alt+U', togglePopover);
+    globalShortcut.register('CommandOrControl+Alt+U', () => togglePopover());
+
+    // Windows: when Explorer restarts (a crash, an update, a theme change),
+    // it puts tray icons back without their tooltips and forgets which
+    // windows asked to stay off the taskbar, so the pill and the floating bar
+    // turned up as taskbar buttons. Explorer leaving and coming back moves
+    // the taskbar out of and into the work area, which is the signal here.
+    if (process.platform === 'win32') {
+      let reassertTimer: NodeJS.Timeout | null = null;
+      screen.on('display-metrics-changed', (_event, _display, changed) => {
+        if (!changed.includes('workArea')) return;
+        if (reassertTimer) clearTimeout(reassertTimer);
+        reassertTimer = setTimeout(() => {
+          trayHandle?.reassert();
+          for (const w of [pill.peek(), miniBar.peek(), popover.peek()]) {
+            if (w && !w.browser.isDestroyed()) w.browser.setSkipTaskbar(true);
+          }
+          const d = dashboard.peek();
+          if (d && !d.browser.isDestroyed()) d.browser.setSkipTaskbar(!config.showInTaskbar);
+          logger.info('Work area changed; re-applied tray tooltip and taskbar state');
+        }, 1500);
+      });
+    }
     globalShortcut.register('CommandOrControl+Alt+C', () =>
       applyConfig({ clickThrough: !config.clickThrough }),
     );
