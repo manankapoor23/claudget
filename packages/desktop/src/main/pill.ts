@@ -1,7 +1,9 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, nativeTheme, screen } from 'electron';
 import fs from 'node:fs';
 import type { Logger } from '@claude-widget/core';
 import { dragTarget, leadCursor, trackCursor, type CursorSample } from '../shared/pill';
+import { floatingDefaults, type Rect } from '../shared/placement';
+import { inflateWithin, roundedRectStrips } from '../shared/shape';
 import { loadSurface, type RendererSource } from './window';
 
 /**
@@ -11,7 +13,19 @@ import { loadSurface, type RendererSource } from './window';
  * transparent remainder passes clicks through to whatever is underneath.
  */
 export const PILL_WINDOW = { width: 356, height: 180 };
-const MARGIN = 12;
+/** The floating bar's default size and both surfaces' screen margins, so the
+ * pill and the bar can pick first positions that don't overlap. */
+export const MINIBAR_DEFAULT = { width: 580, height: 96 };
+export const FLOATING_MARGINS = { pill: 12, bar: 16 };
+/** The `.pillwin` padding: room for the halo, kept inside the shape when composited. */
+const HALO = 18;
+/**
+ * Linux: the window is cut to the pill's shape instead of ignoring the mouse
+ * over its clear parts — X11 can't forward mouse moves to an ignoring window,
+ * which left the pill unclickable, and without a compositor the clear parts
+ * were drawn black.
+ */
+const SHAPED = process.platform === 'linux';
 /**
  * Cursor-follow cadence while dragging. macOS only shows a window's new
  * position once per display refresh, so this just has to be fresh at each
@@ -62,12 +76,15 @@ export class Pill {
     last: { x: number; y: number } | null;
   } | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
+  private readonly opaque: boolean;
 
   constructor(deps: PillDeps) {
     this.statePath = deps.statePath;
     this.logger = deps.logger;
     const saved = readState(deps.statePath);
+    this.opaque = deps.opaque === true;
     const wa = screen.getPrimaryDisplay().workArea;
+    const home = floatingDefaults(wa, PILL_WINDOW, MINIBAR_DEFAULT, FLOATING_MARGINS).pill;
     const onScreen =
       typeof saved.x === 'number' &&
       typeof saved.y === 'number' &&
@@ -84,12 +101,13 @@ export class Pill {
     this.browser = new BrowserWindow({
       width: PILL_WINDOW.width,
       height: PILL_WINDOW.height,
-      x: onScreen ? saved.x : wa.x + wa.width - PILL_WINDOW.width - MARGIN,
-      y: onScreen ? saved.y : wa.y + MARGIN,
+      x: onScreen ? saved.x : home.x,
+      y: onScreen ? saved.y : home.y,
       show: false,
       frame: false,
-      transparent: true,
-      backgroundColor: '#00000000',
+      ...(this.opaque
+        ? { backgroundColor: nativeTheme.shouldUseDarkColors ? '#0c0c0d' : '#fbfbfa' }
+        : { transparent: true, backgroundColor: '#00000000' }),
       // The OS shadow would outline the whole transparent window; the pill
       // draws its own, so it follows the shape as it morphs.
       hasShadow: false,
@@ -115,7 +133,8 @@ export class Pill {
     });
     // Transparent areas pass clicks through; the renderer re-captures the
     // mouse while the cursor is over the pill itself (moves are forwarded).
-    this.browser.setIgnoreMouseEvents(true, { forward: true });
+    // Linux: the shape does that job instead (see `setShapeFrom`).
+    if (!SHAPED) this.browser.setIgnoreMouseEvents(true, { forward: true });
     loadSurface(this.browser, deps, 'pill');
     // Mid-drag the window moves every frame; it's saved once it's dropped.
     this.browser.on('move', () => {
@@ -127,8 +146,27 @@ export class Pill {
   }
 
   setVisible(visible: boolean): void {
-    if (visible) this.browser.showInactive();
-    else this.browser.hide();
+    if (visible) {
+      // Windows: Explorer forgets skipped taskbar buttons when it restarts.
+      if (process.platform === 'win32') this.browser.setSkipTaskbar(true);
+      this.browser.showInactive();
+    } else this.browser.hide();
+  }
+
+  /**
+   * Linux: cuts the window to the pill (`rect`, in window coordinates). With a
+   * compositor the cut leaves room for the halo; without one it follows the
+   * rounded outline exactly, since anything else would be drawn as a box.
+   */
+  setShapeFrom(rect: Rect, radius: number): void {
+    if (!SHAPED || this.browser.isDestroyed()) return;
+    const nums = [rect.x, rect.y, rect.width, rect.height, radius];
+    if (!nums.every((n) => Number.isFinite(n)) || rect.width <= 0 || rect.height <= 0) return;
+    const win = { x: 0, y: 0, ...PILL_WINDOW };
+    const shape = this.opaque
+      ? roundedRectStrips(inflateWithin(rect, 0, win), radius)
+      : [inflateWithin(rect, HALO, win)];
+    if (shape.length > 0) this.browser.setShape(shape);
   }
 
   /**

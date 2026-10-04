@@ -4,6 +4,7 @@
   "description": "See your Claude Code 5-hour and weekly limits in the menu bar.",
   "license": "MIT",
   "author": "Claude Widget contributors",
+  "homepage": "https://claudget.vercel.app",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -29,7 +30,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^42.0.0",
-    "electron-builder": "^25.1.8",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

@@ -1,4 +1,5 @@
-import { BrowserWindow, screen, type Rectangle } from 'electron';
+import { BrowserWindow, nativeTheme, screen, type Rectangle } from 'electron';
+import { placePopover } from '../shared/placement';
 import { loadSurface, type RendererSource } from './window';
 
 const WIDTH = 360;
@@ -30,8 +31,9 @@ export class Popover {
       height: this.height,
       show: false,
       frame: false,
-      transparent: true,
-      backgroundColor: '#00000000',
+      ...(deps.opaque
+        ? { backgroundColor: nativeTheme.shouldUseDarkColors ? '#0c0c0d' : '#fbfbfa' }
+        : { transparent: true, backgroundColor: '#00000000' }),
       // The same material as the system's own menu-bar popovers.
       ...(MAC
         ? {
@@ -80,7 +82,12 @@ export class Popover {
     });
   }
 
-  /** Shows the popover under (macOS) or above (Windows/Linux taskbar) the anchor. */
+  /**
+   * Shows the popover beside the anchor: under a menu bar or top panel, above
+   * a bottom taskbar, beside a vertical one. The anchor is the tray icon's
+   * bounds, or the point that was clicked where the tray can't report its
+   * bounds (Linux); null puts it in the top-right corner.
+   */
   toggle(anchor: Rectangle | null): void {
     if (this.browser.isVisible()) {
       this.browser.hide();
@@ -102,6 +109,8 @@ export class Popover {
       this.browser.showInactive();
       this.browser.focus();
     } else {
+      // Windows: Explorer forgets skipped taskbar buttons when it restarts.
+      if (process.platform === 'win32') this.browser.setSkipTaskbar(true);
       this.browser.show();
       this.browser.focus();
     }
@@ -122,20 +131,23 @@ export class Popover {
   }
 
   private position(anchor: Rectangle | null): { x: number; y: number } {
-    const display = anchor
-      ? screen.getDisplayNearestPoint({ x: anchor.x, y: anchor.y })
-      : screen.getPrimaryDisplay();
-    const wa = display.workArea;
-    if (!anchor || anchor.width === 0) {
-      // No tray bounds (some Linux trays): top-right of the work area.
+    if (!anchor) {
+      // Nothing to anchor to: top-right of the primary work area.
+      const wa = screen.getPrimaryDisplay().workArea;
+      this.dropsDown = true;
       return { x: wa.x + wa.width - WIDTH - GAP * 2, y: wa.y + GAP };
     }
-    const centred = Math.round(anchor.x + anchor.width / 2 - WIDTH / 2);
-    const x = Math.min(Math.max(centred, wa.x + GAP), wa.x + wa.width - WIDTH - GAP);
-    // Tray at the top (macOS menu bar) → drop down; at the bottom (taskbar) → pop up.
-    const trayAtTop = anchor.y < wa.y + wa.height / 2;
-    this.dropsDown = trayAtTop;
-    const y = trayAtTop ? anchor.y + anchor.height + GAP : anchor.y - this.height - GAP;
-    return { x, y: Math.max(wa.y, y) };
+    const display = screen.getDisplayNearestPoint({
+      x: Math.round(anchor.x + anchor.width / 2),
+      y: Math.round(anchor.y + anchor.height / 2),
+    });
+    const placed = placePopover(
+      anchor,
+      display.workArea,
+      { width: WIDTH, height: this.height },
+      GAP,
+    );
+    this.dropsDown = placed.dropsDown;
+    return { x: placed.x, y: placed.y };
   }
 }

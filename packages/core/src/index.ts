@@ -59,12 +59,31 @@ export {
 } from './pricing';
 
 // Lower-level building blocks (handy for tests and future surfaces)
-export { parseTranscriptLine, parseTranscriptContent, type ParseContext } from './parse';
+export {
+  parseTranscriptLine,
+  parseTranscriptContent,
+  createTranscriptParser,
+  type ParseContext,
+  type TranscriptParser,
+} from './parse';
+export { TranscriptStore, type TranscriptRef } from './transcript-store';
 export { discoverTranscripts, type TranscriptFile } from './discover';
 export { buildLocalUsage, emptyTokens, type AggregateOptions } from './aggregate';
-export { watchTranscripts, type TranscriptWatcher, type WatchOptions } from './watch';
+export {
+  watchTranscripts,
+  createPathCoalescer,
+  type CoalescerOptions,
+  type PathCoalescer,
+  type TranscriptWatcher,
+  type WatchOptions,
+} from './watch';
 export {
   OfficialUsageClient,
+  OfficialPollScheduler,
+  OFFICIAL_ACTIVITY_SETTLE_MS,
+  OFFICIAL_MIN_GAP_MS,
   normalizeOfficialPayload,
   type OfficialClientOptions,
+  type PollReason,
+  type PollSchedulerOptions,
 } from './official';

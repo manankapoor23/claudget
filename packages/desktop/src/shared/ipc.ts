@@ -51,6 +51,8 @@ export type WindowAction =
   | { type: 'pill-drag'; phase: 'end' }
   /** Pill: move the window by this much (it's switching corners). */
   | { type: 'pill-nudge'; dx: number; dy: number }
+  /** Pill (Linux): the pill's rect inside its window, to shape the window to. */
+  | { type: 'pill-shape'; x: number; y: number; width: number; height: number; radius: number }
   /** Popover: fit the window to this content height. */
   | { type: 'popover-height'; height: number }
   | { type: 'quit' };
@@ -65,6 +67,8 @@ export interface AppInfo {
   pricingNote: string;
   /** True on the very first launch — the popover shows a short welcome. */
   firstRun: boolean;
+  /** False when there's (probably) no tray to show an icon in (Linux). */
+  trayAvailable: boolean;
 }
 
 /** The API surface exposed to the renderer on `window.claudeWidget`. */

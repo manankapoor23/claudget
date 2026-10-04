@@ -1,13 +1,14 @@
 import { BrowserWindow, nativeTheme, screen } from 'electron';
 import fs from 'node:fs';
+import { floatingDefaults } from '../shared/placement';
+import { FLOATING_MARGINS, MINIBAR_DEFAULT, PILL_WINDOW } from './pill';
 import { loadSurface, type RendererSource } from './window';
 
 /** Wide and short: both limits and today, readable without opening anything. */
-export const MINIBAR = { width: 580, height: 96 };
+export const MINIBAR = MINIBAR_DEFAULT;
 /** Resize range — the layout adapts across it (see `.mb` in system.css). */
 const MIN = { width: 380, height: 64 };
 const MAX = { width: 1100, height: 220 };
-const MARGIN = 16;
 
 function ground(): string {
   return nativeTheme.shouldUseDarkColors ? '#0c0c0d' : '#fbfbfa';
@@ -66,6 +67,7 @@ export class MiniBar {
       typeof v === 'number' ? Math.min(hi, Math.max(lo, Math.round(v))) : d;
     const width = clamp(saved.width, MIN.width, MAX.width, MINIBAR.width);
     const height = clamp(saved.height, MIN.height, MAX.height, MINIBAR.height);
+    const home = floatingDefaults(wa, PILL_WINDOW, { width, height }, FLOATING_MARGINS).bar;
 
     this.browser = new BrowserWindow({
       width,
@@ -74,9 +76,10 @@ export class MiniBar {
       minHeight: MIN.height,
       maxWidth: MAX.width,
       maxHeight: MAX.height,
-      // Default: top centre, just under the menu bar.
-      x: onScreen ? saved.x : Math.round(wa.x + (wa.width - width) / 2),
-      y: onScreen ? saved.y : wa.y + MARGIN,
+      // Default: top centre, just under the menu bar — or clear of where the
+      // pill starts, on screens too narrow for both side by side.
+      x: onScreen ? saved.x : home.x,
+      y: onScreen ? saved.y : home.y,
       show: false,
       frame: false,
       backgroundColor: ground(),
@@ -114,8 +117,11 @@ export class MiniBar {
   }
 
   setVisible(visible: boolean): void {
-    if (visible) this.browser.showInactive();
-    else this.browser.hide();
+    if (visible) {
+      // Windows: Explorer forgets skipped taskbar buttons when it restarts.
+      if (process.platform === 'win32') this.browser.setSkipTaskbar(true);
+      this.browser.showInactive();
+    } else this.browser.hide();
   }
 
   private persist(): void {

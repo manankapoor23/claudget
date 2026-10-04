@@ -1,4 +1,6 @@
 import { useEffect, type JSX } from 'react';
+import { PLATFORM } from '../lib/platform';
+import { trayName } from '../../shared/copy';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
 import { formatCompact } from '../lib/format';
@@ -88,7 +90,7 @@ export function MiniBarApp(): JSX.Element {
         <button
           type="button"
           className="iconbtn iconbtn--danger"
-          title="Hide the floating bar (turn it back on from the menu bar)"
+          title={`Hide the floating bar (turn it back on from the ${trayName(PLATFORM)})`}
           onClick={() => void updateConfig({ miniBar: false })}
         >
           <CloseIcon size={13} />

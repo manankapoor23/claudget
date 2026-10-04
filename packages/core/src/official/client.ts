@@ -142,12 +142,22 @@ export class OfficialUsageClient {
     if (patch.cliVersion !== undefined) this.cliVersion = patch.cliVersion;
   }
 
-  /** Returns cached data when within the poll window / backoff, else fetches. */
-  async getUsage(options: { force?: boolean } = {}): Promise<OfficialUsage> {
+  /** Epoch ms until which the endpoint must not be called (0 when not backing off). */
+  getBackoffUntil(): number {
+    return this.backoffUntil;
+  }
+
+  /**
+   * Returns cached data when within the poll window / backoff, else fetches.
+   * `maxAgeMs` overrides the poll window for callers that schedule polls
+   * themselves (the engine's scheduler already enforces the minimum gap).
+   */
+  async getUsage(options: { force?: boolean; maxAgeMs?: number } = {}): Promise<OfficialUsage> {
     const now = this.now();
     const force = options.force ?? false;
+    const maxAgeMs = options.maxAgeMs ?? this.pollIntervalMs;
 
-    if (!force && this.lastSuccessAt > 0 && now - this.lastSuccessAt < this.pollIntervalMs) {
+    if (!force && this.lastSuccessAt > 0 && now - this.lastSuccessAt < maxAgeMs) {
       return this.serveCached('ok', false, null, now);
     }
     if (!force && now < this.backoffUntil) {
