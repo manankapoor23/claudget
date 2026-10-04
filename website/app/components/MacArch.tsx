@@ -94,7 +94,7 @@ export default function MacArch() {
       // the download table would highlight nothing at all.
       const offered =
         document.querySelector(`[data-arch-swap][data-href-${arch}]`) ??
-        document.querySelector(arch === "arm64" ? ".dl--macArm64" : ".dl--macX64");
+        document.querySelector(arch === "arm64" ? ".dl__get--macArm64" : ".dl__get--macX64");
       if (!offered) return;
 
       // Re-point every element that carries a variant for this arch. Each one

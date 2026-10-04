@@ -78,14 +78,12 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0c0c0d" },
-    { media: "(prefers-color-scheme: light)", color: "#fbfbfa" },
-  ],
+  // Paper, for everyone: the site is light first, whatever the system prefers.
+  themeColor: "#f7f5f0",
 };
 
 // Applied before paint so a saved choice doesn't flash the other theme. With
-// nothing saved, the CSS follows the system (prefers-color-scheme).
+// nothing saved, the site is paper (light), whatever the system prefers.
 const THEME_BOOT = `(function(){try{var t=localStorage.getItem('claudget-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
 // Same trick for the download buttons: tag the platform before first paint so

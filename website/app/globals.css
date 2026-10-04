@@ -1,67 +1,51 @@
 /* =========================================================================
    claudget — site
 
-   The product is the page. Tokens, type and colour are the app's own
-   (packages/desktop/src/renderer/styles/system.css), and the imagery is the
-   app's own surfaces rebuilt in HTML (ui.css). Text is set in each platform's
+   The product is the page. The page is paper; the imagery is the app's own
+   surfaces rebuilt in HTML (ui.css), always in the app's dark appearance and
+   with its own tokens (packages/desktop/src/renderer/styles/system.css). Text is set in each platform's
    own face — SF Pro on Apple devices, Segoe UI on Windows — and the mocks in
    the app's (SF Pro / Geist). Mono is reserved for literal code.
    ========================================================================= */
 
-/* ---- tokens: dark ------------------------------------------------------- */
+/* ---- tokens: paper (the default, for everyone) ---------------------------- */
+/* Light first, whatever the system says: warm paper and near-black type. The
+   neutrals lean a touch warm (hue ~80) so they sit with the icon's orange,
+   never brown. Orange is reserved: the product's own data, and one large
+   moment on the page (the 62% in the pace diagram). Every button is ink. */
 :root {
-  --bg: #0c0c0d;
-  --bg-2: #111113;
-  --surface: #17171a;
-  --ink: #ededee;
-  --ink-2: rgba(237, 237, 238, 0.66);
-  --ink-3: rgba(237, 237, 238, 0.52);
-  --line: rgba(255, 255, 255, 0.08);
-  --line-2: rgba(255, 255, 255, 0.13);
-  --fill: rgba(255, 255, 255, 0.06);
-  --fill-2: rgba(255, 255, 255, 0.1);
-  --track: rgba(255, 255, 255, 0.08);
-  --seg-on: rgba(255, 255, 255, 0.14);
-  --tint: #ff7a50;
-  --tint-text: #ff8a64;
-  /* Amber as text and as a fill: one value in the dark, two in the light,
-     where a fill-strength amber is too light to read. */
-  --c-warn: #ffb020;
-  --c-warn-fill: #ffb020;
-  --c-bad: #ff4d3d;
-  --c-good: #3ecf8e;
+  --bg: #f7f5f0;
+  --bg-2: #efece5;
+  --surface: #ffffff;
+  --ink: #1a1917;
+  --ink-2: #4d4a45;
+  --ink-3: #625e58;
+  --line: rgba(40, 30, 15, 0.1);
+  --line-2: rgba(40, 30, 15, 0.16);
+  --fill: rgba(40, 30, 15, 0.05);
+  --fill-2: rgba(40, 30, 15, 0.08);
+  --track: rgba(40, 30, 15, 0.08);
+  --seg-on: #ffffff;
+  --tint: #f25a0f;
+  /* Orange as type: only the pace diagram's 64px figure, large text, which
+     needs 3:1 (3.38:1 here). Not for body-size text. */
+  --tint-text: #ee4d00;
+  /* Amber as text and as a fill: on paper a fill-strength amber is too light
+     to read, so the two differ. */
+  --c-warn: #8a6200;
+  --c-warn-fill: #f5b400;
+  --c-bad: #c41f2a;
+  --c-good: #0e7a4f;
 
-  /* White on the coral is ~2.6:1, so the dark theme's button takes dark ink. */
-  --cta-bg: #ff7a50;
-  --cta-bg-hover: #ff8c67;
-  --cta-ink: #1c0c05;
+  /* The primary button is ink, not orange. */
+  --cta-bg: #1a1917;
+  --cta-bg-hover: #36332e;
+  --cta-ink: #ffffff;
 
-  --header-bg: rgba(12, 12, 13, 0.72);
+  --header-bg: rgba(247, 245, 240, 0.82);
   --shadow-window:
     0 0 0 0.5px rgba(0, 0, 0, 0.7), 0 14px 34px -12px rgba(0, 0, 0, 0.7),
     0 40px 90px -30px rgba(0, 0, 0, 0.75);
-
-  /* Desktop wallpaper. The hero's has a warm glow right behind the popover,
-     so its translucency has something to show; the smaller stages are quiet. */
-  --wall-hero:
-    radial-gradient(34% 58% at 77% 38%, rgba(255, 122, 80, 0.38), transparent 70%),
-    radial-gradient(60% 80% at -6% 108%, rgba(64, 128, 160, 0.26), transparent 62%),
-    linear-gradient(168deg, #22242a 0%, #16171b 52%, #0f1013 100%);
-  --wall:
-    radial-gradient(80% 110% at 100% 0%, rgba(255, 128, 84, 0.1), transparent 60%),
-    linear-gradient(168deg, #202227 0%, #16171b 55%, #101114 100%);
-  --wall-grain: 0.07;
-
-  /* Chrome drawn on the wallpaper (menu bar, taskbar, pressed item). */
-  --mb-ink: rgba(255, 255, 255, 0.92);
-  --mb-bg: rgba(18, 18, 22, 0.34);
-  --mb-press: rgba(255, 255, 255, 0.2);
-  --tb-bg: rgba(24, 24, 28, 0.72);
-  /* Translucent materials, standing in for the system's vibrancy. */
-  --pop-bg: rgba(26, 26, 30, 0.78);
-  --notice-bg: rgba(40, 40, 46, 0.72);
-  --term-bg: rgba(20, 20, 23, 0.9);
-  --side: #111113;
 
   --page: 1120px;
   --gutter: 24px;
@@ -80,102 +64,97 @@
   --code:
     ui-monospace, "SF Mono", "Menlo", var(--font-geist-mono), "Consolas", monospace;
 
-  color-scheme: dark;
-}
-
-/* ---- tokens: light ------------------------------------------------------ */
-/* Written twice on purpose: once for an explicit choice, once for the system
-   default when nothing has been chosen. Keep the two blocks identical. */
-:root[data-theme="light"] {
-  --bg: #fbfbfa;
-  --bg-2: #f4f4f2;
-  --surface: #ffffff;
-  --ink: #111113;
-  --ink-2: rgba(17, 17, 19, 0.7);
-  --ink-3: rgba(17, 17, 19, 0.61);
-  --line: rgba(0, 0, 0, 0.08);
-  --line-2: rgba(0, 0, 0, 0.13);
-  --fill: rgba(0, 0, 0, 0.045);
-  --fill-2: rgba(0, 0, 0, 0.08);
-  --track: rgba(0, 0, 0, 0.07);
-  --seg-on: #ffffff;
-  --tint: #e5582c;
-  --tint-text: #ac4221;
-  --c-warn: #9a5b00;
-  --c-warn-fill: #e0900f;
-  --c-bad: #d63a2c;
-  --c-good: #127a54;
-  --cta-bg: #c54c26;
-  --cta-bg-hover: #b3431f;
-  --cta-ink: #ffffff;
-  --header-bg: rgba(251, 251, 250, 0.78);
-  --shadow-window:
-    0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 14px 34px -14px rgba(0, 0, 0, 0.26),
-    0 40px 90px -40px rgba(0, 0, 0, 0.32);
-  --wall-hero:
-    radial-gradient(34% 58% at 77% 38%, rgba(255, 150, 108, 0.42), transparent 70%),
-    radial-gradient(60% 80% at -6% 108%, rgba(118, 168, 198, 0.38), transparent 62%),
-    linear-gradient(168deg, #f3f1ee 0%, #e9eaec 100%);
-  --wall:
-    radial-gradient(80% 110% at 100% 0%, rgba(255, 150, 108, 0.16), transparent 60%),
-    linear-gradient(168deg, #f2f1ef 0%, #e8e9ec 100%);
-  --wall-grain: 0.12;
-  --mb-ink: rgba(0, 0, 0, 0.86);
-  --mb-bg: rgba(255, 255, 255, 0.42);
-  --mb-press: rgba(0, 0, 0, 0.1);
-  --tb-bg: rgba(243, 243, 243, 0.78);
-  --pop-bg: rgba(250, 250, 249, 0.8);
-  --notice-bg: rgba(246, 246, 246, 0.8);
-  --term-bg: rgba(255, 255, 255, 0.92);
-  --side: #f2f2f0;
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --bg: #fbfbfa;
-    --bg-2: #f4f4f2;
-    --surface: #ffffff;
-    --ink: #111113;
-    --ink-2: rgba(17, 17, 19, 0.7);
-    --ink-3: rgba(17, 17, 19, 0.61);
-    --line: rgba(0, 0, 0, 0.08);
-    --line-2: rgba(0, 0, 0, 0.13);
-    --fill: rgba(0, 0, 0, 0.045);
-    --fill-2: rgba(0, 0, 0, 0.08);
-    --track: rgba(0, 0, 0, 0.07);
-    --seg-on: #ffffff;
-    --tint: #e5582c;
-    --tint-text: #ac4221;
-    --c-warn: #9a5b00;
-    --c-warn-fill: #e0900f;
-    --c-bad: #d63a2c;
-    --c-good: #127a54;
-    --cta-bg: #c54c26;
-    --cta-bg-hover: #b3431f;
-    --cta-ink: #ffffff;
-    --header-bg: rgba(251, 251, 250, 0.78);
-    --shadow-window:
-      0 0 0 0.5px rgba(0, 0, 0, 0.14), 0 14px 34px -14px rgba(0, 0, 0, 0.26),
-      0 40px 90px -40px rgba(0, 0, 0, 0.32);
-    --wall-hero:
-      radial-gradient(34% 58% at 77% 38%, rgba(255, 150, 108, 0.42), transparent 70%),
-      radial-gradient(60% 80% at -6% 108%, rgba(118, 168, 198, 0.38), transparent 62%),
-      linear-gradient(168deg, #f3f1ee 0%, #e9eaec 100%);
-    --wall:
-      radial-gradient(80% 110% at 100% 0%, rgba(255, 150, 108, 0.16), transparent 60%),
-      linear-gradient(168deg, #f2f1ef 0%, #e8e9ec 100%);
-    --wall-grain: 0.12;
-    --mb-ink: rgba(0, 0, 0, 0.86);
-    --mb-bg: rgba(255, 255, 255, 0.42);
-    --mb-press: rgba(0, 0, 0, 0.1);
-    --tb-bg: rgba(243, 243, 243, 0.78);
-    --pop-bg: rgba(250, 250, 249, 0.8);
-    --notice-bg: rgba(246, 246, 246, 0.8);
-    --term-bg: rgba(255, 255, 255, 0.92);
-    --side: #f2f2f0;
-    color-scheme: light;
-  }
+/* ---- tokens: dark (only when chosen with the toggle) ------------------------ */
+/* Graphite with only a breath of warmth, the paper's night side. */
+:root[data-theme="dark"] {
+  --bg: #0f0f0e;
+  --bg-2: #171716;
+  --surface: #1e1e1c;
+  --ink: #f4f3f0;
+  --ink-2: #b6b4ae;
+  --ink-3: #9a9790;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.15);
+  --fill: rgba(255, 255, 255, 0.07);
+  --fill-2: rgba(255, 255, 255, 0.11);
+  --track: rgba(255, 255, 255, 0.1);
+  --seg-on: rgba(255, 255, 255, 0.15);
+  --tint: #ff6b1f;
+  --tint-text: #ff8a4c;
+  --c-warn: #ffc93d;
+  --c-warn-fill: #ffc93d;
+  --c-bad: #ff4d4d;
+  --c-good: #3fd18b;
+  --cta-bg: #f4f3f0;
+  --cta-bg-hover: #ffffff;
+  --cta-ink: #0f0f0e;
+  --header-bg: rgba(15, 15, 14, 0.78);
+  color-scheme: dark;
+}
+
+/* Depth, not a gradient you notice: a faint lift at the top of the page. */
+:root[data-theme="dark"] body {
+  background-image: radial-gradient(
+    1400px 720px at 50% -240px,
+    rgba(255, 255, 255, 0.05),
+    transparent 70%
+  );
+  background-repeat: no-repeat;
+}
+
+/* On the dark page the product's desktop is lifted a step, so it still reads
+   as a picture set on the page rather than a hole in it. */
+:root[data-theme="dark"] .scene {
+  --wall-hero: linear-gradient(170deg, #353330 0%, #232220 100%);
+  --wall: linear-gradient(170deg, #353330 0%, #232220 100%);
+}
+
+/* ---- the product's own tokens ------------------------------------------------ */
+/* The mocks always show the app in its dark appearance, set on the page like
+   photographs, in either theme. Scoped to the scene, so the page and the
+   product can't restyle each other. */
+.scene {
+  --bg: #161514;
+  --bg-2: #1c1b19;
+  --surface: #1c1c1c;
+  --side: #171717;
+  --ink: #f3f1ec;
+  --ink-2: #b4b0a8;
+  --ink-3: #9a958c;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.15);
+  --fill: rgba(255, 255, 255, 0.07);
+  --fill-2: rgba(255, 255, 255, 0.11);
+  --track: rgba(255, 255, 255, 0.1);
+  --seg-on: rgba(255, 255, 255, 0.15);
+  --tint: #ff6b1f;
+  --tint-text: #ff8a4c;
+  --c-warn: #ffc93d;
+  --c-warn-fill: #ffc93d;
+  --c-bad: #ff4d4d;
+  --c-good: #3fd18b;
+
+  /* Desktop wallpaper: quiet warm graphite, nothing to compete with the app. */
+  --wall-hero: linear-gradient(170deg, #2b2926 0%, #1d1c1a 100%);
+  --wall: linear-gradient(170deg, #2b2926 0%, #1d1c1a 100%);
+  --wall-grain: 0.06;
+
+  /* Chrome drawn on the wallpaper (menu bar, taskbar, pressed item). */
+  --mb-ink: rgba(255, 255, 255, 0.92);
+  --mb-bg: rgba(20, 20, 20, 0.4);
+  --mb-press: rgba(255, 255, 255, 0.2);
+  --tb-bg: rgba(30, 30, 30, 0.76);
+  /* Materials, standing in for the system's vibrancy. Near-opaque, so the
+     paper behind a bare mock never greys them out. */
+  --pop-bg: rgba(34, 32, 30, 0.84);
+  --notice-bg: rgba(30, 29, 27, 0.96);
+  --term-bg: rgba(28, 27, 25, 0.94);
+
+  color: var(--ink);
+  color-scheme: dark;
 }
 
 /* ---- base ---------------------------------------------------------------- */
@@ -319,8 +298,8 @@ code {
    15  everything else: nav, rows, notes, footer
 
    600 for headings and button labels, 400 for everything else. Prose is the
-   0.66 grey, headings full ink, and coral is kept for the primary button,
-   active states and data.
+   ink-2 grey, headings full ink. Buttons are ink; orange is kept for the
+   product's data and the pace diagram's large figure.
    ========================================================================= */
 
 /* =========================================================================
@@ -400,6 +379,38 @@ code {
   gap: 8px;
 }
 
+/* Downloads so far, from GitHub: the mark, the figure, the word. */
+.gh-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition:
+    background var(--dur-press) var(--ease-std),
+    color var(--dur-press) var(--ease-std);
+}
+
+.gh-count:hover {
+  background: var(--fill);
+  color: var(--ink);
+}
+
+.gh-count svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.gh-count__n {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .icon-btn {
   display: grid;
   place-items: center;
@@ -427,27 +438,18 @@ code {
   height: 18px;
 }
 
-/* One icon per theme, chosen by the same rules as the colours. */
-.theme-toggle__moon {
+/* One icon per theme, chosen by the same rule as the colours: paper unless
+   dark was chosen, so the moon (switch to dark) by default. */
+.theme-toggle__sun {
   display: none;
 }
 
-:root[data-theme="light"] .theme-toggle__sun {
-  display: none;
-}
-
-:root[data-theme="light"] .theme-toggle__moon {
+:root[data-theme="dark"] .theme-toggle__sun {
   display: block;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) .theme-toggle__sun {
-    display: none;
-  }
-
-  :root:not([data-theme="dark"]) .theme-toggle__moon {
-    display: block;
-  }
+:root[data-theme="dark"] .theme-toggle__moon {
+  display: none;
 }
 
 /* =========================================================================
@@ -602,7 +604,7 @@ code {
   display: inline-flex;
 }
 
-/* The size, behind a hairline. Full-strength ink: any transparency on the coral
+/* The size, behind a hairline. Full-strength ink: any transparency on the button
    drops below AA. The min-width keeps the button from jumping when MacArch
    swaps "176 MB" for "94 MB". */
 .dl-cta__size {
@@ -963,39 +965,41 @@ code {
   color: var(--ink-2);
 }
 
+/* Every build is its own button, with its size: nothing tucked away. */
 .dl__actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
-.dl__alts {
-  color: var(--ink-3);
-  white-space: nowrap;
-}
-
-.dl__alts a {
-  color: var(--ink-3);
-  transition: color var(--dur-press) var(--ease-std);
-}
-
-.dl__alts a:hover {
-  color: var(--ink);
-}
-
-/* The row this computer should take gets the coral button. */
-:root[data-os="mac"] .dl--mac .dl__get,
-:root[data-os="win"] .dl--win .dl__get,
-:root[data-os="linux"] .dl--linux .dl__get {
+/* The row this computer should take fills its default build in ink: the
+   installer, the AppImage, or on a Mac the universal build, until MacArch
+   knows the chip and moves the fill to that chip's smaller build. */
+:root[data-os="mac"] .dl--mac .dl__get--default,
+:root[data-os="win"] .dl--win .dl__get--default,
+:root[data-os="linux"] .dl--linux .dl__get--default,
+:root[data-os="mac"][data-arch="arm64"] .dl--mac .dl__get--macArm64,
+:root[data-os="mac"][data-arch="x64"] .dl--mac .dl__get--macX64 {
   background: var(--cta-bg);
   color: var(--cta-ink);
 }
 
-:root[data-os="mac"] .dl--mac .dl__get:hover,
-:root[data-os="win"] .dl--win .dl__get:hover,
-:root[data-os="linux"] .dl--linux .dl__get:hover {
+:root[data-os="mac"] .dl--mac .dl__get--default:hover,
+:root[data-os="win"] .dl--win .dl__get--default:hover,
+:root[data-os="linux"] .dl--linux .dl__get--default:hover,
+:root[data-os="mac"][data-arch="arm64"] .dl--mac .dl__get--macArm64:hover,
+:root[data-os="mac"][data-arch="x64"] .dl--mac .dl__get--macX64:hover {
   background: var(--cta-bg-hover);
+}
+
+:root[data-os="mac"][data-arch] .dl--mac .dl__get--default {
+  background: var(--fill-2);
+  color: var(--ink);
+}
+
+:root[data-os="mac"][data-arch] .dl--mac .dl__get--default:hover {
+  background: color-mix(in srgb, var(--ink) 15%, transparent);
 }
 
 /* First launch: the visitor's own platform only, once the page knows it.
@@ -1232,13 +1236,9 @@ code {
   }
 
   .dl__actions {
+    flex-direction: column;
     align-items: stretch;
     margin-top: 8px;
-  }
-
-  .dl__alts {
-    text-align: center;
-    white-space: normal;
   }
 
   .dl-meta {
@@ -1249,6 +1249,19 @@ code {
 @media (max-width: 640px) {
   :root {
     --gutter: 16px;
+  }
+
+  /* The mark and the figure say it; the word goes on a phone. */
+  .gh-count__label {
+    display: none;
+  }
+}
+
+/* The smallest phones: the hero's own Download button is right below, so the
+   header keeps the count and lets its button go. */
+@media (max-width: 400px) {
+  .header__cta {
+    display: none;
   }
 
   .hero {
