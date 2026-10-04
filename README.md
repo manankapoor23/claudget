@@ -135,7 +135,7 @@ Hand-edit and mess up a field? That one field falls back to its default — a ba
 | `dailyBudgetUSD`         | number ≥ 0 \| null               | `null`     | daily spend budget; notifies at 80% &amp; 100%. `null` = off.    |
 | `monthlyBudgetUSD`       | number ≥ 0 \| null               | `null`     | monthly spend budget; notifies at 80% &amp; 100%. `null` = off.  |
 | `officialPollIntervalMs` | int, 180000–3600000              | `300000`   | how often to poll. **Floor is 180s** — the endpoint rate-limits. |
-| `localDebounceMs`        | int, 200–10000                   | `1000`     | debounce for transcript file-change events                       |
+| `localDebounceMs`        | int, 200–10000                   | `1000`     | max wait for a transcript change while a session streams         |
 | `fullRescanIntervalMs`   | int, 10000–3600000               | `120000`   | periodic full rescan, catches new projects/missed FS events      |
 | `recentSessionLimit`     | int, 1–100                       | `8`        | how many recent sessions to list                                 |
 | `historyWindowHours`     | int, 1–168                       | `24`       | how far back the sparkline goes                                  |
