@@ -123,16 +123,17 @@ Note "launched claudget pid $($proc.Id)"
 Start-Sleep -Seconds 12
 Shot '01-first-launch'
 Cdp list | Set-Content (Join-Path $Logs 'win-cdp-targets.txt')
-Cdp shot popover (Join-Path $Shots '01b-popover-renderer-only.png')
-Cdp eval popover 'window.screenX + "," + window.screenY + " " + window.outerWidth + "x" + window.outerHeight' |
-  Set-Content (Join-Path $Logs 'win-first-run-popover-geometry.txt')
+Cdp shot dashboard (Join-Path $Shots '01b-dashboard-renderer-only.png')
+Note "first-run welcome: $((Cdp eval dashboard 'document.querySelector(".welcome")?.innerText ?? "(none)"') -join ' ')"
 Crop '01-first-launch' '02-notification-area-zoom' ($screen.Bounds.Width - 420) ($screen.Bounds.Height - $tb) 420 $tb 3
 Dump-Buttons 'win-uia-buttons-after-launch.txt'
 
-# Click empty desktop: the first-run popover should hide on blur.
+# Click empty desktop: the first-run dashboard is a real window and stays.
 Click 300 300
 Start-Sleep -Seconds 2
 Shot '03-after-clicking-desktop'
+Hide-Surface dashboard
+Start-Sleep -Seconds 1
 
 # ── Find the tray icon like a user: visible, or behind the overflow chevron ──
 # Returns the icon's UIA element, opening the "Show hidden icons" flyout first
@@ -190,6 +191,13 @@ Key @(0x11, 0x12, 0x55)
 Start-Sleep -Seconds 2
 Shot '08-popover-via-ctrl-alt-u'
 Cdp shot popover (Join-Path $Shots '08b-popover-renderer-only.png')
+Note "popover button titles: $((Cdp eval popover '[...document.querySelectorAll(".pop__foot button")].map(b => b.title).join(" | ")') -join ' ')"
+# Ctrl+D in the popover opens the dashboard (it was Cmd-only).
+Key @(0x11, 0x44)
+Start-Sleep -Seconds 3
+Shot '08c-dashboard-via-ctrl-d'
+Note "dashboard visible after Ctrl+D: $((Cdp eval dashboard 'document.visibilityState') -join ' ')"
+Hide-Surface dashboard
 
 # Dashboard and Settings, through the popover's own buttons.
 Cdp click popover '.pop__action--primary'
@@ -199,6 +207,10 @@ Hide-Surface dashboard
 Cdp click popover '.pop__foot button[title^="Settings"]'
 Start-Sleep -Seconds 4
 Shot '10-settings'
+$wcond = New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty, [System.Windows.Automation.ControlType]::Window)
+$titles = $UIA::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $wcond) | ForEach-Object { $_.Current.Name } | Where-Object { $_ -match 'claudget' }
+Note "claudget window titles: $($titles -join ' | ')"
+Note "click-through hint: $((Cdp eval settings '[...document.querySelectorAll("*")].map(e => e.childNodes.length === 1 && e.firstChild.nodeType === 3 ? e.textContent : "").filter(t => /toggles it/.test(t)).join(" ")') -join ' ')"
 Hide-Surface settings
 
 # Pill and floating bar, through the popover's toggles.
@@ -207,6 +219,7 @@ Cdp click popover '.pop__foot button[title^="Floating bar"]'
 Hide-Surface popover
 Start-Sleep -Seconds 4
 Shot '11-pill-and-bar'
+Note "pill window: $((Cdp eval pill 'window.screenX + "," + window.screenY + " " + window.outerWidth + "x" + window.outerHeight') -join ' '); bar window: $((Cdp eval minibar 'window.screenX + "," + window.screenY + " " + window.outerWidth + "x" + window.outerHeight') -join ' ')"
 
 # What it looks like once the user pins the icon to the visible area
 # (Settings > Personalization > Taskbar > Other system tray icons). Windows 11
@@ -254,6 +267,8 @@ if ($icon) {
   Crop '14-dark-taskbar' '14c-tray-icon-dark-zoom' ($ix - 40) ($iy - 24) 80 48 8
 }
 Dump-Buttons 'win-uia-buttons-after-explorer-restart.txt'
+$tasks = Find-Buttons | Where-Object { $_.Current.Name -match 'claudget' -and $_.Current.ClassName -like 'Taskbar*' } | ForEach-Object { $_.Current.Name }
+Note "claudget taskbar buttons after Explorer restart: $(if ($tasks) { $tasks -join ' | ' } else { 'none' })"
 
 $alive = -not $proc.HasExited
 Note "app still running at the end: $alive"

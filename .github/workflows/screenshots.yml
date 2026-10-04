@@ -32,7 +32,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        # 24.04 pinned: it restricts unprivileged user namespaces through
+        # AppArmor and ships without libfuse2, the two things that stopped the
+        # 0.3.1 AppImage from starting.
+        os: [windows-latest, ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -48,11 +51,11 @@ jobs:
       - run: npm run build:core
       - run: npm run build -w @claude-widget/desktop
 
-      # Linux: the real AppImage plus the unpacked tree it is made from.
+      # Linux: the real AppImage and .deb, plus the unpacked tree they come from.
       - name: Package (Linux)
         if: runner.os == 'Linux'
         working-directory: packages/desktop
-        run: npx electron-builder --linux AppImage --publish never
+        run: npx electron-builder --linux --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
 
@@ -80,6 +83,7 @@ jobs:
           bash .github/screenshots/linux.sh \
             packages/desktop/release/linux-unpacked \
             "$(ls packages/desktop/release/*.AppImage | head -1)" \
+            "$(ls packages/desktop/release/*.deb | head -1)" \
             shots
 
       - name: Run and screenshot (Windows)
