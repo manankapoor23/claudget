@@ -88,7 +88,12 @@ export class Pill {
       },
     });
     this.browser.setAlwaysOnTop(true, 'floating');
-    this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // skipTransformProcessType: the pill may be created while the dashboard
+    // has made claudget a regular app; the transform would drop its Dock icon.
+    this.browser.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
     // Transparent areas pass clicks through; the renderer re-captures the
     // mouse while the cursor is over the pill itself (moves are forwarded).
     this.browser.setIgnoreMouseEvents(true, { forward: true });
