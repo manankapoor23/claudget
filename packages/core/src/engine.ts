@@ -5,7 +5,7 @@ import { mergeConfig, type WidgetConfig } from './config';
 import { readCredentials } from './credentials';
 import { discoverTranscripts } from './discover';
 import { createLogger, type Logger } from './logger';
-import { OfficialUsageClient } from './official';
+import { OfficialPollScheduler, OfficialUsageClient, type PollReason } from './official';
 import { claudePaths, prettifyProjectSlug, type ClaudePaths } from './paths';
 import { DEFAULT_PRICING, type PricingTable } from './pricing';
 import {
@@ -20,6 +20,14 @@ import {
 import { TranscriptStore } from './transcript-store';
 import { readJsonSafe, walkFiles } from './util/fs';
 import { watchTranscripts, type TranscriptWatcher } from './watch';
+
+/**
+ * Trailing quiet window for transcript events: a change is processed once the
+ * file has been still this long. `localDebounceMs` is the ceiling (max wait)
+ * while a session keeps writing, so updates land within ~250ms of a pause and
+ * at least once per `localDebounceMs` during a stream.
+ */
+const LOCAL_QUIET_MS = 200;
 
 /**
  * Config fields a {@link UsageSnapshot} actually depends on. Anything absent here
@@ -52,8 +60,10 @@ export interface UsageEngineOptions {
 
 /**
  * Owns all data acquisition and produces {@link UsageSnapshot}s. It maintains an
- * in-memory, per-file map of parsed entries so a single file change re-parses
- * only that file; a periodic full rescan catches new projects and missed events.
+ * in-memory, per-file map of parsed entries and a read offset per file, so a
+ * change parses only the bytes appended since the last read; a periodic full
+ * rescan catches new projects and missed events (and costs a stat per file
+ * when nothing changed).
  *
  * Emits `'snapshot'` (a new {@link UsageSnapshot}) and `'error'` (an `Error`).
  */
@@ -81,7 +91,7 @@ export class UsageEngine extends EventEmitter {
   private localUpdatedAt: number | null = null;
 
   private watcher: TranscriptWatcher | null = null;
-  private officialTimer: NodeJS.Timeout | null = null;
+  private officialScheduler: OfficialPollScheduler;
   private rescanTimer: NodeJS.Timeout | null = null;
   private started = false;
 
@@ -102,6 +112,16 @@ export class UsageEngine extends EventEmitter {
       cliVersion: this.cliVersion,
     };
     this.official = this.createOfficialClient();
+    this.officialScheduler = new OfficialPollScheduler({
+      intervalMs: this.config.officialPollIntervalMs,
+      poll: (reason) => this.pollOfficial(reason),
+      blockedUntil: () => this.official.getBackoffUntil(),
+      now: this.now,
+      onPlan: (at, reason) =>
+        this.logger.debug(
+          `Next plan-limit check in ${Math.round((at - this.now()) / 1000)}s (${reason})`,
+        ),
+    });
   }
 
   private createOfficialClient(): OfficialUsageClient {
@@ -126,15 +146,14 @@ export class UsageEngine extends EventEmitter {
     await this.fullRescan();
     this.startWatcher();
     this.scheduleRescan();
-    this.scheduleOfficial(true);
+    this.scheduleOfficial();
     this.emitSnapshot();
   }
 
   async stop(): Promise<void> {
     this.started = false;
-    if (this.officialTimer) clearInterval(this.officialTimer);
+    this.officialScheduler.stop();
     if (this.rescanTimer) clearInterval(this.rescanTimer);
-    this.officialTimer = null;
     this.rescanTimer = null;
     if (this.watcher) {
       await this.watcher.close();
@@ -162,10 +181,10 @@ export class UsageEngine extends EventEmitter {
     }
     if (this.config.officialPollIntervalMs !== prev.officialPollIntervalMs) {
       this.official.setOptions({ pollIntervalMs: this.config.officialPollIntervalMs });
-      if (this.started) this.scheduleOfficial(false);
+      this.officialScheduler.setIntervalMs(this.config.officialPollIntervalMs);
     }
     if (this.config.enableOfficial !== prev.enableOfficial && this.started) {
-      this.scheduleOfficial(this.config.enableOfficial);
+      this.scheduleOfficial();
     }
     if (this.config.fullRescanIntervalMs !== prev.fullRescanIntervalMs && this.started) {
       this.scheduleRescan();
@@ -182,7 +201,18 @@ export class UsageEngine extends EventEmitter {
   /** Forces an immediate full local rescan and official refresh. */
   async refresh(): Promise<void> {
     await this.fullRescan();
-    await this.refreshOfficial(true);
+    if (this.started && this.config.enableOfficial) await this.officialScheduler.runNow();
+    else await this.refreshOfficial(true);
+  }
+
+  /**
+   * Hints that fresh plan limits would be seen now (wake from sleep, popover
+   * opened). Polls only if the last check is at least the minimum gap old, so
+   * it can never raise the request rate. Returns whether a poll started.
+   */
+  nudgeOfficial(reason: 'wake' | 'opened'): boolean {
+    if (!this.started || !this.config.enableOfficial) return false;
+    return this.officialScheduler.nudge(reason);
   }
 
   // ── Local data ──────────────────────────────────────────────────────────────
@@ -191,7 +221,12 @@ export class UsageEngine extends EventEmitter {
     this.watcher = watchTranscripts(
       this.paths.projectsDir,
       (paths) => void this.handleChange(paths),
-      { debounceMs: this.config.localDebounceMs, logger: this.logger },
+      {
+        quietMs: Math.min(LOCAL_QUIET_MS, this.config.localDebounceMs),
+        maxWaitMs: this.config.localDebounceMs,
+        confirmMs: LOCAL_QUIET_MS,
+        logger: this.logger,
+      },
     );
   }
 
@@ -205,7 +240,11 @@ export class UsageEngine extends EventEmitter {
     this.emitSnapshot();
   }
 
-  async fullRescan(): Promise<void> {
+  /**
+   * Re-walks the projects tree. Unchanged files cost one stat; grown files are
+   * read from their last offset. Returns whether any usage entry changed.
+   */
+  async fullRescan(): Promise<boolean> {
     const started = this.now();
     try {
       const files = await discoverTranscripts(this.paths.projectsDir);
@@ -215,34 +254,40 @@ export class UsageEngine extends EventEmitter {
       await this.refreshMeta();
       this.localScanStats = { files: files.length, scanDurationMs: this.now() - started };
       if (entriesChanged || this.localUpdatedAt === null) this.localUpdatedAt = this.now();
+      if (entriesChanged) this.officialScheduler.noteActivity();
       this.health.localOk = true;
       this.health.lastLocalError = null;
       this.logger.debug(
         `Full rescan complete: ${files.length} files in ${this.localScanStats.scanDurationMs}ms`,
       );
+      return entriesChanged;
     } catch (err) {
       this.health.localOk = false;
       this.health.lastLocalError = err instanceof Error ? err.message : String(err);
       this.logger.error('Full rescan failed', err);
+      return false;
     }
   }
 
   private async handleChange(paths: string[]): Promise<void> {
-    let changed = false;
-    await Promise.all(
+    const results = await Promise.all(
       paths.map(async (p) => {
-        if (!p.endsWith('.jsonl') || p.endsWith('journal.jsonl')) return;
+        if (!p.endsWith('.jsonl') || p.endsWith('journal.jsonl')) return false;
         // Reads only the bytes appended since the last read, and only whole
-        // lines: a half-written trailing line waits for the next tick, so no
+        // lines: a half-written trailing line waits for the next read, so no
         // settle-and-retry is needed.
         const slug = this.slugForPath(p);
-        const ref = { path: p, projectSlug: slug, projectPath: prettifyProjectSlug(slug) };
-        if (await this.transcripts.update(ref)) changed = true;
+        return this.transcripts.update({
+          path: p,
+          projectSlug: slug,
+          projectPath: prettifyProjectSlug(slug),
+        });
       }),
     );
-    if (changed) {
+    if (results.some(Boolean)) {
       this.localScanStats = { ...this.localScanStats, files: this.transcripts.size };
       this.localUpdatedAt = this.now();
+      this.officialScheduler.noteActivity();
       this.emitSnapshot();
     }
   }
@@ -288,24 +333,23 @@ export class UsageEngine extends EventEmitter {
 
   // ── Official data ─────────────────────────────────────────────────────────
 
-  private scheduleOfficial(immediate: boolean): void {
-    if (this.officialTimer) {
-      clearInterval(this.officialTimer);
-      this.officialTimer = null;
-    }
+  private scheduleOfficial(): void {
+    this.officialScheduler.stop();
     if (!this.config.enableOfficial) {
       this.emitSnapshot();
       return;
     }
-    if (immediate) void this.refreshOfficial(false);
-    this.officialTimer = setInterval(
-      () => void this.refreshOfficial(false),
-      this.config.officialPollIntervalMs,
-    );
-    this.officialTimer.unref?.();
+    this.officialScheduler.start(true);
   }
 
-  async refreshOfficial(force: boolean): Promise<void> {
+  private pollOfficial(reason: PollReason): Promise<void> {
+    this.logger.debug(`Checking plan limits (${reason})`);
+    // The scheduler enforces the minimum gap and backoff itself; maxAgeMs 0
+    // stops the client re-serving its cache for a poll the scheduler chose.
+    return this.refreshOfficial(reason === 'manual', 0);
+  }
+
+  async refreshOfficial(force: boolean, maxAgeMs?: number): Promise<void> {
     if (!this.config.enableOfficial) {
       this.health.officialOk = false;
       this.health.lastOfficialError = null;
@@ -313,7 +357,7 @@ export class UsageEngine extends EventEmitter {
       return;
     }
     try {
-      const usage = await this.official.getUsage({ force });
+      const usage = await this.official.getUsage({ force, maxAgeMs });
       this.health.officialOk = usage.status === 'ok' || (usage.available && !usage.stale);
       this.health.lastOfficialError = usage.status === 'ok' ? null : usage.message;
       await this.refreshMeta();
@@ -341,7 +385,10 @@ export class UsageEngine extends EventEmitter {
         detail: null,
       };
     }
-    return this.official.getLast();
+    const last = this.official.getLast();
+    // The scheduler, not the client, knows when the next check really is.
+    const planned = this.officialScheduler.nextPollAt;
+    return planned !== null && last.nextFetchAt !== null ? { ...last, nextFetchAt: planned } : last;
   }
 
   private async refreshMeta(): Promise<void> {
@@ -360,7 +407,10 @@ export class UsageEngine extends EventEmitter {
   private scheduleRescan(): void {
     if (this.rescanTimer) clearInterval(this.rescanTimer);
     this.rescanTimer = setInterval(() => {
-      void this.fullRescan().then(() => this.emitSnapshot());
+      // Push only when the rescan actually found something the watcher missed.
+      void this.fullRescan().then((changed) => {
+        if (changed) this.emitSnapshot();
+      });
     }, this.config.fullRescanIntervalMs);
     this.rescanTimer.unref?.();
   }
