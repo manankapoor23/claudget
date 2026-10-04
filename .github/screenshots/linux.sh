@@ -52,37 +52,36 @@ launch() { # launch <label>
   note "launched claudget pid $APP_PID ($1)"
 }
 quit_app() {
-  pkill -f "$UNPACKED/claudget" 2>/dev/null
+  pkill -x claudget 2>/dev/null
   sleep 2
-  pkill -9 -f "$UNPACKED/claudget" 2>/dev/null
+  pkill -9 -x claudget 2>/dev/null
   true
 }
 alive() { kill -0 "$APP_PID" 2>/dev/null; }
 
 # The tray icon is drawn by the panel, not a window we can query, so find it
-# in pixels: the right-most run of non-background columns in the panel strip.
+# in pixels: the bounding box of the logo's orange inside the panel strip.
+#   tray_icon_center <strip top y>   → prints "x y"
 tray_icon_center() {
-  import -window root -crop "${W}x${PANEL}+0+0" +repage ppm:- 2>/dev/null | python3 -c '
+  import -window root -crop "${W}x${PANEL}+0+$1" +repage ppm:- 2>/dev/null | python3 -c '
 import sys
+y0 = int(sys.argv[1])
 data = sys.stdin.buffer.read()
 parts = data.split(b"\n", 3)  # P6, "w h", maxval, pixels
 w, h = map(int, parts[1].split())
 px = parts[3]
-def at(x, y):
-    i = (y * w + x) * 3
-    return px[i:i + 3]
-bg = at(w - 2, h // 2)
-cols = [x for x in range(w // 2, w - 2)
-        if any(abs(a - b) > 40 for y in range(3, h - 3) for a, b in zip(at(x, y), bg))]
-if not cols:
+hits = []
+for y in range(h):
+    for x in range(w // 2, w):
+        i = (y * w + x) * 3
+        r, g, b = px[i], px[i + 1], px[i + 2]
+        if r > 180 and r - b > 90 and g < 200:
+            hits.append((x, y))
+if not hits:
     sys.exit(1)
-right = cols[-1]; left = right
-for x in reversed(cols):
-    if left - x > 4:
-        break
-    left = x
-print((left + right) // 2, h // 2)
-'
+xs = [p[0] for p in hits]; ys = [p[1] for p in hits]
+print((min(xs) + max(xs)) // 2, y0 + (min(ys) + max(ys)) // 2)
+' "$1"
 }
 
 # ── Display, session bus, Xfce pieces ───────────────────────────────────────
@@ -148,7 +147,7 @@ xdotool mousemove 700 700 click 1
 sleep 2
 shot "$T/03-after-clicking-desktop"
 
-if XY=$(tray_icon_center); then
+if XY=$(tray_icon_center 0); then
   read -r TX TY <<<"$XY"
   note "tray icon found at $TX,$TY"
   crop "$T/03-after-clicking-desktop" "$T/02b-tray-icon-zoom" "64x${PANEL}+$((TX - 32))+0" 800
@@ -209,6 +208,24 @@ shot "$T/13-dashboard-no-compositor"
 xfwm4 --replace --compositor=on >>"$OUT/logs/xfwm4.log" 2>&1 &
 sleep 3
 
+# Many desktops (Cinnamon, KDE, MATE, Xfce's own second panel) keep the tray
+# at the bottom. Move the panel there and click the icon again.
+xfconf-query -c xfce4-panel -p /panels/panel-1/position -s 'p=8;x=0;y=0'
+sleep 3
+if XY=$(tray_icon_center $((H - PANEL))); then
+  read -r TX TY <<<"$XY"
+  note "bottom panel: tray icon at $TX,$TY"
+  xdotool mousemove "$TX" "$TY" click 1
+  sleep 2
+  shot "$T/14-bottom-panel-popover-after-tray-click"
+  xdotool mousemove 700 700 click 1
+  sleep 1
+else
+  shot "$T/14-bottom-panel"
+  note "bottom panel: tray icon NOT found"
+fi
+xfconf-query -c xfce4-panel -p /panels/panel-1/position -s 'p=6;x=0;y=0'
+
 alive && note "tray pass: app still running at the end" || note "tray pass: APP EXITED"
 "${CDP[@]}" eval popover 'document.fonts.check("13px \"Geist Variable\"") + " " + getComputedStyle(document.body).fontFamily' \
   >"$OUT/logs/tray-font-check.txt" 2>&1
@@ -241,14 +258,25 @@ quit_app
 collect_logs notray
 
 # ── The AppImage exactly as a user double-clicks it (no flags) ──────────────
-reset_app_state
+# 1) as the runner ships (no libfuse2, like a fresh Ubuntu 22.04+/24.04),
+# 2) after installing libfuse2 (what the AppImage error tells people to do),
+# 3) with --no-sandbox (the workaround users find on forums).
+appimage_try() { # appimage_try <label> [args...]
+  local label=$1
+  shift
+  reset_app_state
+  timeout 20 "$APPIMAGE" "$@" >"$OUT/logs/appimage-$label.log" 2>&1
+  local rc=$?
+  note "AppImage $label: exit $rc (124 = still running after 20s, i.e. it started)"
+  pkill -x claudget 2>/dev/null
+  sleep 2
+}
 chmod +x "$APPIMAGE"
-timeout 20 "$APPIMAGE" >"$OUT/logs/appimage-plain-launch.log" 2>&1
-rc=$?
-note "AppImage plain launch exit code: $rc (124 = still running after 20s, i.e. it started)"
-if [ $rc -ne 124 ]; then
-  APPIMAGE_EXTRACT_AND_RUN=1 timeout 20 "$APPIMAGE" >"$OUT/logs/appimage-extract-and-run.log" 2>&1
-  note "AppImage with APPIMAGE_EXTRACT_AND_RUN=1 exit code: $?"
-fi
-pkill -f claudget 2>/dev/null
+appimage_try 1-no-libfuse2
+sudo apt-get install -y -qq libfuse2t64 >/dev/null 2>&1 || sudo apt-get install -y -qq libfuse2 >/dev/null 2>&1
+appimage_try 2-with-libfuse2
+(sleep 12 && shot "linux-notray/05-appimage-no-sandbox") &
+appimage_try 3-with-libfuse2-no-sandbox --no-sandbox
+wait
+reset_app_state
 true

@@ -94,9 +94,9 @@ jobs:
           {
             echo "## ${{ runner.os }}"
             echo '```'
-            cat shots/logs/summary-*.txt 2>/dev/null
+            cat shots/logs/summary-*.txt 2>/dev/null || true
             echo '--- app log (errors/warnings) ---'
-            grep -hE 'ERROR|WARN' shots/logs/*claude-widget.log 2>/dev/null | head -40
+            grep -hE 'ERROR|WARN' shots/logs/*claude-widget.log 2>/dev/null | head -40 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

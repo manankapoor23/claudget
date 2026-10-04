@@ -85,6 +85,13 @@ function Dump-Buttons([string] $file) {
 function Find-Named([string] $pattern) {
   Find-Buttons | Where-Object { $_.Current.Name -match $pattern -and -not $_.Current.BoundingRectangle.IsEmpty } | Select-Object -First 1
 }
+# Tray buttons are named after the tooltip (with a leading invisible char on
+# Windows 11), so match loosely but only inside the notification area.
+function Find-Tray {
+  Find-Buttons | Where-Object {
+    $_.Current.Name -match 'claudget' -and $_.Current.ClassName -like 'SystemTray*' -and -not $_.Current.BoundingRectangle.IsEmpty
+  } | Select-Object -First 1
+}
 function Center($el) {
   $r = $el.Current.BoundingRectangle
   [int]($r.X + $r.Width / 2), [int]($r.Y + $r.Height / 2)
@@ -102,6 +109,9 @@ $tb = $screen.Bounds.Height - $screen.WorkingArea.Height
 $UserDataDirs = @((Join-Path $env:APPDATA 'claudget'), (Join-Path $env:APPDATA '@claude-widget\desktop'))
 foreach ($d in $UserDataDirs) { Remove-Item -Recurse -Force $d -ErrorAction SilentlyContinue }
 
+# The runner's own console sits on the desktop; get it out of the way.
+(New-Object -ComObject Shell.Application).MinimizeAll()
+Start-Sleep -Seconds 2
 Shot '00-desktop-before-launch'
 Dump-Buttons 'win-uia-buttons-before.txt'
 
@@ -125,41 +135,41 @@ Start-Sleep -Seconds 2
 Shot '03-after-clicking-desktop'
 
 # ── Find the tray icon like a user: visible, or behind the overflow chevron ──
-$icon = Find-Named '^claudget'
-if ($icon) {
-  Note "tray icon VISIBLE in the notification area at $(Center $icon)"
-} else {
-  Note 'tray icon NOT visible in the notification area; trying the overflow chevron'
+# Returns the icon's UIA element, opening the "Show hidden icons" flyout first
+# when it isn't in the visible notification area.
+function Reach-TrayIcon([string] $shotName) {
+  $el = Find-Tray
+  if ($el) { return $el }
   $chev = Find-Named '(?i)hidden icons|chevron|show more'
-  if ($chev) {
-    $cx, $cy = Center $chev
-    Note "chevron '$($chev.Current.Name)' at $cx,$cy"
-    Click $cx $cy
-    Start-Sleep -Seconds 2
-    Shot '04-overflow-flyout'
-    Dump-Buttons 'win-uia-buttons-overflow.txt'
-    $icon = Find-Named '^claudget'
-    if ($icon) { Note "tray icon found in the OVERFLOW flyout at $(Center $icon)" }
-  } else {
-    Note 'no overflow chevron found either'
-  }
+  if (-not $chev) { return $null }
+  $cx, $cy = Center $chev
+  Click $cx $cy
+  Start-Sleep -Seconds 2
+  if ($shotName) { Shot $shotName; Dump-Buttons 'win-uia-buttons-overflow.txt' }
+  Find-Tray
 }
+if (Find-Tray) { Note 'tray icon VISIBLE in the notification area' }
+else { Note 'tray icon NOT visible: Windows put it behind the "Show hidden icons" chevron' }
+$icon = Reach-TrayIcon '04-overflow-flyout'
 
 if ($icon) {
   $ix, $iy = Center $icon
-  Crop '03-after-clicking-desktop' '02b-tray-icon-zoom' ($ix - 60) ($iy - 30) 120 60 6
+  Note "clicking tray icon at $ix,$iy"
+  Crop '04-overflow-flyout' '02b-tray-icon-zoom' ($ix - 60) ($iy - 30) 120 60 6
   Click $ix $iy
   Start-Sleep -Seconds 2
   Shot '05-popover-after-tray-left-click'
   Cdp eval popover 'window.screenX + "," + window.screenY + " " + window.outerWidth + "x" + window.outerHeight' |
     Set-Content (Join-Path $Logs 'win-tray-popover-geometry.txt')
-  # Second click on the icon should close it (toggle).
-  $icon2 = Find-Named '^claudget'
-  if ($icon2) { $ix, $iy = Center $icon2 }
-  Click $ix $iy
+  # Second click on the icon should close it (toggle). From the overflow that
+  # means chevron, then icon again.
+  $icon2 = Reach-TrayIcon $null
+  if ($icon2) { $ix, $iy = Center $icon2; Click $ix $iy }
   Start-Sleep -Seconds 2
   Shot '06-after-second-tray-click'
-  $icon3 = Find-Named '^claudget'
+  Click 300 300
+  Start-Sleep -Seconds 1
+  $icon3 = Reach-TrayIcon $null
   if ($icon3) {
     $rx, $ry = Center $icon3
     Click $rx $ry -Right
@@ -167,6 +177,7 @@ if ($icon) {
     Shot '07-tray-right-click-menu'
     Key @(0x1B) # Esc
     Start-Sleep -Seconds 1
+    Key @(0x1B)
   }
 } else {
   Note 'could not find the tray icon anywhere via UI Automation'
@@ -197,14 +208,52 @@ Hide-Surface popover
 Start-Sleep -Seconds 4
 Shot '11-pill-and-bar'
 
-# Taskbar in the other colour mode, to judge the icon's contrast on both.
-$light = if ($personal.SystemUsesLightTheme -eq 1) { 0 } else { 1 }
-Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name SystemUsesLightTheme -Value $light -Type DWord
-$res = [UIntPtr]::Zero
-[Native]::SendMessageTimeout([IntPtr]0xffff, 0x001A, [UIntPtr]::Zero, 'ImmersiveColorSet', 2, 5000, [ref]$res) | Out-Null
+# What it looks like once the user pins the icon to the visible area
+# (Settings > Personalization > Taskbar > Other system tray icons). Windows 11
+# keeps that choice in HKCU\Control Panel\NotifyIconSettings\<id>\IsPromoted.
+$promoted = $false
+Get-ChildItem 'HKCU:\Control Panel\NotifyIconSettings' -ErrorAction SilentlyContinue | ForEach-Object {
+  $p = Get-ItemProperty $_.PSPath
+  if ($p.ExecutablePath -like '*claudget.exe') {
+    Set-ItemProperty $_.PSPath -Name IsPromoted -Value 1 -Type DWord
+    $promoted = $true
+  }
+}
+Note "promoted tray icon via NotifyIconSettings: $promoted"
 Start-Sleep -Seconds 4
-Shot '12-taskbar-other-theme'
-Crop '12-taskbar-other-theme' '12b-notification-area-other-theme-zoom' ($screen.Bounds.Width - 420) ($screen.Bounds.Height - $tb) 420 $tb 3
+Shot '12-icon-promoted'
+Crop '12-icon-promoted' '12b-notification-area-promoted-zoom' ($screen.Bounds.Width - 420) ($screen.Bounds.Height - $tb) 420 $tb 3
+$icon = Find-Tray
+if ($icon) {
+  $ix, $iy = Center $icon
+  Note "promoted tray icon at $ix,$iy"
+  Crop '12-icon-promoted' '12c-tray-icon-promoted-zoom' ($ix - 40) ($iy - 24) 80 48 8
+  Click $ix $iy
+  Start-Sleep -Seconds 2
+  Shot '13-popover-from-visible-icon'
+  Cdp eval popover 'window.screenX + "," + window.screenY + " " + window.outerWidth + "x" + window.outerHeight' |
+    Set-Content (Join-Path $Logs 'win-promoted-popover-geometry.txt')
+  Click 300 300
+  Start-Sleep -Seconds 1
+}
+
+# Dark taskbar: switch the system theme and restart Explorer (which is also
+# what happens after an Explorer crash — the icon must come back by itself).
+Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize' -Name SystemUsesLightTheme -Value 0 -Type DWord
+Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 10
+if (-not (Get-Process explorer -ErrorAction SilentlyContinue)) { Start-Process explorer.exe; Start-Sleep -Seconds 8 }
+(New-Object -ComObject Shell.Application).MinimizeAll()
+Start-Sleep -Seconds 2
+Shot '14-dark-taskbar'
+Crop '14-dark-taskbar' '14b-notification-area-dark-zoom' ($screen.Bounds.Width - 420) ($screen.Bounds.Height - $tb) 420 $tb 3
+$icon = Find-Tray
+Note "tray icon present after Explorer restart: $([bool]$icon)"
+if ($icon) {
+  $ix, $iy = Center $icon
+  Crop '14-dark-taskbar' '14c-tray-icon-dark-zoom' ($ix - 40) ($iy - 24) 80 48 8
+}
+Dump-Buttons 'win-uia-buttons-after-explorer-restart.txt'
 
 $alive = -not $proc.HasExited
 Note "app still running at the end: $alive"
