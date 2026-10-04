@@ -109,6 +109,47 @@ describe('TranscriptStore', () => {
     expect(store.entryLists()[0]?.[0]?.sessionTitle).toHaveLength(94);
   });
 
+  it('parses huge usage lines, skips huge lines that cannot matter, and keeps their context', async () => {
+    const bigOutput = 'x'.repeat(700_000);
+    const lines = [
+      user('first request'),
+      // A huge assistant turn (e.g. a Write of a big file): usage comes last.
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-09-09T00:00:00.000Z',
+        requestId: 'big',
+        sessionId: 's1',
+        message: {
+          id: 'big',
+          model: 'claude-sonnet-4-20250514',
+          content: [{ type: 'text', text: bigOutput }],
+          usage: { input_tokens: 1, output_tokens: 2 },
+        },
+      }),
+      // A huge tool result with no usage: skimmed, but its git branch still counts.
+      JSON.stringify({ type: 'user', message: { content: bigOutput }, gitBranch: 'late-branch' }),
+      JSON.stringify({ ...JSON.parse(assistant('after')), gitBranch: undefined }),
+    ];
+    const content = lines.join('\n') + '\n';
+    fs.writeFileSync(ref.path, content);
+    const store = new TranscriptStore();
+    await store.update(ref);
+    expect(store.entryLists()).toEqual([parseTranscriptContent(content, ref)]);
+    expect(keys(store)).toEqual(['big:big', 'after:after']);
+    expect(store.entryLists()[0]?.[1]?.gitBranch).toBe('late-branch');
+  });
+
+  it('waits for a huge half-written line, then takes it whole', async () => {
+    const big = assistant('big', { pad: 'y'.repeat(300_000) });
+    fs.writeFileSync(ref.path, big.slice(0, 200_000));
+    const store = new TranscriptStore();
+    await store.update(ref);
+    expect(keys(store)).toEqual([]);
+    fs.appendFileSync(ref.path, big.slice(200_000));
+    await store.update(ref);
+    expect(keys(store)).toEqual(['big:big']);
+  });
+
   it('parses a file again from the start when it shrinks', async () => {
     fs.writeFileSync(ref.path, assistant('one') + '\n' + assistant('two') + '\n');
     const store = new TranscriptStore();

@@ -149,6 +149,38 @@ function entryFromRaw(
 export interface TranscriptParser {
   /** Parses one line; returns its usage entry if it is a billable one. */
   line(text: string): UsageEntry | null;
+  /** True until the session's title (its first real user request) is known. */
+  wantsTitle(): boolean;
+  /**
+   * Takes only the context (cwd, git branch) from parts of a line that can't
+   * be a usage entry, without parsing it — see {@link skimHead}.
+   */
+  skim(text: string): void;
+}
+
+const CWD_RE = /"cwd":"((?:[^"\\]|\\.)*)"/;
+const BRANCH_RE = /"gitBranch":"((?:[^"\\]|\\.)*)"/;
+
+function jsonString(m: RegExpExecArray | null): string | null {
+  if (!m) return null;
+  try {
+    const s = (JSON.parse(`"${m[1]}"`) as string).trim();
+    return s || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Best-effort cwd and gitBranch from part of a transcript line, without
+ * parsing it. A field inside a JSON string value can't match (its quotes are
+ * escaped). Used for the huge lines (pasted images, long tool output) that
+ * carry no usage: JSON-parsing multi-megabyte lines just for two short fields
+ * was most of the cost of a scan. Those fields only fill in for usage lines
+ * that lack their own, and current Claude Code writes them on every one.
+ */
+export function skimHead(head: string): { cwd: string | null; gitBranch: string | null } {
+  return { cwd: jsonString(CWD_RE.exec(head)), gitBranch: jsonString(BRANCH_RE.exec(head)) };
 }
 
 export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
@@ -156,6 +188,12 @@ export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
   let sessionTitle: string | null = null;
   let gitBranch: string | null = null;
   return {
+    wantsTitle: () => sessionTitle === null,
+    skim(head) {
+      const meta = skimHead(head);
+      if (meta.cwd) projectPath = meta.cwd;
+      if (meta.gitBranch) gitBranch = meta.gitBranch;
+    },
     line(text) {
       // One JSON.parse per line: lines can be megabytes (tool output), and
       // this used to parse every line twice.

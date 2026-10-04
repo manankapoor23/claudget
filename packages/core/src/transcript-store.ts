@@ -2,11 +2,15 @@ import { promises as fs } from 'node:fs';
 import { createTranscriptParser, type ParseContext, type TranscriptParser } from './parse';
 import type { UsageEntry } from './types';
 
-/** Bytes read per chunk. Lines longer than this are stitched across chunks. */
-const CHUNK_BYTES = 1 << 20;
+/** Bytes read per chunk (pooled). Longer lines are stitched across chunks. */
+const CHUNK_BYTES = 256 * 1024;
 /** Transcripts parsed at once during a full scan. */
-const SCAN_CONCURRENCY = 4;
+const SCAN_CONCURRENCY = 2;
 const NEWLINE = 0x0a;
+/** Lines longer than this are scanned, not buffered (see readNewLines). */
+const BIG_LINE_BYTES = 64 * 1024;
+/** Bytes from each end of a skipped line searched for cwd / git branch. */
+const SKIM_BYTES = 8 * 1024;
 
 interface FileState {
   ctx: ParseContext;
@@ -33,8 +37,11 @@ export interface TranscriptRef extends ParseContext {
  *
  * - an unchanged file (same size and mtime) is not read at all;
  * - a grown file is read from where the last read stopped;
- * - a file is streamed in 1 MB chunks, so at most one chunk and one line per
- *   file are in memory, never the file;
+ * - a file is streamed in 256 KB chunks, so at most one chunk and one short
+ *   line per file are in memory, never the file;
+ * - a huge line (pasted image, long tool output: ~1% of lines, ~70% of the
+ *   bytes) is only scanned for the markers that say it can matter, and read
+ *   back and parsed only if it can;
  * - a shrunk file (rewritten or truncated) is parsed again from the start.
  *
  * Only the compact {@link UsageEntry} list is retained per file.
@@ -136,6 +143,11 @@ export class TranscriptStore {
  * file's parser and advancing the offset past each one. A trailing line with
  * no newline yet is consumed only if it is already valid JSON; a half-written
  * one is left for the next read. Returns how many entries were added.
+ *
+ * Lines up to BIG_LINE_BYTES are assembled in memory. A longer one (a pasted
+ * image, a long tool result) is only scanned as it streams past, for the
+ * markers that say whether it can matter; it is read back in one piece only
+ * if it can, which is a handful of lines in a whole history.
  */
 async function readNewLines(
   handle: fs.FileHandle,
@@ -147,34 +159,80 @@ async function readNewLines(
     const entry = state.parser.line(line);
     if (entry) state.entries.push(entry);
   };
-  let pos = state.offset;
-  /** Bytes of a line that started in an earlier chunk. */
-  let carry: Buffer[] = [];
-  const buf = Buffer.allocUnsafe(Math.min(CHUNK_BYTES, Math.max(1, size - pos)));
-  while (pos < size) {
-    const { bytesRead } = await handle.read(buf, 0, Math.min(buf.length, size - pos), pos);
-    if (bytesRead === 0) break;
-    const chunk = buf.subarray(0, bytesRead);
-    let start = 0;
-    let nl = chunk.indexOf(NEWLINE, start);
-    while (nl !== -1) {
-      const piece = chunk.subarray(start, nl);
-      const line =
-        carry.length > 0
-          ? Buffer.concat([...carry, piece]).toString('utf8')
-          : piece.toString('utf8');
-      carry = [];
-      push(line);
-      start = nl + 1;
-      nl = chunk.indexOf(NEWLINE, start);
+  const readRange = async (start: number, end: number): Promise<Buffer> => {
+    const out = Buffer.allocUnsafe(Math.max(0, end - start));
+    let got = 0;
+    while (got < out.length) {
+      const { bytesRead } = await handle.read(out, got, out.length - got, start + got);
+      if (bytesRead === 0) break;
+      got += bytesRead;
     }
-    if (start < chunk.length) carry.push(Buffer.from(chunk.subarray(start)));
-    pos += bytesRead;
-    state.offset = pos - carry.reduce((n, b) => n + b.length, 0);
+    return out.subarray(0, got);
+  };
+
+  let pos = state.offset;
+  /** The current, unfinished line's bytes (short lines only). */
+  let carry: Buffer[] = [];
+  let carryLen = 0;
+  /** Set once the current line outgrows BIG_LINE_BYTES. */
+  let long: LongLine | null = null;
+
+  const finishLong = async (line: LongLine, end: number): Promise<void> => {
+    if (line.usage || (line.user && state.parser.wantsTitle())) {
+      push((await readRange(state.offset, end)).toString('utf8'));
+    } else {
+      const head = await readRange(state.offset, state.offset + SKIM_BYTES);
+      const tail = await readRange(Math.max(state.offset, end - SKIM_BYTES), end);
+      state.parser.skim(head.toString('utf8') + '\n' + tail.toString('utf8'));
+    }
+  };
+
+  const buf = takeBuffer();
+  try {
+    while (pos < size) {
+      const { bytesRead } = await handle.read(buf, 0, Math.min(buf.length, size - pos), pos);
+      if (bytesRead === 0) break;
+      const chunk = buf.subarray(0, bytesRead);
+      let start = 0;
+      for (;;) {
+        const nl = chunk.indexOf(NEWLINE, start);
+        const piece = chunk.subarray(start, nl === -1 ? chunk.length : nl);
+        if (!long && carryLen + piece.length > BIG_LINE_BYTES) {
+          long = { usage: false, user: false, edge: Buffer.alloc(0) };
+          for (const part of carry) scanLong(long, part);
+          carry = [];
+          carryLen = 0;
+        }
+        if (long) scanLong(long, piece);
+        if (nl === -1) {
+          if (!long && piece.length > 0) {
+            carry.push(Buffer.from(piece));
+            carryLen += piece.length;
+          }
+          break;
+        }
+        const lineEnd = pos + nl;
+        if (long) {
+          await finishLong(long, lineEnd);
+          long = null;
+        } else {
+          const line = carry.length > 0 ? Buffer.concat([...carry, piece]) : piece;
+          push(line.toString('utf8'));
+          carry = [];
+          carryLen = 0;
+        }
+        state.offset = lineEnd + 1;
+        start = nl + 1;
+      }
+      pos += bytesRead;
+    }
+  } finally {
+    chunkPool.push(buf);
   }
-  if (carry.length > 0) {
+
+  if (pos > state.offset) {
     // No newline at the end of the file: keep the line only if it's whole.
-    const tail = Buffer.concat(carry);
+    const tail = long ? await readRange(state.offset, pos) : Buffer.concat(carry);
     const text = tail.toString('utf8');
     if (isCompleteJson(text)) {
       push(text);
@@ -182,6 +240,35 @@ async function readNewLines(
     }
   }
   return state.entries.length - before;
+}
+
+interface LongLine {
+  usage: boolean;
+  user: boolean;
+  /** The last few bytes seen, so a marker split across two chunks is found. */
+  edge: Buffer;
+}
+
+const USAGE = Buffer.from('"usage"');
+const USER_TYPE = Buffer.from('"type":"user"');
+const EDGE_BYTES = USER_TYPE.length;
+
+function scanLong(line: LongLine, bytes: Buffer): void {
+  if (bytes.length === 0) return;
+  const seam = Buffer.concat([line.edge, bytes.subarray(0, EDGE_BYTES)]);
+  line.usage ||= bytes.indexOf(USAGE) !== -1 || seam.indexOf(USAGE) !== -1;
+  line.user ||= bytes.indexOf(USER_TYPE) !== -1 || seam.indexOf(USER_TYPE) !== -1;
+  const joined = bytes.length >= EDGE_BYTES ? bytes : Buffer.concat([line.edge, bytes]);
+  line.edge = Buffer.from(joined.subarray(Math.max(0, joined.length - EDGE_BYTES)));
+}
+
+/**
+ * Read buffers are reused across files rather than allocated per read: in
+ * Electron, freed native memory tends to stay in the process footprint.
+ */
+const chunkPool: Buffer[] = [];
+function takeBuffer(): Buffer {
+  return chunkPool.pop() ?? Buffer.allocUnsafeSlow(CHUNK_BYTES);
 }
 
 function isCompleteJson(text: string): boolean {
