@@ -21,6 +21,8 @@ interface FileState {
   /** stat at the last read, to skip files that haven't changed. */
   mtimeMs: number;
   size: number;
+  /** Inode at the last read: a new one means the file was replaced, not appended to. */
+  ino: number;
 }
 
 export interface TranscriptRef extends ParseContext {
@@ -42,7 +44,8 @@ export interface TranscriptRef extends ParseContext {
  * - a huge line (pasted image, long tool output: ~1% of lines, ~70% of the
  *   bytes) is only scanned for the markers that say it can matter, and read
  *   back and parsed only if it can;
- * - a shrunk file (rewritten or truncated) is parsed again from the start.
+ * - a shrunk or replaced file (truncated, or a new inode at the same path) is
+ *   parsed again from the start.
  *
  * Only the compact {@link UsageEntry} list is retained per file.
  */
@@ -111,10 +114,14 @@ export class TranscriptStore {
     try {
       const st = await handle.stat();
       let state = this.files.get(ref.path);
-      if (state && state.mtimeMs === st.mtimeMs && state.size === st.size) return false;
+      if (state && state.ino === st.ino && state.mtimeMs === st.mtimeMs && state.size === st.size) {
+        return false;
+      }
 
       let changed = false;
-      if (!state || st.size < state.offset) {
+      // Shorter than what was read, or a different file at the same path (an
+      // atomic rewrite): the old offset means nothing in it, start over.
+      if (!state || st.size < state.offset || st.ino !== state.ino) {
         changed = state !== undefined && state.entries.length > 0;
         state = {
           ctx: { projectSlug: ref.projectSlug, projectPath: ref.projectPath },
@@ -123,6 +130,7 @@ export class TranscriptStore {
           offset: 0,
           mtimeMs: 0,
           size: 0,
+          ino: st.ino,
         };
         this.files.set(ref.path, state);
       }

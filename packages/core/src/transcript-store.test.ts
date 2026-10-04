@@ -159,6 +159,18 @@ describe('TranscriptStore', () => {
     expect(keys(store)).toEqual(['three:three']);
   });
 
+  it('parses a file again from the start when it is replaced by a longer one', async () => {
+    fs.writeFileSync(ref.path, assistant('one') + '\n');
+    const store = new TranscriptStore();
+    await store.update(ref);
+    // An atomic rewrite: a new inode at the same path, longer than the old file.
+    const next = path.join(dir, 'a.jsonl.tmp');
+    fs.writeFileSync(next, assistant('two') + '\n' + assistant('three') + '\n');
+    fs.renameSync(next, ref.path);
+    expect(await store.update(ref)).toBe(true);
+    expect(keys(store)).toEqual(['two:two', 'three:three']);
+  });
+
   it('drops files that are gone', async () => {
     fs.writeFileSync(ref.path, assistant('one') + '\n');
     const store = new TranscriptStore();
