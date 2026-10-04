@@ -171,6 +171,41 @@ describe('TranscriptStore', () => {
     expect(keys(store)).toEqual(['two:two', 'three:three']);
   });
 
+  it('keeps a multi-byte character split across two reads intact', async () => {
+    const bytes = Buffer.from(user('héllo — ✓ 日本語') + '\n' + assistant('one') + '\n', 'utf8');
+    // Cut inside the 3-byte "✓", so the first read ends mid-character.
+    const cut = bytes.indexOf(Buffer.from('✓', 'utf8')) + 1;
+    fs.writeFileSync(ref.path, bytes.subarray(0, cut));
+    const store = new TranscriptStore();
+    await store.update(ref);
+    expect(keys(store)).toEqual([]);
+    fs.appendFileSync(ref.path, bytes.subarray(cut));
+    await store.update(ref);
+    expect(keys(store)).toEqual(['one:one']);
+    expect(store.entryLists()[0]?.[0]?.sessionTitle).toBe('héllo — ✓ 日本語');
+  });
+
+  it('read one appended line at a time, matches a whole-file parse', async () => {
+    const lines = [
+      user('Fix the <b>watcher</b>', { cwd: '/Users/test/real', gitBranch: 'main' }),
+      assistant('a1'),
+      assistant('a2', { gitBranch: 'feature' }),
+      user('second prompt is not the title'),
+      assistant('a3'),
+      assistant('a4', { cwd: '/Users/test/other' }),
+      assistant('a5'),
+    ];
+    const store = new TranscriptStore();
+    fs.writeFileSync(ref.path, '');
+    for (const line of lines) {
+      fs.appendFileSync(ref.path, line + '\n');
+      await store.update(ref);
+    }
+    expect(store.entryLists()).toEqual([parseTranscriptContent(lines.join('\n') + '\n', ref)]);
+    expect(store.entryLists()[0]?.[0]?.sessionTitle).toBe('Fix the watcher');
+    expect(store.entryLists()[0]?.at(-1)?.projectPath).toBe('/Users/test/other');
+  });
+
   it('drops files that are gone', async () => {
     fs.writeFileSync(ref.path, assistant('one') + '\n');
     const store = new TranscriptStore();
