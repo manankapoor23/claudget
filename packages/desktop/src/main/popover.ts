@@ -33,7 +33,18 @@ export class Popover {
       transparent: true,
       backgroundColor: '#00000000',
       // The same material as the system's own menu-bar popovers.
-      ...(MAC ? { vibrancy: 'popover' as const, visualEffectState: 'active' as const } : {}),
+      ...(MAC
+        ? {
+            vibrancy: 'popover' as const,
+            visualEffectState: 'active' as const,
+            // A non-activating panel, like every native menu-bar extra: it can
+            // take key focus without making claudget the active app. An
+            // ordinary window has to activate the app to get focus, and
+            // activating an app makes macOS switch to a Space where that app
+            // has a window (an open dashboard), or off a full-screen Space.
+            type: 'panel',
+          }
+        : {}),
       resizable: false,
       movable: false,
       minimizable: false,
@@ -52,7 +63,13 @@ export class Popover {
     });
     // Above fullscreen apps and on every Space, like the menu bar itself.
     this.browser.setAlwaysOnTop(true, 'pop-up-menu');
-    this.browser.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // skipTransformProcessType: without it Electron flips the whole app to a
+    // UI-element process and back (Dock icon and app menu vanish while the
+    // dashboard is open), which is also what briefly hid windows on create.
+    this.browser.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
     loadSurface(this.browser, deps, 'popover');
 
     this.browser.on('blur', () => {
@@ -78,8 +95,16 @@ export class Popover {
   show(anchor: Rectangle | null): void {
     const { x, y } = this.position(anchor);
     this.browser.setPosition(x, y, false);
-    this.browser.show();
-    this.browser.focus();
+    if (MAC) {
+      // show() calls [NSApp activateIgnoringOtherApps:YES] — the Space jump.
+      // showInactive() just orders the panel in; focus() on a panel makes it
+      // key (Escape, blur-to-close) without activating the app.
+      this.browser.showInactive();
+      this.browser.focus();
+    } else {
+      this.browser.show();
+      this.browser.focus();
+    }
   }
 
   hide(): void {
