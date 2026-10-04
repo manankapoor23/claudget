@@ -5,6 +5,7 @@ import {
   globalShortcut,
   Menu,
   nativeTheme,
+  powerMonitor,
   shell,
   type BrowserWindow,
   type Rectangle,
@@ -148,6 +149,13 @@ if (!singleInstanceLock) {
       });
     };
 
+    // Someone is about to look: if the plan limits are at least 180s old, check
+    // them now. Hooked per window instance, since these windows are created on
+    // demand (and the dashboard re-created after it idles out).
+    const nudgeOnShow = (win: BrowserWindow): void => {
+      win.on('show', () => engine.nudgeOfficial('opened'));
+    };
+
     // Five surfaces, one renderer bundle, and each window is its own renderer
     // process (~40-60 MB), so none exists until it's wanted:
     //   popover   — the menu-bar dropdown, the everyday glance; created soon
@@ -166,6 +174,7 @@ if (!singleInstanceLock) {
         }),
       onCreate: (d) => {
         wire(d.browser);
+        nudgeOnShow(d.browser);
         d.browser.on('hide', syncActivation);
         d.browser.on('closed', syncActivation);
       },
@@ -182,7 +191,10 @@ if (!singleInstanceLock) {
     });
     const popover = new LazyWindow({
       create: () => new Popover(renderer),
-      onCreate: (p) => wire(p.browser),
+      onCreate: (p) => {
+        wire(p.browser);
+        nudgeOnShow(p.browser);
+      },
     });
     const pill = new LazyWindow({
       create: () =>
@@ -289,6 +301,13 @@ if (!singleInstanceLock) {
       if (next) broadcast(IPC.LimitHistoryPush, next);
     });
     engine.on('error', (err) => logger.error('Engine error', err));
+
+    // Plan limits are polled every few minutes. When the Mac wakes with an old
+    // reading, check now (the popover and dashboard do the same when shown,
+    // see nudgeOnShow) — the engine only polls if the last check is at least
+    // 180s old, so these can never raise the request rate.
+    // Give the network a moment to come back after wake.
+    powerMonitor.on('resume', () => setTimeout(() => engine.nudgeOfficial('wake'), 5_000));
 
     // ponytail: only do the expensive bits when the field they depend on actually
     // changed. The opacity slider fires onChange on every pointer move (~30-60/s),

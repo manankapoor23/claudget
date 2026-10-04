@@ -97,6 +97,8 @@ export function createTray(deps: TrayDeps): TrayHandle {
   const tray = new Tray(icons.ok);
   tray.setToolTip('claudget');
   let currentTone: Tone = 'ok';
+  let currentTitle: string | null = null;
+  let currentTooltip = 'claudget';
 
   const buildMenu = (): Menu => {
     const cfg = deps.getConfig();
@@ -160,8 +162,22 @@ export function createTray(deps: TrayDeps): TrayHandle {
             .map((w) => pct(w.utilization))
             .join(' · ')
         : '';
-    if (process.platform === 'darwin') tray.setTitle(title, { fontType: 'monospacedDigit' });
-    tray.setToolTip(verdict ? `claudget — ${verdict.headline}\n${verdict.detail}` : 'claudget');
+    // Snapshots arrive up to once a second while a session streams, and most
+    // leave the limits untouched; only touch the menu bar when the text changes.
+    if (process.platform === 'darwin' && title !== currentTitle) {
+      currentTitle = title;
+      tray.setTitle(title, { fontType: 'monospacedDigit' });
+    }
+    // The % comes from Anthropic, polled every few minutes: say how old it is,
+    // so a number that hasn't moved reads as "not re-checked yet", not "stuck".
+    const asOf = official.available && official.fetchedAt ? limitsAsOf(official.fetchedAt) : '';
+    const tooltip = verdict
+      ? `claudget — ${verdict.headline}\n${verdict.detail}${asOf}`
+      : 'claudget';
+    if (tooltip !== currentTooltip) {
+      currentTooltip = tooltip;
+      tray.setToolTip(tooltip);
+    }
 
     const tone: Tone = verdict?.tone ?? 'ok';
     if (tone !== currentTone) {
@@ -171,4 +187,13 @@ export function createTray(deps: TrayDeps): TrayHandle {
   };
 
   return { tray, syncMenu, setStatus };
+}
+
+/** "\nLimits as of 14:32": a clock time, so the tooltip never needs re-rendering. */
+function limitsAsOf(fetchedAt: number): string {
+  const clock = new Date(fetchedAt).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `\nLimits as of ${clock}`;
 }
