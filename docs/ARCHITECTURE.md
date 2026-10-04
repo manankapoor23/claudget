@@ -121,9 +121,10 @@ the size of the new lines, and a rescan that finds nothing new costs a stat per 
 - **estimate** ([`estimate/`](../packages/core/src/estimate)) — the live % between checks.
   Each fresh reading calibrates a rate k = Δutilisation / Δweight per limit, where weight is
   the API-equivalent cost of local requests; a window's first record is anchored at its start
-  (0%), so one reading is enough, and records span at most 5 hours. k is the weight-weighted
-  median of the last 8 records and persists in `limit-calibration.json` in userData. The
-  engine attaches `window.estimate` = reading + 0.9 × k × weight since the reading (at most
+  (0%), so one reading is enough, and records span at most 5 hours. k is a weighted median of
+  the last 8 records (each counting in proportion to how far it moved, up to 10 points) and
+  persists in `limit-calibration.json` in userData. The
+  engine attaches `window.estimate` = reading + 0.8 × k × weight since the reading (at most
   +15 points, at most 100%; after `resetsAt`, 0 plus usage since the reset) only when it
   changes the whole-number %. `windows[].utilization` itself always stays Anthropic's number;
   alerts and the limit history read only that.

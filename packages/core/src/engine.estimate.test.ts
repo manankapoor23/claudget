@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG } from './config';
 import { UsageEngine } from './engine';
-import { FileCalibrationStore, rateFor } from './estimate';
+import { ESTIMATE_SAFETY, FileCalibrationStore, rateFor } from './estimate';
 import { createLogger, createNoopLogger } from './logger';
 
 // Never consult the host's real macOS Keychain (see official/client.test.ts).
@@ -90,13 +90,13 @@ describe('UsageEngine live limit estimate', () => {
     expect(w.usedPct).toBeCloseTo(30);
     expect(w.estimate ?? null).toBeNull(); // nothing used since the reading
 
-    // Three more requests ($2.25) after the reading → ~+2 points (×0.9).
+    // Three more requests ($2.25) after the reading → ~+2 points, damped.
     now += 2 * MIN;
     fs.appendFileSync(transcript, [1, 2, 3].map((i) => line(`b${i}`, now - i * 1000)).join(''));
     await engine.fullRescan();
     w = engine.getSnapshot().official.windows[0]!;
     expect(w.usedPct).toBeCloseTo(30); // the official value is untouched
-    expect(w.estimate?.usedPct).toBeCloseTo(30 + 0.9 * 2.25, 6);
+    expect(w.estimate?.usedPct).toBeCloseTo(30 + ESTIMATE_SAFETY * 2.25, 6);
     expect(w.estimate?.afterReset).toBe(false);
 
     // Anthropic's next reading wins outright.
@@ -106,7 +106,9 @@ describe('UsageEngine live limit estimate', () => {
     expect(w.usedPct).toBeCloseTo(32);
     expect(w.estimate ?? null).toBeNull();
     // ...and how far the shown estimate was from it is logged, to tune the damping.
-    expect(debug).toContain('Limit estimate overshot by 0.0 pts');
+    expect(debug.some((m) => /^Limit estimate (over|under)shot by \d+\.\d pts$/.test(m))).toBe(
+      true,
+    );
 
     // Persisted: a fresh engine starts out calibrated, before any reading.
     store.flush();

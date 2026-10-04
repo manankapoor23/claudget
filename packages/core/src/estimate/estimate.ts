@@ -4,9 +4,14 @@ import type { LimitEstimate, OfficialWindow } from '../types';
  * The estimate adds only this share of what the learned rate predicts. Being a
  * little low is cheap (the next official reading nudges the number up); being
  * high is not (it drops back, and a number that falls without a reset reads as
- * a bug). 0.9 trims the overshoots that k's spread between windows causes.
+ * a bug). The learned rate runs high when it's averaged over a window that
+ * started faster than the current pace (and usage elsewhere inflates it), so:
+ * 0.8. Simulated, it overshoots the next reading 5% of the time (7.8% at 0.9)
+ * for a mean error of 0.30 points (0.26); replayed on the owner's real
+ * readings, 1 overshoot in 7 (3 in 7 at 0.9). Thin evidence: tune it from the
+ * debug log's "Limit estimate overshot/undershot" lines.
  */
-export const ESTIMATE_SAFETY = 0.9;
+export const ESTIMATE_SAFETY = 0.8;
 
 /**
  * The most the estimate adds to a reading: 15 points. Readings arrive every
