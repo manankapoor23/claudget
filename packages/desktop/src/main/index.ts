@@ -21,6 +21,7 @@ import { autoUpdater } from 'electron-updater';
 import { buildAppMenu } from './app-menu';
 import { detectCliVersion, resolveIconPath, resolveTrayIconDir } from './app-paths';
 import { probeCompositor, transparencyFor } from './compositor';
+import { queryPointer } from './x11';
 import { readSandboxFacts, sandboxStatus } from './sandbox';
 import { applyUserDataOverride, runPopoverSelfTest, startMemoryLog } from './diagnostics';
 import { BudgetAlerter } from './budget-alerts';
@@ -301,25 +302,46 @@ if (!singleInstanceLock) {
     // Where to put the popover. The tray icon's bounds where the OS reports
     // them; on Linux it reports zeros, so a click on the tray is anchored at
     // the pointer that made it, and remembered for the keyboard shortcut.
+    // Linux asks the X server where the pointer is: Chromium's own answer is
+    // its last-seen position, stale while the pointer was over the panel.
     let lastTrayPoint: Rectangle | null = null;
-    const popoverAt = (fromTray: boolean): Rectangle | null => {
+    const pointer = async (): Promise<{ x: number; y: number }> => {
+      if (process.platform === 'linux') {
+        const p = await queryPointer().catch(() => null);
+        if (p) {
+          const scale = screen.getPrimaryDisplay().scaleFactor || 1;
+          return { x: Math.round(p.x / scale), y: Math.round(p.y / scale) };
+        }
+      }
+      return screen.getCursorScreenPoint();
+    };
+    /** What opened it: a tray click, the tray menu's "Open claudget", or anything else. */
+    type PopoverSource = 'tray' | 'menu' | 'other';
+    const popoverAt = async (source: PopoverSource): Promise<Rectangle | null> => {
       const bounds = trayHandle?.tray.getBounds() ?? null;
-      const anchor = popoverAnchor(bounds, fromTray ? screen.getCursorScreenPoint() : null);
-      if (fromTray && anchor) lastTrayPoint = anchor;
+      // From the menu the pointer is on a menu item, a little off the icon;
+      // the last click on the icon itself is the better anchor.
+      const usePointer = source === 'tray' || (source === 'menu' && !lastTrayPoint);
+      const cursor = usePointer ? await pointer() : null;
+      const anchor = popoverAnchor(bounds, cursor);
+      if (source === 'tray' && anchor) lastTrayPoint = anchor;
+      logger.debug('Popover anchor', { source, bounds, cursor, anchor: anchor ?? lastTrayPoint });
       return anchor ?? lastTrayPoint;
     };
-    const togglePopover = (fromTray = false): void => {
-      const anchor = popoverAt(fromTray);
-      const p = popover.get();
-      whenPainted(p.browser, () => {
-        if (!p.browser.isDestroyed()) p.toggle(anchor);
+    const togglePopover = (source: PopoverSource = 'other'): void => {
+      void popoverAt(source).then((anchor) => {
+        const p = popover.get();
+        whenPainted(p.browser, () => {
+          if (!p.browser.isDestroyed()) p.toggle(anchor);
+        });
       });
     };
-    const showPopover = (fromTray = false): void => {
-      const anchor = popoverAt(fromTray);
-      const p = popover.get();
-      whenPainted(p.browser, () => {
-        if (!p.browser.isDestroyed()) p.show(anchor);
+    const showPopover = (source: PopoverSource = 'other'): void => {
+      void popoverAt(source).then((anchor) => {
+        const p = popover.get();
+        whenPainted(p.browser, () => {
+          if (!p.browser.isDestroyed()) p.show(anchor);
+        });
       });
     };
     // Relaunching shows the glance — or, with no tray to anchor it to, the
@@ -444,8 +466,8 @@ if (!singleInstanceLock) {
         trayIconDir: resolveTrayIconDir(),
         getConfig: () => config,
         setConfig: applyConfig,
-        togglePopover: () => togglePopover(true),
-        showPopover: () => showPopover(true),
+        togglePopover: () => togglePopover('tray'),
+        showPopover: () => showPopover('menu'),
         openDashboard: () => openDashboard(),
         openSettings,
         refresh: () => void engine.refresh(),
