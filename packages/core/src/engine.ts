@@ -6,7 +6,6 @@ import { readCredentials } from './credentials';
 import { discoverTranscripts } from './discover';
 import { createLogger, type Logger } from './logger';
 import { OfficialUsageClient } from './official';
-import { parseTranscriptContent } from './parse';
 import { claudePaths, prettifyProjectSlug, type ClaudePaths } from './paths';
 import { DEFAULT_PRICING, type PricingTable } from './pricing';
 import {
@@ -18,7 +17,8 @@ import {
   type UsageEntry,
   type UsageSnapshot,
 } from './types';
-import { readFileSafe, readJsonSafe, walkFiles } from './util/fs';
+import { TranscriptStore } from './transcript-store';
+import { readJsonSafe, walkFiles } from './util/fs';
 import { watchTranscripts, type TranscriptWatcher } from './watch';
 
 /**
@@ -68,7 +68,7 @@ export class UsageEngine extends EventEmitter {
   private paths: ClaudePaths;
   private official: OfficialUsageClient;
 
-  private fileEntries = new Map<string, UsageEntry[]>();
+  private transcripts = new TranscriptStore();
   private activeSessions: ActiveSession[] = [];
   private meta: AccountMeta;
   private health: SnapshotHealth = {
@@ -209,22 +209,8 @@ export class UsageEngine extends EventEmitter {
     const started = this.now();
     try {
       const files = await discoverTranscripts(this.paths.projectsDir);
-      const map = new Map<string, UsageEntry[]>();
-      await Promise.all(
-        files.map(async (f) => {
-          const content = await readFileSafe(f.path);
-          if (content === null) return;
-          map.set(
-            f.path,
-            parseTranscriptContent(content, {
-              projectSlug: f.projectSlug,
-              projectPath: f.projectPath,
-            }),
-          );
-        }),
-      );
-      const entriesChanged = entryMapsDiffer(this.fileEntries, map);
-      this.fileEntries = map;
+      // Reads only new and grown transcripts, and only their new bytes.
+      const entriesChanged = await this.transcripts.sync(files);
       await this.readActiveSessions();
       await this.refreshMeta();
       this.localScanStats = { files: files.length, scanDurationMs: this.now() - started };
@@ -246,44 +232,19 @@ export class UsageEngine extends EventEmitter {
     await Promise.all(
       paths.map(async (p) => {
         if (!p.endsWith('.jsonl') || p.endsWith('journal.jsonl')) return;
-        const content = await this.readTranscriptWithRetry(p);
-        if (content === null) {
-          if (this.fileEntries.delete(p)) changed = true;
-          return;
-        }
+        // Reads only the bytes appended since the last read, and only whole
+        // lines: a half-written trailing line waits for the next tick, so no
+        // settle-and-retry is needed.
         const slug = this.slugForPath(p);
-        const entries = parseTranscriptContent(content, {
-          projectSlug: slug,
-          projectPath: prettifyProjectSlug(slug),
-        });
-        const previous = this.fileEntries.get(p) ?? [];
-        this.fileEntries.set(p, entries);
-        if (!entriesEqual(previous, entries)) changed = true;
+        const ref = { path: p, projectSlug: slug, projectPath: prettifyProjectSlug(slug) };
+        if (await this.transcripts.update(ref)) changed = true;
       }),
     );
     if (changed) {
-      this.localScanStats = { ...this.localScanStats, files: this.fileEntries.size };
+      this.localScanStats = { ...this.localScanStats, files: this.transcripts.size };
       this.localUpdatedAt = this.now();
       this.emitSnapshot();
     }
-  }
-
-  /**
-   * Chokidar can report the write before the append has fully settled. A short
-   * bounded retry reads the newest complete version without waiting forever on
-   * an active transcript that is continuously appended to.
-   */
-  private async readTranscriptWithRetry(p: string): Promise<string | null> {
-    let latest: string | null = null;
-    let previous: string | null = null;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      latest = await readFileSafe(p);
-      if (latest === null) return null;
-      if (latest === previous || attempt === 2) return latest;
-      previous = latest;
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
-    }
-    return latest;
   }
 
   private slugForPath(p: string): string {
@@ -319,7 +280,7 @@ export class UsageEngine extends EventEmitter {
 
   private allEntries(): UsageEntry[] {
     const byKey = new Map<string, UsageEntry>();
-    for (const list of this.fileEntries.values()) {
+    for (const list of this.transcripts.entryLists()) {
       for (const entry of list) byKey.set(entry.key, entry);
     }
     return [...byKey.values()];
@@ -444,17 +405,4 @@ export interface UsageEngine {
   off(event: 'error', listener: (error: Error) => void): this;
   emit(event: 'snapshot', snapshot: UsageSnapshot): boolean;
   emit(event: 'error', error: Error): boolean;
-}
-
-function entriesEqual(a: UsageEntry[], b: UsageEntry[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((entry, index) => JSON.stringify(entry) === JSON.stringify(b[index]));
-}
-
-function entryMapsDiffer(a: Map<string, UsageEntry[]>, b: Map<string, UsageEntry[]>): boolean {
-  if (a.size !== b.size) return true;
-  for (const [filePath, entries] of b) {
-    if (!entriesEqual(a.get(filePath) ?? [], entries)) return true;
-  }
-  return false;
 }

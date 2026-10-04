@@ -70,7 +70,10 @@ function sessionTitleFromRaw(obj: RawLine): string | null {
     .replace(/\s+/g, ' ')
     .trim();
   if (!title) return null;
-  return title.length > 96 ? title.slice(0, 93).trimEnd() + '…' : title;
+  if (title.length <= 96) return title;
+  // A slice would keep the whole (possibly huge, pasted) message alive for as
+  // long as the title lives; copy the few characters we keep instead.
+  return Buffer.from(title.slice(0, 93).trimEnd() + '…', 'utf8').toString('utf8');
 }
 
 /**
@@ -84,8 +87,14 @@ export function parseTranscriptLine(
   metadata: SessionMetadata = {},
 ): UsageEntry | null {
   const obj = parseRawLine(line);
-  if (!obj) return null;
+  return obj ? entryFromRaw(obj, ctx, metadata) : null;
+}
 
+function entryFromRaw(
+  obj: RawLine,
+  ctx: ParseContext,
+  metadata: SessionMetadata,
+): UsageEntry | null {
   if (obj.type !== 'assistant') return null;
   const usage = obj.message?.usage;
   if (!usage || typeof usage !== 'object') return null;
@@ -131,20 +140,43 @@ export function parseTranscriptLine(
   };
 }
 
-/** Parses every line of a JSONL transcript file's contents. */
-export function parseTranscriptContent(content: string, ctx: ParseContext): UsageEntry[] {
-  const entries: UsageEntry[] = [];
+/**
+ * A transcript parser that carries the running per-file context (latest cwd,
+ * git branch, first user request) between lines, so a file can be parsed in
+ * pieces: the engine reads only the bytes appended since its last read.
+ * Feeding it every line of a file gives exactly {@link parseTranscriptContent}.
+ */
+export interface TranscriptParser {
+  /** Parses one line; returns its usage entry if it is a billable one. */
+  line(text: string): UsageEntry | null;
+}
+
+export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
   let projectPath = ctx.projectPath;
   let sessionTitle: string | null = null;
   let gitBranch: string | null = null;
+  return {
+    line(text) {
+      // One JSON.parse per line: lines can be megabytes (tool output), and
+      // this used to parse every line twice.
+      const raw = parseRawLine(text);
+      if (!raw) return null;
+      if (typeof raw.cwd === 'string' && raw.cwd.trim()) projectPath = raw.cwd.trim();
+      if (typeof raw.gitBranch === 'string' && raw.gitBranch.trim()) {
+        gitBranch = raw.gitBranch.trim();
+      }
+      sessionTitle ??= sessionTitleFromRaw(raw);
+      return entryFromRaw(raw, { ...ctx, projectPath }, { sessionTitle, gitBranch });
+    },
+  };
+}
+
+/** Parses every line of a JSONL transcript file's contents. */
+export function parseTranscriptContent(content: string, ctx: ParseContext): UsageEntry[] {
+  const parser = createTranscriptParser(ctx);
+  const entries: UsageEntry[] = [];
   for (const line of content.split('\n')) {
-    const raw = parseRawLine(line);
-    if (typeof raw?.cwd === 'string' && raw.cwd.trim()) projectPath = raw.cwd.trim();
-    if (typeof raw?.gitBranch === 'string' && raw.gitBranch.trim()) {
-      gitBranch = raw.gitBranch.trim();
-    }
-    sessionTitle ??= sessionTitleFromRaw(raw ?? {});
-    const entry = parseTranscriptLine(line, { ...ctx, projectPath }, { sessionTitle, gitBranch });
+    const entry = parser.line(line);
     if (entry) entries.push(entry);
   }
   return entries;
