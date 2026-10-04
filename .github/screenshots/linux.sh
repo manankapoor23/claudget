@@ -55,6 +55,10 @@ collect_logs() { # collect_logs <label>
 
 APP_PID=
 launch() { # launch <label>: the installed .deb, plainly (sandbox on)
+  # Debug logging, for the popover-anchor lines.
+  local ud="$HOME/.config/@claude-widget/desktop"
+  mkdir -p "$ud"
+  [ -f "$ud/config.json" ] || echo '{ "logLevel": "debug" }' >"$ud/config.json"
   "$APP" --remote-debugging-port=9222 >>"$OUT/logs/$1-stdout.log" 2>&1 &
   APP_PID=$!
   sleep 4
@@ -291,7 +295,7 @@ xfconf-query -c xfce4-panel -p /panels/panel-1/position -s 'p=6;x=0;y=0'
 sleep 2
 
 alive && note "tray pass: app still running at the end" || note "tray pass: APP EXITED"
-note "tray pass log: $(app_log | grep -E 'Display|Tray' | tr '\n' ' ')"
+note "tray pass log: $(app_log | grep -E 'Display|Tray|Popover anchor' | tr '\n' ' ')"
 quit_app
 collect_logs tray
 

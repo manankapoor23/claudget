@@ -210,7 +210,7 @@ Shot '10-settings'
 $wcond = New-Object System.Windows.Automation.PropertyCondition($UIA::ControlTypeProperty, [System.Windows.Automation.ControlType]::Window)
 $titles = $UIA::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children, $wcond) | ForEach-Object { $_.Current.Name } | Where-Object { $_ -match 'claudget' }
 Note "claudget window titles: $($titles -join ' | ')"
-Note "click-through hint: $((Cdp eval settings '[...document.querySelectorAll("*")].map(e => e.childNodes.length === 1 && e.firstChild.nodeType === 3 ? e.textContent : "").filter(t => /toggles it/.test(t)).join(" ")') -join ' ')"
+Note "click-through hint: $((Cdp eval settings 'document.body.innerText.match(/[^\n]*toggles it[^\n]*/)?.[0] ?? "(not on this tab)"') -join ' ')"
 Hide-Surface settings
 
 # Pill and floating bar, through the popover's toggles.
