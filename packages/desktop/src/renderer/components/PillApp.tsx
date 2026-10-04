@@ -6,12 +6,19 @@ import { useTheme } from '../lib/theme';
 import { useBump } from '../lib/motion';
 import { limitLabel, rankLimits, toneOf, verdictFor } from '../../shared/limits';
 import { anchorFor, anchorShift, type Anchor, type Rect } from '../../shared/pill';
+import { PLATFORM } from '../lib/platform';
 import { Countdown } from './Countdown';
 import { CompactBar, CompactView } from './CompactView';
 
 /** A press that travels further than this is a drag, not a click. */
 const DRAG_THRESHOLD_PX = 3;
 const ANCHOR_KEY = 'claudget.pill.anchor';
+/**
+ * Linux: X11 can't forward mouse moves through a window that ignores the
+ * mouse, so the pass-through trick below would leave the pill unclickable.
+ * There the window is cut to the pill's shape instead (see main/pill.ts).
+ */
+const SHAPED = PLATFORM === 'linux';
 
 function savedAnchor(): Anchor | null {
   try {
@@ -111,7 +118,7 @@ export function PillApp(): JSX.Element {
   // only the pill itself takes the mouse.
   const setCapture = useCallback(
     (on: boolean): void => {
-      if (capturing.current === on) return;
+      if (SHAPED || capturing.current === on) return;
       capturing.current = on;
       bridge?.setIgnoreMouse(!on);
     },
@@ -136,6 +143,37 @@ export function PillApp(): JSX.Element {
       window.removeEventListener('keydown', onKey);
     };
   }, [setCapture]);
+
+  // Linux: keep the window's shape on the pill as it morphs and moves corners.
+  useEffect(() => {
+    const el = shell.current;
+    if (!SHAPED || !el || !bridge) return undefined;
+    let frame = 0;
+    const report = (): void => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const radius = parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0;
+        void bridge.windowAction({
+          type: 'pill-shape',
+          x: el.offsetLeft,
+          y: el.offsetTop,
+          width: el.offsetWidth,
+          height: el.offsetHeight,
+          radius,
+        });
+      });
+    };
+    const ro = new ResizeObserver(report);
+    ro.observe(el);
+    // Width/height animate, and corner changes move the pill without resizing it.
+    el.addEventListener('transitionend', report);
+    report();
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('transitionend', report);
+      cancelAnimationFrame(frame);
+    };
+  }, [bridge, anchor]);
 
   /**
    * After a drop, face the card toward the middle of the screen. Switching

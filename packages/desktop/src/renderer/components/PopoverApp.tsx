@@ -4,6 +4,8 @@ import { useTheme } from '../lib/theme';
 import { getBridge } from '../lib/api';
 import { planName } from '../lib/billing';
 import { rankLimits, verdictFor } from '../../shared/limits';
+import { matchesShortcut, SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
+import { PLATFORM } from '../lib/platform';
 import { Welcome } from './Welcome';
 import { WidgetOverview } from './WidgetOverview';
 import { ErrorState, LoadingState } from './States';
@@ -50,15 +52,16 @@ export function PopoverApp(): JSX.Element {
     };
   }, [bridge]);
 
-  // The keys a menu-bar popover is expected to answer to.
+  // The keys a menu-bar popover is expected to answer to: ⌘ on the Mac,
+  // Ctrl on Windows and Linux.
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') void bridge?.windowAction({ type: 'hide' });
-      else if (e.metaKey && e.key === ',')
+      else if (matchesShortcut(e, SHORTCUTS.openSettings, PLATFORM))
         void bridge?.windowAction({ type: 'open-dashboard', view: 'settings' });
-      else if (e.metaKey && e.key.toLowerCase() === 'd')
+      else if (matchesShortcut(e, SHORTCUTS.openDashboard, PLATFORM))
         void bridge?.windowAction({ type: 'open-dashboard' });
-      else if (e.metaKey && e.key.toLowerCase() === 'q')
+      else if (matchesShortcut(e, SHORTCUTS.quit, PLATFORM))
         void bridge?.windowAction({ type: 'quit' });
       else return;
       e.preventDefault();
@@ -106,7 +109,7 @@ export function PopoverApp(): JSX.Element {
         <button
           type="button"
           className="pop__action pop__action--primary"
-          title="Open dashboard (⌘D)"
+          title={`Open dashboard (${shortcutLabel(SHORTCUTS.openDashboard, PLATFORM)})`}
           onClick={() => void bridge?.windowAction({ type: 'open-dashboard' })}
         >
           Dashboard
@@ -133,7 +136,7 @@ export function PopoverApp(): JSX.Element {
         <button
           type="button"
           className="pop__action"
-          title="Settings (⌘,)"
+          title={`Settings (${shortcutLabel(SHORTCUTS.openSettings, PLATFORM)})`}
           onClick={() => void bridge?.windowAction({ type: 'open-dashboard', view: 'settings' })}
         >
           Settings
@@ -141,7 +144,7 @@ export function PopoverApp(): JSX.Element {
         <button
           type="button"
           className="pop__action"
-          title="Quit claudget (⌘Q)"
+          title={`Quit claudget (${shortcutLabel(SHORTCUTS.quit, PLATFORM)})`}
           onClick={() => void bridge?.windowAction({ type: 'quit' })}
         >
           Quit

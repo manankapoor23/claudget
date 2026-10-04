@@ -40,6 +40,9 @@ export class SettingsWindow {
       },
     });
     loadSurface(this.browser, deps, 'settings');
+    // Keep the native title (Windows/Linux title bar, taskbar, Alt+Tab):
+    // otherwise the page's <title>, plain "claudget", replaces it on load.
+    this.browser.on('page-title-updated', (event) => event.preventDefault());
     // Created on open and destroyed when closed: one theme listener per instance.
     const onTheme = (): void => {
       if (!this.browser.isDestroyed()) {

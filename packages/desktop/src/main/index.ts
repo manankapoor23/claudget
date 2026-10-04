@@ -6,6 +6,7 @@ import {
   Menu,
   nativeTheme,
   powerMonitor,
+  screen,
   shell,
   type BrowserWindow,
   type Rectangle,
@@ -18,7 +19,10 @@ import {
 } from '@claude-widget/core';
 import { autoUpdater } from 'electron-updater';
 import { buildAppMenu } from './app-menu';
-import { detectCliVersion, resolveIconPath } from './app-paths';
+import { detectCliVersion, resolveIconPath, resolveTrayIconDir } from './app-paths';
+import { probeCompositor, transparencyFor } from './compositor';
+import { queryPointer } from './x11';
+import { readSandboxFacts, sandboxStatus } from './sandbox';
 import { applyUserDataOverride, runPopoverSelfTest, startMemoryLog } from './diagnostics';
 import { BudgetAlerter } from './budget-alerts';
 import { ConfigStore } from './config-store';
@@ -35,6 +39,7 @@ import { Popover } from './popover';
 import { createTray, type TrayHandle } from './tray';
 import { WidgetWindow } from './window';
 import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
+import { popoverAnchor } from '../shared/placement';
 
 applyUserDataOverride();
 const singleInstanceLock = app.requestSingleInstanceLock();
@@ -83,10 +88,32 @@ if (!singleInstanceLock) {
 
     const engine = new UsageEngine({ config, logger, cliVersion });
 
+    // Linux: transparent windows need a compositor, or their clear pixels are
+    // drawn black. Ask the X server before the first window is made.
+    const transparency =
+      process.platform === 'linux'
+        ? transparencyFor(
+            process.platform,
+            process.env['XDG_SESSION_TYPE'],
+            await probeCompositor().catch(() => null),
+          )
+        : 'transparent';
+    if (process.platform === 'linux') {
+      logger.info('Display', {
+        session: process.env['XDG_SESSION_TYPE'] ?? null,
+        transparency,
+        sandbox: sandboxStatus({
+          ...readSandboxFacts(),
+          noSandboxSwitch: app.commandLine.hasSwitch('no-sandbox'),
+        }).reason,
+      });
+    }
+
     const renderer = {
       preloadPath: path.join(__dirname, '../preload/index.js'),
       rendererUrl: process.env['ELECTRON_RENDERER_URL'],
       rendererFile: path.join(__dirname, '../renderer/index.html'),
+      opaque: transparency === 'opaque',
     };
 
     // Native menus, dialogs and the tray follow the user's theme choice.
@@ -272,17 +299,49 @@ if (!singleInstanceLock) {
     };
     // Clicking the Dock icon brings the dashboard back.
     app.on('activate', () => openDashboard());
-    const trayBounds = (): Rectangle | null => trayHandle?.tray.getBounds() ?? null;
-    const togglePopover = (): void => {
-      const p = popover.get();
-      whenPainted(p.browser, () => {
-        if (!p.browser.isDestroyed()) p.toggle(trayBounds());
+    // Where to put the popover. The tray icon's bounds where the OS reports
+    // them; on Linux it reports zeros, so a click on the tray is anchored at
+    // the pointer that made it, and remembered for the keyboard shortcut.
+    // Linux asks the X server where the pointer is: Chromium's own answer is
+    // its last-seen position, stale while the pointer was over the panel.
+    let lastTrayPoint: Rectangle | null = null;
+    const pointer = async (): Promise<{ x: number; y: number }> => {
+      if (process.platform === 'linux') {
+        const p = await queryPointer().catch(() => null);
+        if (p) {
+          const scale = screen.getPrimaryDisplay().scaleFactor || 1;
+          return { x: Math.round(p.x / scale), y: Math.round(p.y / scale) };
+        }
+      }
+      return screen.getCursorScreenPoint();
+    };
+    /** What opened it: a tray click, the tray menu's "Open claudget", or anything else. */
+    type PopoverSource = 'tray' | 'menu' | 'other';
+    const popoverAt = async (source: PopoverSource): Promise<Rectangle | null> => {
+      const bounds = trayHandle?.tray.getBounds() ?? null;
+      // From the menu the pointer is on a menu item, a little off the icon;
+      // the last click on the icon itself is the better anchor.
+      const usePointer = source === 'tray' || (source === 'menu' && !lastTrayPoint);
+      const cursor = usePointer ? await pointer() : null;
+      const anchor = popoverAnchor(bounds, cursor);
+      if (source === 'tray' && anchor) lastTrayPoint = anchor;
+      logger.debug('Popover anchor', { source, bounds, cursor, anchor: anchor ?? lastTrayPoint });
+      return anchor ?? lastTrayPoint;
+    };
+    const togglePopover = (source: PopoverSource = 'other'): void => {
+      void popoverAt(source).then((anchor) => {
+        const p = popover.get();
+        whenPainted(p.browser, () => {
+          if (!p.browser.isDestroyed()) p.toggle(anchor);
+        });
       });
     };
-    const showPopover = (): void => {
-      const p = popover.get();
-      whenPainted(p.browser, () => {
-        if (!p.browser.isDestroyed()) p.show(trayBounds());
+    const showPopover = (source: PopoverSource = 'other'): void => {
+      void popoverAt(source).then((anchor) => {
+        const p = popover.get();
+        whenPainted(p.browser, () => {
+          if (!p.browser.isDestroyed()) p.show(anchor);
+        });
       });
     };
     // Relaunching shows the glance — or, with no tray to anchor it to, the
@@ -347,6 +406,7 @@ if (!singleInstanceLock) {
       claudeDir: engine.getSnapshot().meta.claudeDir,
       pricingNote: PRICING_NOTE,
       firstRun,
+      trayAvailable,
     });
 
     const quit = (): void => {
@@ -396,16 +456,18 @@ if (!singleInstanceLock) {
       startPillDrag: (x, y) => pill.peek()?.startDrag(x, y),
       endPillDrag: () => pill.peek()?.endDrag(),
       nudgePill: (dx, dy) => pill.peek()?.nudge(dx, dy),
+      shapePill: (rect, radius) => pill.peek()?.setShapeFrom(rect, radius),
       fitPopover: (h) => popover.peek()?.setContentHeight(h),
       quit,
     });
 
     try {
       trayHandle = createTray({
-        iconPath: resolveIconPath(),
+        trayIconDir: resolveTrayIconDir(),
         getConfig: () => config,
         setConfig: applyConfig,
-        togglePopover,
+        togglePopover: () => togglePopover('tray'),
+        showPopover: () => showPopover('menu'),
         openDashboard: () => openDashboard(),
         openSettings,
         refresh: () => void engine.refresh(),
@@ -440,7 +502,29 @@ if (!singleInstanceLock) {
       }
     }
 
-    globalShortcut.register('CommandOrControl+Alt+U', togglePopover);
+    globalShortcut.register('CommandOrControl+Alt+U', () => togglePopover());
+
+    // Windows: when Explorer restarts (a crash, an update), it puts tray
+    // icons back without their tooltips and forgets which windows asked to
+    // stay off the taskbar, so the pill and the floating bar turned up as
+    // taskbar buttons. Explorer announces itself with the registered
+    // "TaskbarCreated" message, whose number Electron can't look up for us,
+    // and no work-area or display event comes with it. So, every few seconds,
+    // re-assert both: a tooltip set to the same text and a DeleteTab on a
+    // window that has no tab are no-ops for the shell, a couple of Win32
+    // calls in all. Shown windows also re-assert when they're shown.
+    if (process.platform === 'win32') {
+      const reassertShell = (): void => {
+        trayHandle?.reassert();
+        for (const w of [pill.peek(), miniBar.peek()]) {
+          if (w && !w.browser.isDestroyed() && w.browser.isVisible())
+            w.browser.setSkipTaskbar(true);
+        }
+        const d = dashboard.peek();
+        if (d && !d.browser.isDestroyed() && !config.showInTaskbar) d.browser.setSkipTaskbar(true);
+      };
+      setInterval(reassertShell, 10_000).unref();
+    }
     globalShortcut.register('CommandOrControl+Alt+C', () =>
       applyConfig({ clickThrough: !config.clickThrough }),
     );

@@ -1,7 +1,9 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, nativeTheme, screen } from 'electron';
 import fs from 'node:fs';
 import type { Logger } from '@claude-widget/core';
-import { dragTarget } from '../shared/pill';
+import { dragTarget, leadCursor, trackCursor, type CursorSample } from '../shared/pill';
+import { floatingDefaults, type Rect } from '../shared/placement';
+import { inflateWithin, roundedRectStrips } from '../shared/shape';
 import { loadSurface, type RendererSource } from './window';
 
 /**
@@ -11,9 +13,34 @@ import { loadSurface, type RendererSource } from './window';
  * transparent remainder passes clicks through to whatever is underneath.
  */
 export const PILL_WINDOW = { width: 356, height: 180 };
-const MARGIN = 12;
-/** Cursor-follow cadence while dragging (~120 Hz keeps up with the pointer). */
-const DRAG_TICK_MS = 8;
+/** The floating bar's default size and both surfaces' screen margins, so the
+ * pill and the bar can pick first positions that don't overlap. */
+export const MINIBAR_DEFAULT = { width: 580, height: 96 };
+export const FLOATING_MARGINS = { pill: 12, bar: 16 };
+/** The `.pillwin` padding: room for the halo, kept inside the shape when composited. */
+const HALO = 18;
+/**
+ * Linux: the window is cut to the pill's shape instead of ignoring the mouse
+ * over its clear parts — X11 can't forward mouse moves to an ignoring window,
+ * which left the pill unclickable, and without a compositor the clear parts
+ * were drawn black.
+ */
+const SHAPED = process.platform === 'linux';
+/**
+ * Cursor-follow cadence while dragging. macOS only shows a window's new
+ * position once per display refresh, so this just has to be fresh at each
+ * refresh (4 ms asked comes out around 110 Hz from main's timers). It runs in
+ * main, so a busy renderer can't stall the drag.
+ */
+const DRAG_TICK_MS = 4;
+/**
+ * How far ahead of the cursor to aim (see `leadCursor`). A move made now is
+ * on screen about a refresh later; leading by half a 60 Hz frame roughly
+ * halves how far the pill trails a moving pointer. The cost is a few pixels of
+ * overshoot for a frame or two after a sudden stop (8 px at a fast 940 px/s
+ * flick, measured), and the drop itself always lands exactly under the pointer.
+ */
+const DRAG_LEAD_MS = 8;
 /** Last-resort stop if the renderer never reports the release. */
 const DRAG_MAX_MS = 15_000;
 
@@ -41,14 +68,23 @@ export class Pill {
   readonly browser: BrowserWindow;
   private readonly statePath: string;
   private readonly logger: Logger;
-  private drag: { timer: NodeJS.Timeout; startedAt: number } | null = null;
+  private drag: {
+    timer: NodeJS.Timeout;
+    startedAt: number;
+    offset: { x: number; y: number };
+    history: CursorSample[];
+    last: { x: number; y: number } | null;
+  } | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
+  private readonly opaque: boolean;
 
   constructor(deps: PillDeps) {
     this.statePath = deps.statePath;
     this.logger = deps.logger;
     const saved = readState(deps.statePath);
+    this.opaque = deps.opaque === true;
     const wa = screen.getPrimaryDisplay().workArea;
+    const home = floatingDefaults(wa, PILL_WINDOW, MINIBAR_DEFAULT, FLOATING_MARGINS).pill;
     const onScreen =
       typeof saved.x === 'number' &&
       typeof saved.y === 'number' &&
@@ -65,12 +101,13 @@ export class Pill {
     this.browser = new BrowserWindow({
       width: PILL_WINDOW.width,
       height: PILL_WINDOW.height,
-      x: onScreen ? saved.x : wa.x + wa.width - PILL_WINDOW.width - MARGIN,
-      y: onScreen ? saved.y : wa.y + MARGIN,
+      x: onScreen ? saved.x : home.x,
+      y: onScreen ? saved.y : home.y,
       show: false,
       frame: false,
-      transparent: true,
-      backgroundColor: '#00000000',
+      ...(this.opaque
+        ? { backgroundColor: nativeTheme.shouldUseDarkColors ? '#0c0c0d' : '#fbfbfa' }
+        : { transparent: true, backgroundColor: '#00000000' }),
       // The OS shadow would outline the whole transparent window; the pill
       // draws its own, so it follows the shape as it morphs.
       hasShadow: false,
@@ -96,17 +133,40 @@ export class Pill {
     });
     // Transparent areas pass clicks through; the renderer re-captures the
     // mouse while the cursor is over the pill itself (moves are forwarded).
-    this.browser.setIgnoreMouseEvents(true, { forward: true });
+    // Linux: the shape does that job instead (see `setShapeFrom`).
+    if (!SHAPED) this.browser.setIgnoreMouseEvents(true, { forward: true });
     loadSurface(this.browser, deps, 'pill');
-    this.browser.on('move', () => this.persist());
+    // Mid-drag the window moves every frame; it's saved once it's dropped.
+    this.browser.on('move', () => {
+      if (!this.drag) this.persist();
+    });
     this.browser.on('blur', () => this.endDrag());
     this.browser.on('hide', () => this.endDrag());
     this.browser.on('closed', () => this.endDrag());
   }
 
   setVisible(visible: boolean): void {
-    if (visible) this.browser.showInactive();
-    else this.browser.hide();
+    if (visible) {
+      // Windows: Explorer forgets skipped taskbar buttons when it restarts.
+      if (process.platform === 'win32') this.browser.setSkipTaskbar(true);
+      this.browser.showInactive();
+    } else this.browser.hide();
+  }
+
+  /**
+   * Linux: cuts the window to the pill (`rect`, in window coordinates). With a
+   * compositor the cut leaves room for the halo; without one it follows the
+   * rounded outline exactly, since anything else would be drawn as a box.
+   */
+  setShapeFrom(rect: Rect, radius: number): void {
+    if (!SHAPED || this.browser.isDestroyed()) return;
+    const nums = [rect.x, rect.y, rect.width, rect.height, radius];
+    if (!nums.every((n) => Number.isFinite(n)) || rect.width <= 0 || rect.height <= 0) return;
+    const win = { x: 0, y: 0, ...PILL_WINDOW };
+    const shape = this.opaque
+      ? roundedRectStrips(inflateWithin(rect, 0, win), radius)
+      : [inflateWithin(rect, HALO, win)];
+    if (shape.length > 0) this.browser.setShape(shape);
   }
 
   /**
@@ -121,29 +181,38 @@ export class Pill {
       return;
     }
     const startedAt = Date.now();
-    let last: { x: number; y: number } | null = null;
-    const timer = setInterval(() => {
-      if (this.browser.isDestroyed() || Date.now() - startedAt > DRAG_MAX_MS) {
-        this.endDrag();
-        return;
-      }
-      const to = dragTarget(screen.getCursorScreenPoint(), offset);
-      if (!to) return;
-      // Compare with the last request, not the window: macOS clamps it below
-      // the menu bar, and re-asking every tick just fights that.
-      if (last && to.x === last.x && to.y === last.y) return;
-      last = to;
-      try {
-        this.browser.setPosition(to.x, to.y, false);
-      } catch (err) {
-        // An error thrown from this timer would reach the uncaught-exception
-        // dialog on every tick with the pill glued to the cursor; drop the
-        // drag instead and leave a trace to fix.
-        this.logger.error('Pill drag failed; releasing', { to, err: String(err) });
-        this.endDrag();
-      }
-    }, DRAG_TICK_MS);
-    this.drag = { timer, startedAt };
+    const timer = setInterval(() => this.follow(), DRAG_TICK_MS);
+    this.drag = { timer, startedAt, offset, history: [], last: null };
+    // Don't wait a tick to pick it up.
+    this.follow();
+  }
+
+  /** One step of a drag: put the press point (just ahead of) under the cursor. */
+  private follow(): void {
+    const drag = this.drag;
+    if (!drag) return;
+    if (this.browser.isDestroyed() || Date.now() - drag.startedAt > DRAG_MAX_MS) {
+      this.endDrag();
+      return;
+    }
+    const now = performance.now();
+    trackCursor(drag.history, { ...screen.getCursorScreenPoint(), t: now });
+    const aim = leadCursor(drag.history, now, DRAG_LEAD_MS);
+    const to = aim && dragTarget(aim, drag.offset);
+    if (!to) return;
+    // Compare with the last request, not the window: macOS clamps it below
+    // the menu bar, and re-asking every tick just fights that.
+    if (drag.last && to.x === drag.last.x && to.y === drag.last.y) return;
+    drag.last = to;
+    try {
+      this.browser.setPosition(to.x, to.y, false);
+    } catch (err) {
+      // An error thrown from this timer would reach the uncaught-exception
+      // dialog on every tick with the pill glued to the cursor; drop the
+      // drag instead and leave a trace to fix.
+      this.logger.error('Pill drag failed; releasing', { to, err: String(err) });
+      this.endDrag();
+    }
   }
 
   /** Shifts the window, e.g. to hold the pill still while it changes corners. */
@@ -158,9 +227,22 @@ export class Pill {
   }
 
   endDrag(): void {
-    if (!this.drag) return;
-    clearInterval(this.drag.timer);
+    const drag = this.drag;
+    if (!drag) return;
+    clearInterval(drag.timer);
     this.drag = null;
+    // The last step may have aimed ahead of a pointer that was still moving;
+    // drop the pill exactly where it was let go.
+    const to = this.browser.isDestroyed()
+      ? null
+      : dragTarget(screen.getCursorScreenPoint(), drag.offset);
+    if (to && (!drag.last || to.x !== drag.last.x || to.y !== drag.last.y)) {
+      try {
+        this.browser.setPosition(to.x, to.y, false);
+      } catch (err) {
+        this.logger.error('Pill drop failed', { to, err: String(err) });
+      }
+    }
     this.persist();
   }
 

@@ -58,8 +58,9 @@ const PLATFORMS: PlatformMeta[] = [
     key: "linux",
     os: "Linux",
     Icon: IconLinux,
-    requires: "AppImage · x64",
-    unblock: "Make the AppImage executable (chmod +x), then run it.",
+    requires: "x64",
+    unblock:
+      "Make the AppImage executable (chmod +x), then run it. Or install the .deb with apt.",
   },
 ];
 
@@ -168,7 +169,12 @@ function buildsFor(key: Os, release: Release): { key: PlatformKey; label: string
         ]
       : [{ key: "win", label: "Installer" }];
   }
-  return [{ key: "linux", label: "AppImage" }];
+  return release.assets.linuxDeb
+    ? [
+        { key: "linux", label: "AppImage" },
+        { key: "linuxDeb", label: ".deb" },
+      ]
+    : [{ key: "linux", label: "AppImage" }];
 }
 
 /**
