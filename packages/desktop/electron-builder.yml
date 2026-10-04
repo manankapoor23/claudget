@@ -95,19 +95,36 @@ mac:
   identity: null
   notarize: false
 
+# AppImage runtime. The default (legacy) runtime needs libfuse2, which Ubuntu
+# 22.04+ and Fedora no longer install, so the AppImage failed with "AppImages
+# require FUSE to run" on a fresh system. The static runtime carries its own
+# FUSE support. Its launcher (AppRun) also probes `unshare -Ur true` and passes
+# --no-sandbox to Electron only when unprivileged user namespaces are
+# unavailable — Ubuntu 23.10+ restricts them through AppArmor for programs
+# without a profile, which an AppImage can't install, and Chromium then aborts
+# ("The SUID sandbox helper binary was found, but is not configured
+# correctly"). Everywhere user namespaces work, the sandbox stays on.
+toolsets:
+  appimage: '1.0.3'
+
 linux:
   target:
     - AppImage
+    # The .deb installs an AppArmor profile that allows user namespaces (Ubuntu
+    # 24.04+), or a setuid chrome-sandbox on kernels without them, so it keeps
+    # Chromium's sandbox where the AppImage has to turn it off.
+    - deb
   category: Utility
   icon: build/icon.png
   maintainer: Claude Widget contributors
   # Left unset, Linux names the binary after the npm package, so the AppImage's
   # executable, .desktop file and icon all came out as "@claude-widgetdesktop".
   executableName: claudget
-  # Overrides the top-level `maximum`, which makes electron-builder build the
-  # AppImage's squashfs with xz. The AppImage catalog (appimage.github.io)
-  # mounts AppImages with a squashfuse that reads only zlib and zstd, so an xz
-  # AppImage fails its test. `normal` gives gzip (zlib); electron-builder has no
-  # zstd option. It costs ~25 MB (the 0.3.0 AppImage was 91 MB, this is 116 MB).
-  # Linux ships only the AppImage, so nothing else changes.
+  # Overrides the top-level `maximum`. The AppImage catalog (appimage.github.io)
+  # mounts AppImages with a squashfuse that reads only zlib and zstd, so the
+  # AppImage must not be xz; with the static runtime `normal` gives zstd.
   compression: normal
+
+deb:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  synopsis: Claude Code usage limits in your system tray
