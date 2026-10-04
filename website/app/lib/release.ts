@@ -6,7 +6,14 @@ import { REPO_URL, RELEASES_URL } from "../constants";
 const API = "https://api.github.com/repos/manankapoor23/claudget/releases?per_page=100";
 const REVALIDATE_SECONDS = 3600;
 
-export type PlatformKey = "mac" | "macArm64" | "macX64" | "win" | "winPortable" | "linux";
+export type PlatformKey =
+  | "mac"
+  | "macArm64"
+  | "macX64"
+  | "win"
+  | "winPortable"
+  | "linux"
+  | "linuxDeb";
 
 /** macOS builds, in the order the download row lists them. */
 export const MAC_VARIANTS = [
@@ -109,6 +116,7 @@ function classify(name: string): PlatformKey | null {
     return "mac";
   }
   if (name.endsWith(".AppImage")) return "linux";
+  if (name.endsWith(".deb")) return "linuxDeb";
   if (name.endsWith(".exe")) {
     if (name.includes("Portable")) return "winPortable";
     return "win";
