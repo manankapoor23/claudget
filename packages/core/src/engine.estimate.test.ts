@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG } from './config';
 import { UsageEngine } from './engine';
 import { FileCalibrationStore, rateFor } from './estimate';
-import { createNoopLogger } from './logger';
+import { createLogger, createNoopLogger } from './logger';
 
 // Never consult the host's real macOS Keychain (see official/client.test.ts).
 vi.mock('node:child_process', () => ({
@@ -32,9 +32,12 @@ const line = (id: string, at: number): string =>
     message: { id, model: 'claude-opus-4-1', usage: { input_tokens: 0, output_tokens: 10_000 } },
   }) + '\n';
 
-const reading = (pct: number): Response =>
+/** The endpoint's reset time jitters by a few ms between polls. */
+const reading = (pct: number, jitterMs = 0): Response =>
   new Response(
-    JSON.stringify({ five_hour: { utilization: pct, resets_at: new Date(RESET).toISOString() } }),
+    JSON.stringify({
+      five_hour: { utilization: pct, resets_at: new Date(RESET + jitterMs).toISOString() },
+    }),
     { status: 200 },
   );
 
@@ -65,11 +68,15 @@ describe('UsageEngine live limit estimate', () => {
   it('estimates between readings, marks it, snaps to the next reading, and persists k', async () => {
     const { claudeDir, transcript, calibrationPath } = setup();
     let now = T0 + 60 * MIN;
-    const fetchMock = vi.fn().mockResolvedValueOnce(reading(30)).mockResolvedValueOnce(reading(32));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(reading(30))
+      .mockResolvedValueOnce(reading(32, 337));
     const store = new FileCalibrationStore(calibrationPath);
+    const debug: string[] = [];
     const engine = new UsageEngine({
       config: { ...DEFAULT_CONFIG, claudeDir },
-      logger: createNoopLogger(),
+      logger: createLogger({ level: 'debug', sinks: [(r) => debug.push(r.message)] }),
       fetchImpl: fetchMock as unknown as typeof fetch,
       now: () => now,
       calibrationStore: store,
@@ -98,6 +105,8 @@ describe('UsageEngine live limit estimate', () => {
     w = engine.getSnapshot().official.windows[0]!;
     expect(w.usedPct).toBeCloseTo(32);
     expect(w.estimate ?? null).toBeNull();
+    // ...and how far the shown estimate was from it is logged, to tune the damping.
+    expect(debug).toContain('Limit estimate overshot by 0.0 pts');
 
     // Persisted: a fresh engine starts out calibrated, before any reading.
     store.flush();

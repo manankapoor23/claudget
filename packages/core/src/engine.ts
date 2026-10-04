@@ -417,7 +417,12 @@ export class UsageEngine extends EventEmitter {
     let next = this.calibration;
     for (const w of usage.windows) {
       const shown = this.lastEstimates.get(w.key);
-      if (shown && shown.resetsAt === w.resetsAt) {
+      // Reset times jitter by milliseconds between polls; minutes apart is a new window.
+      const sameWindow =
+        shown?.resetsAt != null &&
+        w.resetsAt !== null &&
+        Math.abs(shown.resetsAt - w.resetsAt) < 5 * 60_000;
+      if (shown && sameWindow) {
         const error = (shown.utilization - w.utilization) * 100;
         this.logger.debug(
           `Limit estimate ${error > 0 ? 'overshot' : 'undershot'} by ${Math.abs(error).toFixed(1)} pts`,
