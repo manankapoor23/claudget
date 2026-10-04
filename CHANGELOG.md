@@ -5,12 +5,56 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
-## [Unreleased]
+## [0.3.2] — 2026-10-04
 
 ### Added
 
 - **The 5-hour and weekly % now move live.** Between Anthropic's checks (at most every 3 minutes), the % is estimated from your local usage since the last check, shown as "~63%" in a dimmer ink until the next check confirms it, in the menu bar, the popover, the dashboard, the pill and the floating bar. The tooltip says when it last checked. It's learned from Anthropic's own readings, errs low, and can't see usage on other devices or claude.ai, so the real reading always wins.
 - **Choose what the pill shows** (Settings → General → Pill shows): the 5-hour limit (new default), the weekly one, or whichever is higher (the old behaviour).
+
+### Changed
+
+- **About a fifth of the memory.** Left running in the menu bar, claudget used
+  1.1–1.6 GB. It now stays around 250 MB. Transcripts are read incrementally
+  instead of whole on every rescan, very large lines (pasted images, long tool
+  output) are skipped unless they carry usage, and windows are created only
+  when you open them.
+- **The popover opens where you are.** Clicking the menu-bar item no longer
+  switches Spaces or pulls you out of a full-screen app; it drops down over
+  whatever you're in, like the system's own menu-bar items.
+- **Usage updates in about a third of a second.** Tokens, sessions and activity
+  used to lag 1–3 seconds behind Claude Code. Plan limits are now re-checked
+  when you open the popover, wake your Mac, or start working after a break,
+  never more often than every 3 minutes. The menu-bar item's tooltip says how
+  old they are ("Limits as of 14:32").
+- **The pill follows the pointer more closely** while you drag it.
+- **Lower CPU when idle:** about 0.1%, down from about 4%.
+
+### Windows
+
+- The first launch opens the dashboard and explains where the icon lives,
+  including that Windows 11 may hide it behind the ^ next to the clock.
+- Ctrl shortcuts (Ctrl+D, Ctrl+, and Ctrl+Q) work and are labelled as Ctrl.
+- A sharper tray icon.
+- The pill and floating bar stay off the taskbar after Explorer restarts, and
+  no longer overlap on smaller screens.
+
+### Linux
+
+- **The AppImage starts on Ubuntu 24.04.** It no longer needs `libfuse2`, and
+  it turns off Chromium's sandbox only when the system blocks it.
+- **New: a `.deb` package,** which keeps the sandbox on. Recommended on
+  Ubuntu.
+- The right-click tray menu works, and the popover opens next to the tray.
+- No black boxes on desktops without a compositor, and the pill can be clicked
+  and dragged.
+- Without a system tray (stock GNOME), the dashboard opens instead, so the app
+  is never invisible.
+
+### Fixed
+
+- A transcript replaced at the same path (by a sync tool or a restore) is now
+  re-read from the start instead of from the old position.
 
 ## [0.3.1] — 2026-10-01
 
@@ -174,6 +218,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.2]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.2
 [0.3.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.1
 [0.3.0]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.0
 [0.2.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.2.5
