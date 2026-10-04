@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { limitLabel, rankLimits, toneOf, verdictFor } from './limits';
+import {
+  freshnessLine,
+  limitLabel,
+  pctSpoken,
+  pctText,
+  pillWindow,
+  rankLimits,
+  shownWindow,
+  shownWindows,
+  toneOf,
+  trayTitle,
+  verdictFor,
+} from './limits';
 import { H, NOW, win } from './test-helpers';
 
 describe('limitLabel', () => {
@@ -34,6 +46,87 @@ describe('rankLimits', () => {
   });
 });
 
+describe('shownWindow', () => {
+  it('shows the official reading as is when there is no estimate', () => {
+    const w = shownWindow(win('five_hour', 0.62, 3 * H));
+    expect(w.utilization).toBe(0.62);
+    expect(w.estimated).toBe(false);
+    expect(pctText(w)).toBe('62%');
+    expect(pctSpoken(w)).toBe('62 percent used');
+  });
+  it('shows the estimate, marked, in place of the reading', () => {
+    const w = shownWindow({
+      ...win('five_hour', 0.62, 3 * H),
+      estimate: { utilization: 0.634, usedPct: 63.4, basisAt: NOW - 60_000, afterReset: false },
+    });
+    expect(w.utilization).toBeCloseTo(0.634);
+    expect(w.remainingPct).toBeCloseTo(36.6);
+    expect(w.estimated).toBe(true);
+    expect(pctText(w)).toBe('~63%');
+    expect(pctSpoken(w)).toBe('about 63 percent used, estimated');
+  });
+});
+
+describe('trayTitle', () => {
+  it('reads both limits in the API order, marking only the estimated one', () => {
+    const windows = shownWindows([
+      {
+        ...win('five_hour', 0.62, 3 * H),
+        estimate: { utilization: 0.634, usedPct: 63.4, basisAt: NOW, afterReset: false },
+      },
+      win('seven_day', 0.31, 50 * H),
+    ]);
+    expect(trayTitle(windows)).toBe('~63% · 31%');
+  });
+  it('is plain when nothing is estimated, and empty with no limits', () => {
+    expect(trayTitle(shownWindows([win('five_hour', 0.62, H), win('seven_day', 0.31, H)]))).toBe(
+      '62% · 31%',
+    );
+    expect(trayTitle([])).toBe('');
+  });
+});
+
+describe('freshnessLine', () => {
+  it('says how old the reading is, and that the number is estimated when it is', () => {
+    expect(freshnessLine(false, '14:32')).toBe('As of 14:32');
+    expect(freshnessLine(true, '14:32')).toBe('Estimated from live usage · last checked 14:32');
+  });
+});
+
+describe('pillWindow', () => {
+  const five = win('five_hour', 0.2, 3 * H);
+  const week = win('seven_day', 0.7, 50 * H);
+  it('shows the 5-hour limit by default choice, even when weekly is higher', () => {
+    expect(pillWindow([five, week], 'fiveHour')?.key).toBe('five_hour');
+  });
+  it('shows the weekly limit when chosen', () => {
+    expect(pillWindow([five, week], 'weekly')?.key).toBe('seven_day');
+  });
+  it('shows whichever is higher when chosen (the old behaviour)', () => {
+    expect(pillWindow([five, week], 'highest')?.key).toBe('seven_day');
+    expect(pillWindow([win('five_hour', 0.9, H), week], 'highest')?.key).toBe('five_hour');
+  });
+  it('still shows the chosen limit when it is untouched (0%)', () => {
+    const idle = win('five_hour', 0, null);
+    expect(pillWindow([idle, week], 'fiveHour')?.key).toBe('five_hour');
+  });
+  it('falls back to the most-used limit when the chosen one is not reported', () => {
+    expect(pillWindow([week], 'fiveHour')?.key).toBe('seven_day');
+    expect(pillWindow([five], 'weekly')?.key).toBe('five_hour');
+  });
+  it('is null with no limits (plan limits off or unavailable)', () => {
+    expect(pillWindow([], 'fiveHour')).toBeNull();
+    expect(pillWindow([], 'highest')).toBeNull();
+  });
+  it('ranks by the estimate when there is one', () => {
+    const live = shownWindows([
+      { ...five, estimate: { utilization: 0.75, usedPct: 75, basisAt: NOW, afterReset: false } },
+      week,
+    ]);
+    expect(pillWindow(live, 'highest')?.key).toBe('five_hour');
+  });
+});
+
 describe('verdictFor', () => {
   it('calls out the binding limit when it is nearly gone', () => {
     const view = rankLimits([win('five_hour', 0.13, 4.5 * H), win('seven_day', 0.99, 18 * H)])!;
@@ -55,5 +148,14 @@ describe('verdictFor', () => {
   it('reports a limit that is already reached', () => {
     const view = rankLimits([win('seven_day', 1, 2 * H)])!;
     expect(verdictFor(view, NOW)).toMatchObject({ tone: 'bad', headline: 'Weekly limit reached' });
+  });
+  it('never says a limit is reached on an estimate alone', () => {
+    const live = shownWindows([
+      {
+        ...win('five_hour', 0.97, H),
+        estimate: { utilization: 1, usedPct: 100, basisAt: NOW, afterReset: false },
+      },
+    ]);
+    expect(verdictFor(rankLimits(live)!, NOW).headline).toBe('5-hour limit almost gone');
   });
 });

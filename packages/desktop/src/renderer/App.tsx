@@ -17,7 +17,7 @@ import { Sidebar } from './components/Sidebar';
 import { Welcome } from './components/Welcome';
 import { IS_MAC } from './lib/platform';
 import { ErrorBoundary, ErrorState, LoadingState } from './components/States';
-import { rankLimits, verdictFor } from '../shared/limits';
+import { rankLimits, shownWindows, verdictFor } from '../shared/limits';
 
 /**
  * While click-through is on, the OS window ignores the mouse — which would also
@@ -127,7 +127,9 @@ export function App(): JSX.Element {
     );
   }
 
-  const ranked = snapshot?.official.available ? rankLimits(snapshot.official.windows) : null;
+  const ranked = snapshot?.official.available
+    ? rankLimits(shownWindows(snapshot.official.windows))
+    : null;
   const tone = ranked && snapshot ? verdictFor(ranked, snapshot.generatedAt).tone : 'ok';
 
   return (

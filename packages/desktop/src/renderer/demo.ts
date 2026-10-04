@@ -166,6 +166,15 @@ export function createDemoData(): {
     stats: { files: 42, entries: 1_286, scanDurationMs: 84 },
   };
 
+  // `?estimate`: show the 5-hour limit mid-way between two of Anthropic's
+  // checks, with the live estimate on top of the 62% reading.
+  const params = new URLSearchParams(window.location.search);
+  const estimate = params.has('estimate')
+    ? { utilization: 0.634, usedPct: 63.4, basisAt: now - 42_000, afterReset: false }
+    : null;
+  const pillParam = params.get('pill');
+  const pillLimit = pillParam === 'weekly' || pillParam === 'highest' ? pillParam : 'fiveHour';
+
   return {
     snapshot: {
       generatedAt: now,
@@ -188,6 +197,7 @@ export function createDemoData(): {
             resetsAt: now + 2 * 60 * 60_000,
             used: 62,
             limit: 100,
+            estimate,
           },
           {
             key: 'seven_day',
@@ -232,6 +242,7 @@ export function createDemoData(): {
       alwaysOnTop: false,
       clickThrough: false,
       compact: false,
+      pillLimit,
       miniBar: false,
       opacity: 1,
       showInTaskbar: true,

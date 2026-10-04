@@ -139,6 +139,28 @@ export interface OfficialWindow {
   resetsAt: number | null;
   used: number | null;
   limit: number | null;
+  /**
+   * A live estimate between official readings, from this machine's usage since
+   * the reading. Present only when it changes the whole-number % shown (or the
+   * window has reset since). The fields above stay exactly what Anthropic said.
+   */
+  estimate?: LimitEstimate | null;
+}
+
+/**
+ * An estimate of a limit's utilisation since its last official reading. Never
+ * exact: it's learned from past readings, and usage on other devices or on
+ * claude.ai isn't visible locally, so it can only under-count that.
+ */
+export interface LimitEstimate {
+  /** Estimated fraction used, 0..1. At least the official reading unless `afterReset`. */
+  utilization: number;
+  /** Same, 0..100. */
+  usedPct: number;
+  /** When the official reading it builds on was taken (epoch ms). */
+  basisAt: number;
+  /** True when the window has reset since that reading: 0 plus usage since the reset. */
+  afterReset: boolean;
 }
 
 /**

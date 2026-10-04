@@ -2,7 +2,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Menu, Tray, nativeImage, type NativeImage } from 'electron';
 import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
-import { isDormant, rankLimits, verdictFor, type Tone } from '../shared/limits';
+import {
+  ESTIMATE_CAVEAT,
+  freshnessLine,
+  isDormant,
+  rankLimits,
+  shownWindows,
+  trayTitle,
+  verdictFor,
+  type Tone,
+} from '../shared/limits';
 
 export interface TrayDeps {
   /** resources/tray: the cropped, per-scale tray icons (Windows, Linux). */
@@ -82,10 +91,6 @@ function glyphImage(rgb: Rgb | null): NativeImage {
   const img = nativeImage.createFromBitmap(buf, { width: size, height: size, scaleFactor: scale });
   if (!rgb) img.setTemplateImage(true);
   return img;
-}
-
-function pct(fraction: number): string {
-  return `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
 }
 
 /**
@@ -189,29 +194,54 @@ export function createTray(deps: TrayDeps): TrayHandle {
   tray.on('click', () => deps.togglePopover());
   if (!linux) tray.on('right-click', () => tray.popUpContextMenu(menu));
 
+  // The title follows the live estimate, which can change with every local
+  // update (~300ms apart while a session streams). The menu bar doesn't need
+  // more than two redraws a second: hold the newest title and apply it then.
+  const TITLE_MIN_GAP_MS = 500;
+  let titleSetAt = 0;
+  let pendingTitle: string | null = null;
+  let titleTimer: NodeJS.Timeout | null = null;
+  const applyTitle = (title: string): void => {
+    if (process.platform !== 'darwin') return;
+    pendingTitle = title;
+    const wait = titleSetAt + TITLE_MIN_GAP_MS - Date.now();
+    if (wait > 0) {
+      titleTimer ??= setTimeout(() => {
+        titleTimer = null;
+        if (pendingTitle !== null) applyTitle(pendingTitle);
+      }, wait);
+      return;
+    }
+    pendingTitle = null;
+    // Snapshots arrive often and most leave the limits untouched; only touch
+    // the menu bar when the text changes.
+    if (title === currentTitle || tray.isDestroyed()) return;
+    currentTitle = title;
+    titleSetAt = Date.now();
+    tray.setTitle(title, { fontType: 'monospacedDigit' });
+  };
+
   const setStatus = (snapshot: UsageSnapshot): void => {
     const { official } = snapshot;
-    const live = official.available ? official.windows.filter((w) => !isDormant(w)) : [];
-    const ranked = official.available ? rankLimits(official.windows) : null;
+    // Display only: the live estimate where there is one (marked "~").
+    const windows = official.available ? shownWindows(official.windows) : [];
+    const live = windows.filter((w) => !isDormant(w));
+    const ranked = rankLimits(windows);
     const verdict = ranked ? verdictFor(ranked, snapshot.generatedAt) : null;
 
     // Stable order (5-hour, weekly) so the eye learns where each number lives.
-    const title =
-      live.length > 0
-        ? live
-            .slice(0, 2)
-            .map((w) => pct(w.utilization))
-            .join(' · ')
-        : '';
-    // Snapshots arrive up to once a second while a session streams, and most
-    // leave the limits untouched; only touch the menu bar when the text changes.
-    if (process.platform === 'darwin' && title !== currentTitle) {
-      currentTitle = title;
-      tray.setTitle(title, { fontType: 'monospacedDigit' });
-    }
+    // An estimated number wears a "~" of its own: "~63% · 31%".
+    applyTitle(trayTitle(windows));
     // The % comes from Anthropic, polled every few minutes: say how old it is,
-    // so a number that hasn't moved reads as "not re-checked yet", not "stuck".
-    const asOf = official.available && official.fetchedAt ? limitsAsOf(official.fetchedAt) : '';
+    // so a number that hasn't moved reads as "not re-checked yet", not "stuck",
+    // and say so when it's an estimate on top of that reading.
+    const asOf =
+      official.available && official.fetchedAt
+        ? limitsAsOf(
+            official.fetchedAt,
+            live.slice(0, 2).some((w) => w.estimated),
+          )
+        : '';
     const tooltip = verdict
       ? `claudget — ${verdict.headline}\n${verdict.detail}${asOf}`
       : 'claudget';
@@ -235,11 +265,17 @@ export function createTray(deps: TrayDeps): TrayHandle {
   return { tray, syncMenu, setStatus, reassert };
 }
 
-/** "\nLimits as of 14:32": a clock time, so the tooltip never needs re-rendering. */
-function limitsAsOf(fetchedAt: number): string {
+/**
+ * "\nLimits as of 14:32", or, while a number is estimated, "\nEstimated from
+ * live usage · last checked 14:32" and why it may read low. A clock time, so
+ * the tooltip never needs re-rendering just because time passed.
+ */
+function limitsAsOf(fetchedAt: number, estimated: boolean): string {
   const clock = new Date(fetchedAt).toLocaleTimeString(undefined, {
     hour: 'numeric',
     minute: '2-digit',
   });
-  return `\nLimits as of ${clock}`;
+  return estimated
+    ? `\n${freshnessLine(true, clock)}\n${ESTIMATE_CAVEAT}`
+    : `\nLimits as of ${clock}`;
 }

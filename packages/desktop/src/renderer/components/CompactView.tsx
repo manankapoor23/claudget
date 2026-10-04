@@ -4,9 +4,17 @@ import { trayName } from '../../shared/copy';
 import type { UsageSnapshot } from '@claude-widget/core';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
-import { formatCompact, formatResetAt, formatUSD } from '../lib/format';
+import { formatClock, formatCompact, formatResetAt, formatUSD } from '../lib/format';
 import { costCopy } from '../lib/billing';
-import { limitLabel, rankLimits, verdictFor } from '../../shared/limits';
+import {
+  ESTIMATE_CAVEAT,
+  freshnessLine,
+  limitLabel,
+  pctSpoken,
+  rankLimits,
+  shownWindows,
+  verdictFor,
+} from '../../shared/limits';
 import { useBump } from '../lib/motion';
 import { Countdown } from './Countdown';
 import { CloseIcon, ExpandIcon } from './icons';
@@ -97,8 +105,11 @@ interface CompactViewProps {
 export function CompactView({ snapshot, currency }: CompactViewProps): JSX.Element {
   const { official, local } = snapshot;
   const block = local.activeBlock;
-  const windows = official.available ? official.windows.slice(0, 2) : [];
-  const ranked = official.available ? rankLimits(official.windows) : null;
+  // Display only: the live estimate where there is one (marked "~").
+  const shown = official.available ? shownWindows(official.windows) : [];
+  const windows = shown.slice(0, 2);
+  const ranked = rankLimits(shown);
+  const checked = official.fetchedAt === null ? null : formatClock(official.fetchedAt);
   const verdict = ranked ? verdictFor(ranked, snapshot.generatedAt) : null;
   const cost = costCopy(snapshot.meta.subscriptionType);
   // On a plan the dollar figure isn't a bill, so the glance shows volume instead.
@@ -114,7 +125,24 @@ export function CompactView({ snapshot, currency }: CompactViewProps): JSX.Eleme
             <Meter
               key={w.key}
               label={limitLabel(w.label)}
-              value={Math.round(w.utilization * 100)}
+              value={
+                w.estimated ? (
+                  <span
+                    className="cmeter__est"
+                    aria-label={pctSpoken(w)}
+                    title={
+                      checked
+                        ? `${freshnessLine(true, checked)}. ${ESTIMATE_CAVEAT}`
+                        : ESTIMATE_CAVEAT
+                    }
+                  >
+                    <span className="est-mark">~</span>
+                    {Math.round(w.utilization * 100)}
+                  </span>
+                ) : (
+                  Math.round(w.utilization * 100)
+                )
+              }
               unit="%"
               fraction={w.utilization}
               meta={

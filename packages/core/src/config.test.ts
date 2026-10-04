@@ -39,6 +39,26 @@ describe('limit alert settings', () => {
   });
 });
 
+describe('pillLimit', () => {
+  it('defaults to the 5-hour limit, including for saved configs from before it existed', () => {
+    expect(DEFAULT_CONFIG.pillLimit).toBe('fiveHour');
+    expect(resolveConfig({ compact: true, theme: 'dark' }).pillLimit).toBe('fiveHour');
+  });
+
+  it('keeps a valid choice and falls back on a bad one without losing the rest', () => {
+    expect(resolveConfig({ pillLimit: 'weekly' }).pillLimit).toBe('weekly');
+    expect(resolveConfig({ pillLimit: 'highest' }).pillLimit).toBe('highest');
+    const c = resolveConfig({ pillLimit: 'daily', compact: true });
+    expect(c.pillLimit).toBe('fiveHour');
+    expect(c.compact).toBe(true);
+  });
+
+  it('merges a patch and ignores an invalid one', () => {
+    expect(mergeConfig(DEFAULT_CONFIG, { pillLimit: 'weekly' }).pillLimit).toBe('weekly');
+    expect(mergeConfig(DEFAULT_CONFIG, { pillLimit: 'nope' }).pillLimit).toBe('fiveHour');
+  });
+});
+
 describe('mergeConfig', () => {
   it('applies a valid patch', () => {
     expect(mergeConfig(DEFAULT_CONFIG, { compact: true }).compact).toBe(true);

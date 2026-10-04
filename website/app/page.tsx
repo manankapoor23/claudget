@@ -38,7 +38,7 @@ const SURFACES = [
   {
     id: "pill",
     name: "Floating pill",
-    desc: "Floats above every window and shows the limit you’ve used most.",
+    desc: "Floats above every window and shows your 5-hour limit, the weekly one, or whichever is higher.",
     stage: (
       <Scene
         className="scene--stage"

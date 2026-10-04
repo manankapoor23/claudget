@@ -54,6 +54,12 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   clickThrough: z.boolean().default(false),
   /** Show the floating pill (one line; click to expand). */
   compact: z.boolean().default(false),
+  /**
+   * Which limit the floating pill shows: the 5-hour one, the weekly one, or
+   * whichever is more used. Falls back to the most-used limit when the chosen
+   * one isn't reported.
+   */
+  pillLimit: z.enum(['fiveHour', 'weekly', 'highest']).default('fiveHour'),
   /** Show the floating bar: both limits and today, always on top. */
   miniBar: z.boolean().default(false),
   opacity: z.number().min(0.3).max(1).default(1),

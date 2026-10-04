@@ -47,6 +47,11 @@ const THEME_OPTIONS: Option<WidgetConfig['theme']>[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
+const PILL_LIMIT_OPTIONS: Option<WidgetConfig['pillLimit']>[] = [
+  { value: 'fiveHour', label: '5-hour' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'highest', label: 'Whichever is higher' },
+];
 const LOG_OPTIONS: Option<WidgetConfig['logLevel']>[] = [
   { value: 'error', label: 'Errors only' },
   { value: 'warn', label: 'Warnings' },
@@ -234,6 +239,14 @@ function General({
           htmlFor="set-pill"
         >
           <Toggle id="set-pill" on={c.compact} onChange={(compact) => set({ compact })} />
+        </Row>
+        <Row label="Pill shows" htmlFor="set-pill-limit">
+          <Select
+            id="set-pill-limit"
+            value={c.pillLimit}
+            options={PILL_LIMIT_OPTIONS}
+            onChange={(pillLimit) => set({ pillLimit })}
+          />
         </Row>
         <Row
           label="Floating bar"
