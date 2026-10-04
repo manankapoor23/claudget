@@ -19,7 +19,10 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   enableOfficial: z.boolean().default(true),
   /** Milliseconds between official polls. Hard floor of 180s. */
   officialPollIntervalMs: z.number().int().min(180_000).max(3_600_000).default(300_000),
-  /** Debounce for coalescing transcript file-change events. */
+  /**
+   * Longest a transcript change may wait before it is shown, while a session
+   * keeps writing. Changes normally land ~200ms after the writer pauses.
+   */
   localDebounceMs: z.number().int().min(200).max(10_000).default(1_000),
   /** Periodic full rescan to catch new projects / missed FS events. */
   fullRescanIntervalMs: z.number().int().min(10_000).max(3_600_000).default(120_000),

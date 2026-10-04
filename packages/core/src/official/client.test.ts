@@ -110,6 +110,37 @@ describe('OfficialUsageClient', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     fs.rmSync(credsPath, { force: true });
   });
+
+  it('lets a scheduler bypass the cache window but never a Retry-After backoff', async () => {
+    const credsPath = writeTempCreds(9_999_999_999_999);
+    let now = 1_000_000;
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ five_hour: { utilization: 0.4 } }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response('', { status: 429, headers: { 'retry-after': '1200' } }));
+    const client = new OfficialUsageClient({
+      credentialsPath: credsPath,
+      cliVersion: '2.1.178',
+      pollIntervalMs: 300_000,
+      logger: createNoopLogger(),
+      fetchImpl: fetchMock as unknown as typeof fetch,
+      now: () => now,
+    });
+
+    await client.getUsage();
+    now += 180_000; // inside the 300s cache window, but the scheduler decided to poll
+    await client.getUsage({ maxAgeMs: 0 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(client.getBackoffUntil()).toBe(now + 1_200_000);
+
+    now += 600_000; // still inside Retry-After
+    const blocked = await client.getUsage({ maxAgeMs: 0 });
+    expect(blocked.status).toBe('rate-limited');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    fs.rmSync(credsPath, { force: true });
+  });
 });
 
 /**

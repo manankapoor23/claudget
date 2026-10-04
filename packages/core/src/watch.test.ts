@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import type { Logger } from './logger';
-import { watchTranscripts, type TranscriptWatcher } from './watch';
+import { createPathCoalescer, watchTranscripts, type TranscriptWatcher } from './watch';
 
 const silent = {
   info() {},
@@ -50,7 +50,7 @@ describe('watchTranscripts', () => {
       () => {
         fires += 1;
       },
-      { debounceMs: 200, logger: silent },
+      { quietMs: 200, maxWaitMs: 400, confirmMs: 0, logger: silent },
     );
     // Let chokidar finish its initial scan, then discard anything it reported for
     // the pre-existing file so we only count fires caused by our own appends.
@@ -78,7 +78,7 @@ describe('watchTranscripts', () => {
         fires += 1;
         seen.push(...paths);
       },
-      { debounceMs: 300, logger: silent },
+      { quietMs: 300, maxWaitMs: 1000, confirmMs: 0, logger: silent },
     );
     await wait(600);
 
@@ -97,7 +97,7 @@ describe('watchTranscripts', () => {
       (paths) => {
         seen.push(...paths);
       },
-      { debounceMs: 200, logger: silent },
+      { quietMs: 200, maxWaitMs: 400, confirmMs: 0, logger: silent },
     );
     await wait(600);
 
@@ -108,4 +108,80 @@ describe('watchTranscripts', () => {
     expect(seen.every((p) => p.endsWith('.jsonl'))).toBe(true);
     expect(seen).not.toContain(path.join(dir, '-Users-test-proj', 'notes.txt'));
   }, 15_000);
+});
+
+describe('createPathCoalescer', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const setup = (
+    confirmMs = 0,
+  ): { add: (p: string) => void; flushes: Array<[number, string[]]> } => {
+    const t0 = Date.now();
+    const flushes: Array<[number, string[]]> = [];
+    const c = createPathCoalescer({ quietMs: 200, maxWaitMs: 1000, confirmMs }, (paths) =>
+      flushes.push([Date.now() - t0, paths]),
+    );
+    return { add: (p) => c.add(p), flushes };
+  };
+
+  it('flushes a lone change on the trailing edge, 200ms after it', () => {
+    const { add, flushes } = setup();
+    add('/a.jsonl');
+    vi.advanceTimersByTime(199);
+    expect(flushes).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(flushes).toEqual([[200, ['/a.jsonl']]]);
+  });
+
+  it('a short burst flushes once, 200ms after its last event', () => {
+    const { add, flushes } = setup();
+    for (let i = 0; i < 6; i++) {
+      add('/a.jsonl');
+      vi.advanceTimersByTime(50); // events at 0..250
+    }
+    vi.advanceTimersByTime(1000);
+    expect(flushes).toEqual([[450, ['/a.jsonl']]]);
+  });
+
+  it('a continuous stream still flushes at least every maxWaitMs', () => {
+    const { add, flushes } = setup();
+    for (let i = 0; i < 70; i++) {
+      add('/a.jsonl'); // every 50ms for 3.5s: never quiet for 200ms
+      vi.advanceTimersByTime(50);
+    }
+    vi.advanceTimersByTime(1000);
+    expect(flushes.map(([t]) => t)).toEqual([1000, 2000, 3000, 3650]);
+  });
+
+  it('batches different files into one flush', () => {
+    const { add, flushes } = setup();
+    add('/a.jsonl');
+    add('/b.jsonl');
+    add('/a.jsonl');
+    vi.advanceTimersByTime(200);
+    expect(flushes).toEqual([[200, ['/a.jsonl', '/b.jsonl']]]);
+  });
+
+  it('re-delivers flushed paths once after confirmMs, unless they changed again', () => {
+    const { add, flushes } = setup(200);
+    add('/a.jsonl');
+    add('/b.jsonl');
+    vi.advanceTimersByTime(200); // flush @200
+    vi.advanceTimersByTime(100);
+    add('/b.jsonl'); // b is pending again @300, so the confirmation skips it
+    vi.advanceTimersByTime(100); // confirmation @400 for a only
+    vi.advanceTimersByTime(100); // b flushes @500
+    vi.advanceTimersByTime(1000); // b's confirmation @700, then nothing more
+    expect(flushes).toEqual([
+      [200, ['/a.jsonl', '/b.jsonl']],
+      [400, ['/a.jsonl']],
+      [500, ['/b.jsonl']],
+      [700, ['/b.jsonl']],
+    ]);
+  });
 });

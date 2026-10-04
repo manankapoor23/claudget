@@ -115,3 +115,87 @@ describe('UsageEngine local freshness', () => {
     }
   });
 });
+
+describe('UsageEngine live updates', () => {
+  const line = (id: string, output: number): string =>
+    JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date().toISOString(),
+      uuid: id,
+      requestId: id,
+      sessionId: 'session-1',
+      message: {
+        id,
+        model: 'claude-sonnet-4-6',
+        usage: { input_tokens: 10, output_tokens: output },
+      },
+    }) + '\n';
+
+  async function startEngine(): Promise<{
+    engine: UsageEngine;
+    transcript: string;
+    claudeDir: string;
+    snaps: Array<{ at: number; count: number }>;
+  }> {
+    const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudget-live-'));
+    const projectsDir = path.join(claudeDir, 'projects', '-Users-test-project');
+    fs.mkdirSync(projectsDir, { recursive: true });
+    const transcript = path.join(projectsDir, 'session.jsonl');
+    fs.writeFileSync(transcript, line('seed', 1));
+    const engine = new UsageEngine({
+      config: { ...DEFAULT_CONFIG, enableOfficial: false, claudeDir },
+      logger: silent,
+    });
+    const snaps: Array<{ at: number; count: number }> = [];
+    engine.on('snapshot', (s) => snaps.push({ at: Date.now(), count: s.local.today.count }));
+    await engine.start();
+    await new Promise((r) => setTimeout(r, 500)); // let the watcher settle
+    return { engine, transcript, claudeDir, snaps };
+  }
+
+  it('shows an appended line well inside a second', async () => {
+    const { engine, transcript, claudeDir, snaps } = await startEngine();
+    try {
+      const writtenAt = Date.now();
+      fs.appendFileSync(transcript, line('one', 5));
+      await new Promise((r) => setTimeout(r, 1500));
+      const hit = snaps.find((s) => s.count === 2);
+      expect(hit).toBeDefined();
+      // ~300ms locally; the bound leaves CI headroom yet fails the old fixed 1s window.
+      expect(hit!.at - writtenAt).toBeLessThan(900);
+    } finally {
+      await engine.stop();
+      fs.rmSync(claudeDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  /**
+   * Chokidar drops a `change` that lands within 50ms of the previous one, so
+   * the last line of a fast burst can have no event of its own. It must still
+   * show up promptly, not at the next write or the 2-minute rescan.
+   */
+  it('shows every line of a fast burst once it ends, without waiting for the rescan', async () => {
+    const { engine, transcript, claudeDir, snaps } = await startEngine();
+    try {
+      for (let i = 0; i < 20; i++) {
+        fs.appendFileSync(transcript, line(`burst-${i}`, 5));
+        await new Promise((r) => setTimeout(r, 5));
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+      expect(snaps.at(-1)?.count).toBe(21);
+    } finally {
+      await engine.stop();
+      fs.rmSync(claudeDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+
+  it('a periodic rescan that finds nothing new reports no change', async () => {
+    const { engine, claudeDir } = await startEngine();
+    try {
+      expect(await engine.fullRescan()).toBe(false);
+    } finally {
+      await engine.stop();
+      fs.rmSync(claudeDir, { recursive: true, force: true });
+    }
+  }, 15_000);
+});
