@@ -14,6 +14,8 @@ import { ActivityView } from './components/ActivityView';
 import { SessionTable } from './components/SessionTable';
 import { LimitHistory } from './components/LimitHistory';
 import { Sidebar } from './components/Sidebar';
+import { Welcome } from './components/Welcome';
+import { IS_MAC } from './lib/platform';
 import { ErrorBoundary, ErrorState, LoadingState } from './components/States';
 import { rankLimits, verdictFor } from '../shared/limits';
 
@@ -62,6 +64,7 @@ export function App(): JSX.Element {
   const config = useStore((s) => s.config);
   const view = useStore((s) => s.view);
   const refresh = useStore((s) => s.refresh);
+  const appInfo = useStore((s) => s.appInfo);
 
   useEffect(() => {
     void init();
@@ -113,7 +116,15 @@ export function App(): JSX.Element {
       </div>
     );
   } else {
-    content = <WidgetOverview snapshot={snapshot} withHistory />;
+    content = (
+      <>
+        {/* Windows and Linux open the dashboard on first launch (see
+            launch-policy.ts), so the welcome lives here too; macOS keeps it
+            in the popover. */}
+        {!IS_MAC && appInfo?.firstRun ? <Welcome /> : null}
+        <WidgetOverview snapshot={snapshot} withHistory />
+      </>
+    );
   }
 
   const ranked = snapshot?.official.available ? rankLimits(snapshot.official.windows) : null;

@@ -20,6 +20,10 @@ export interface IpcDeps {
   startPillDrag: (offsetX: number, offsetY: number) => void;
   endPillDrag: () => void;
   nudgePill: (dx: number, dy: number) => void;
+  shapePill: (
+    rect: { x: number; y: number; width: number; height: number },
+    radius: number,
+  ) => void;
   fitPopover: (height: number) => void;
   quit: () => void;
 }
@@ -72,6 +76,17 @@ export function registerIpc(deps: IpcDeps): void {
         break;
       case 'pill-nudge':
         deps.nudgePill(Number(action.dx), Number(action.dy));
+        break;
+      case 'pill-shape':
+        deps.shapePill(
+          {
+            x: Number(action.x),
+            y: Number(action.y),
+            width: Number(action.width),
+            height: Number(action.height),
+          },
+          Number(action.radius),
+        );
         break;
       case 'popover-height':
         deps.fitPopover(action.height);

@@ -1,0 +1,112 @@
+name: Screenshots
+
+# Builds the real packaged app on Windows and Linux, runs it against fixture
+# Claude Code data (no credentials), and screenshots what a user sees: first
+# launch, the tray icon, the popover after clicking it, the dashboard,
+# settings, the pill and floating bar. Linux runs twice: under Xfce with a
+# system tray, and with no tray at all (stock GNOME). Screenshots and app logs
+# are uploaded as artifacts.
+#
+# Run it from the Actions tab ("Run workflow") or:
+#   gh workflow run screenshots.yml --ref <branch>
+#   gh run download <run-id> -D screenshots
+#
+# Never publishes anything, never runs on tags, so it can't touch a release.
+on:
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'packages/desktop/**'
+      - '.github/workflows/screenshots.yml'
+      - '.github/screenshots/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  screenshots:
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24.04 pinned: it restricts unprivileged user namespaces through
+        # AppArmor and ships without libfuse2, the two things that stopped the
+        # 0.3.1 AppImage from starting.
+        os: [windows-latest, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # Same build as release.yml.
+      - run: npm ci
+      - run: npm run build:core
+      - run: npm run build -w @claude-widget/desktop
+
+      # Linux: the real AppImage and .deb, plus the unpacked tree they come from.
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        working-directory: packages/desktop
+        run: npx electron-builder --linux --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Package (Windows, unpacked)
+        if: runner.os == 'Windows'
+        working-directory: packages/desktop
+        run: npx electron-builder --win --dir --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Write fixture Claude Code data
+        run: node .github/screenshots/fixtures.mjs
+
+      - name: Install a virtual desktop (Xvfb + Xfce panel/WM)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            xvfb xfwm4 xfce4-panel xfdesktop4 xfconf dbus-x11 \
+            xdotool imagemagick x11-utils adwaita-icon-theme >/dev/null
+
+      - name: Run and screenshot (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          bash .github/screenshots/linux.sh \
+            packages/desktop/release/linux-unpacked \
+            "$(ls packages/desktop/release/*.AppImage | head -1)" \
+            "$(ls packages/desktop/release/*.deb | head -1)" \
+            shots
+
+      - name: Run and screenshot (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./.github/screenshots/windows.ps1 -Unpacked packages/desktop/release/win-unpacked -Out shots
+
+      - name: Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## ${{ runner.os }}"
+            echo '```'
+            cat shots/logs/summary-*.txt 2>/dev/null || true
+            echo '--- app log (errors/warnings) ---'
+            grep -hE 'ERROR|WARN' shots/logs/*claude-widget.log 2>/dev/null | head -40 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-${{ runner.os }}
+          path: shots/
+          if-no-files-found: warn

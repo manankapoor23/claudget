@@ -85,12 +85,22 @@ cross a VS Code webview boundary later without transformation).
 4. **price** ([`pricing.ts`](../packages/core/src/pricing.ts)) — estimate cost from a bundled
    per-model price table (`pricing.data.ts`), overridable via `pricingOverridePath`.
 5. **watch** ([`watch.ts`](../packages/core/src/watch.ts)) — `chokidar` watches the transcript
-   tree; changes are debounced (`localDebounceMs`) and trigger an incremental re-parse of only
-   the changed file. A periodic full rescan (`fullRescanIntervalMs`) catches new projects and
-   missed FS events.
+   tree with native events (FSEvents on macOS, no polling). Changes are batched with a 200 ms
+   trailing debounce capped by `localDebounceMs` (max wait, default 1 s) so a streaming session
+   still updates every second, plus one confirmation re-read after each batch because chokidar
+   drops a `change` that lands within 50 ms of the previous one. A periodic full rescan
+   (`fullRescanIntervalMs`) catches new projects and missed FS events.
+6. **read** ([`transcript-store.ts`](../packages/core/src/transcript-store.ts)) — a
+   `TranscriptStore` keeps, per file, a byte offset, the parser state (cwd, branch, title) and
+   the parsed entries. An unchanged file (same inode, size and mtime) is not opened; a grown one
+   is streamed from its offset in 256 KB chunks, so neither a file nor a delta is ever held
+   whole. A torn last line waits for its newline; a truncated or replaced file is re-read from
+   the start; lines over 64 KB are only scanned for usage markers and read back only if they
+   carry usage. Reads of one file are serialised, so a watcher batch and a rescan never parse
+   the same bytes twice.
 
-The engine keeps an **in-memory, per-file map** of parsed entries, so a single file change
-re-parses just that file rather than the whole tree.
+The engine keeps only the compact parsed entries per file, so a change to one transcript costs
+the size of the new lines, and a rescan that finds nothing new costs a stat per file.
 
 ### Official pipeline (core)
 
@@ -99,8 +109,13 @@ re-parses just that file rather than the whole tree.
   metadata before any value can reach a snapshot or log.
 - **client** ([`official/client.ts`](../packages/core/src/official/client.ts)) — calls the
   usage endpoint with a `claude-code/<cliVersion>` User-Agent. Reads the token fresh on each
-  call, skips when it's expired, caches the last good result, enforces the ≥180 s interval,
-  and backs off on HTTP 429. The access token is used only as a bearer to `api.anthropic.com`.
+  call, skips when it's expired, caches the last good result, and backs off on HTTP 429
+  (honouring `Retry-After`). The access token is used only as a bearer to `api.anthropic.com`.
+- **schedule** ([`official/schedule.ts`](../packages/core/src/official/schedule.ts)) — decides
+  when to poll: every `officialPollIntervalMs` when idle; 30 s after local usage resumes and
+  then every 180 s while it continues; on wake and when the popover opens if the last check is
+  ≥180 s old. No automatic trigger polls sooner than 180 s after the previous attempt or
+  before a backoff ends; only a manual Refresh does.
 - **normalize** ([`official/normalize.ts`](../packages/core/src/official/normalize.ts)) —
   defensively maps the endpoint's payload (multiple possible shapes) into `OfficialWindow[]`.
 

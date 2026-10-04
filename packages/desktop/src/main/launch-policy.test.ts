@@ -8,16 +8,17 @@ describe('launchSurface', () => {
     }
   });
 
-  it('greets a first launch with the popover on macOS and Windows', () => {
+  it('greets a first launch with the popover on macOS', () => {
     expect(launchSurface({ platform: 'darwin', firstRun: true, trayAvailable: true })).toBe(
-      'popover',
-    );
-    expect(launchSurface({ platform: 'win32', firstRun: true, trayAvailable: true })).toBe(
       'popover',
     );
   });
 
-  it('greets a first launch with the dashboard on Linux', () => {
+  it('greets a first launch with the dashboard on Windows and Linux', () => {
+    // Windows 11 hides a new tray icon behind the chevron: a window is findable.
+    expect(launchSurface({ platform: 'win32', firstRun: true, trayAvailable: true })).toBe(
+      'dashboard',
+    );
     expect(launchSurface({ platform: 'linux', firstRun: true, trayAvailable: true })).toBe(
       'dashboard',
     );

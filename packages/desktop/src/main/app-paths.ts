@@ -10,6 +10,13 @@ export function resolveIconPath(): string {
     : path.join(__dirname, '../../resources/icon.png');
 }
 
+/** Runtime path to the tray icon set (resources/tray, see scripts/make-tray-icons.mjs). */
+export function resolveTrayIconDir(): string {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'tray')
+    : path.join(__dirname, '../../resources/tray');
+}
+
 /**
  * Detects the Claude Code CLI version (used in the official endpoint's
  * User-Agent) from on-disk artifacts, avoiding the need to spawn a process.

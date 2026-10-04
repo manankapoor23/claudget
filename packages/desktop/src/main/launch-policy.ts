@@ -14,16 +14,20 @@ export interface LaunchFacts {
  * claudget lives in the menu bar / tray, so normally nothing opens at launch,
  * except on the very first run, to show a new user where it went:
  *
- * - macOS and Windows: the popover, under the menu-bar / tray icon.
- * - Linux: the dashboard. Tray icons are hit-and-miss there, and a window is
- *   what app catalogs (AppImageHub) and first-time users expect to see.
+ * - macOS: the popover, under the menu-bar icon.
+ * - Windows and Linux: the dashboard, with the welcome. Windows 11 puts a new
+ *   tray icon behind the "Show hidden icons" chevron, so a popover pointing
+ *   at it closed on the first click elsewhere and left people with nothing
+ *   to find; Linux tray icons are hit-and-miss, and a window is what app
+ *   catalogs (AppImageHub) and first-time users expect to see. A real window
+ *   has a taskbar button and stays until it's closed.
  * - Anywhere a tray can't be shown (stock GNOME has none): the dashboard,
  *   every launch, or the app would be running with no way to see it.
  */
 export function launchSurface({ platform, firstRun, trayAvailable }: LaunchFacts): LaunchSurface {
   if (!trayAvailable) return 'dashboard';
   if (!firstRun) return null;
-  return platform === 'linux' ? 'dashboard' : 'popover';
+  return platform === 'darwin' ? 'popover' : 'dashboard';
 }
 
 /** Reads `gdbus`/`dbus-send` output for NameHasOwner: `(true,)` / `boolean true`. */
