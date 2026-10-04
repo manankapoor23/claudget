@@ -63,7 +63,7 @@ alive() { kill -0 "$APP_PID" 2>/dev/null; }
 # in pixels: the bounding box of the logo's orange inside the panel strip.
 #   tray_icon_center <strip top y>   → prints "x y"
 tray_icon_center() {
-  import -window root -crop "${W}x${PANEL}+0+$1" +repage ppm:- 2>/dev/null | python3 -c '
+  import -window root -crop "${W}x${PANEL}+0+$1" +repage -depth 8 ppm:- 2>/dev/null | python3 -c '
 import sys
 y0 = int(sys.argv[1])
 data = sys.stdin.buffer.read()
@@ -276,7 +276,8 @@ appimage_try 1-no-libfuse2
 sudo apt-get install -y -qq libfuse2t64 >/dev/null 2>&1 || sudo apt-get install -y -qq libfuse2 >/dev/null 2>&1
 appimage_try 2-with-libfuse2
 (sleep 12 && shot "linux-notray/05-appimage-no-sandbox") &
+SHOOTER=$!
 appimage_try 3-with-libfuse2-no-sandbox --no-sandbox
-wait
+wait "$SHOOTER"
 reset_app_state
 true
