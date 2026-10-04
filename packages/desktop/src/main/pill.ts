@@ -1,7 +1,7 @@
 import { BrowserWindow, screen } from 'electron';
 import fs from 'node:fs';
 import type { Logger } from '@claude-widget/core';
-import { dragTarget } from '../shared/pill';
+import { dragTarget, leadCursor, trackCursor, type CursorSample } from '../shared/pill';
 import { loadSurface, type RendererSource } from './window';
 
 /**
@@ -12,8 +12,21 @@ import { loadSurface, type RendererSource } from './window';
  */
 export const PILL_WINDOW = { width: 356, height: 180 };
 const MARGIN = 12;
-/** Cursor-follow cadence while dragging (~120 Hz keeps up with the pointer). */
-const DRAG_TICK_MS = 8;
+/**
+ * Cursor-follow cadence while dragging. macOS only shows a window's new
+ * position once per display refresh, so this just has to be fresh at each
+ * refresh (4 ms asked comes out around 110 Hz from main's timers). It runs in
+ * main, so a busy renderer can't stall the drag.
+ */
+const DRAG_TICK_MS = 4;
+/**
+ * How far ahead of the cursor to aim (see `leadCursor`). A move made now is
+ * on screen about a refresh later; leading by half a 60 Hz frame roughly
+ * halves how far the pill trails a moving pointer. The cost is a few pixels of
+ * overshoot for a frame or two after a sudden stop (8 px at a fast 940 px/s
+ * flick, measured), and the drop itself always lands exactly under the pointer.
+ */
+const DRAG_LEAD_MS = 8;
 /** Last-resort stop if the renderer never reports the release. */
 const DRAG_MAX_MS = 15_000;
 
@@ -41,7 +54,13 @@ export class Pill {
   readonly browser: BrowserWindow;
   private readonly statePath: string;
   private readonly logger: Logger;
-  private drag: { timer: NodeJS.Timeout; startedAt: number } | null = null;
+  private drag: {
+    timer: NodeJS.Timeout;
+    startedAt: number;
+    offset: { x: number; y: number };
+    history: CursorSample[];
+    last: { x: number; y: number } | null;
+  } | null = null;
   private saveTimer: NodeJS.Timeout | null = null;
 
   constructor(deps: PillDeps) {
@@ -93,7 +112,10 @@ export class Pill {
     // mouse while the cursor is over the pill itself (moves are forwarded).
     this.browser.setIgnoreMouseEvents(true, { forward: true });
     loadSurface(this.browser, deps, 'pill');
-    this.browser.on('move', () => this.persist());
+    // Mid-drag the window moves every frame; it's saved once it's dropped.
+    this.browser.on('move', () => {
+      if (!this.drag) this.persist();
+    });
     this.browser.on('blur', () => this.endDrag());
     this.browser.on('hide', () => this.endDrag());
     this.browser.on('closed', () => this.endDrag());
@@ -116,29 +138,38 @@ export class Pill {
       return;
     }
     const startedAt = Date.now();
-    let last: { x: number; y: number } | null = null;
-    const timer = setInterval(() => {
-      if (this.browser.isDestroyed() || Date.now() - startedAt > DRAG_MAX_MS) {
-        this.endDrag();
-        return;
-      }
-      const to = dragTarget(screen.getCursorScreenPoint(), offset);
-      if (!to) return;
-      // Compare with the last request, not the window: macOS clamps it below
-      // the menu bar, and re-asking every tick just fights that.
-      if (last && to.x === last.x && to.y === last.y) return;
-      last = to;
-      try {
-        this.browser.setPosition(to.x, to.y, false);
-      } catch (err) {
-        // An error thrown from this timer would reach the uncaught-exception
-        // dialog on every tick with the pill glued to the cursor; drop the
-        // drag instead and leave a trace to fix.
-        this.logger.error('Pill drag failed; releasing', { to, err: String(err) });
-        this.endDrag();
-      }
-    }, DRAG_TICK_MS);
-    this.drag = { timer, startedAt };
+    const timer = setInterval(() => this.follow(), DRAG_TICK_MS);
+    this.drag = { timer, startedAt, offset, history: [], last: null };
+    // Don't wait a tick to pick it up.
+    this.follow();
+  }
+
+  /** One step of a drag: put the press point (just ahead of) under the cursor. */
+  private follow(): void {
+    const drag = this.drag;
+    if (!drag) return;
+    if (this.browser.isDestroyed() || Date.now() - drag.startedAt > DRAG_MAX_MS) {
+      this.endDrag();
+      return;
+    }
+    const now = performance.now();
+    trackCursor(drag.history, { ...screen.getCursorScreenPoint(), t: now });
+    const aim = leadCursor(drag.history, now, DRAG_LEAD_MS);
+    const to = aim && dragTarget(aim, drag.offset);
+    if (!to) return;
+    // Compare with the last request, not the window: macOS clamps it below
+    // the menu bar, and re-asking every tick just fights that.
+    if (drag.last && to.x === drag.last.x && to.y === drag.last.y) return;
+    drag.last = to;
+    try {
+      this.browser.setPosition(to.x, to.y, false);
+    } catch (err) {
+      // An error thrown from this timer would reach the uncaught-exception
+      // dialog on every tick with the pill glued to the cursor; drop the
+      // drag instead and leave a trace to fix.
+      this.logger.error('Pill drag failed; releasing', { to, err: String(err) });
+      this.endDrag();
+    }
   }
 
   /** Shifts the window, e.g. to hold the pill still while it changes corners. */
@@ -153,9 +184,22 @@ export class Pill {
   }
 
   endDrag(): void {
-    if (!this.drag) return;
-    clearInterval(this.drag.timer);
+    const drag = this.drag;
+    if (!drag) return;
+    clearInterval(drag.timer);
     this.drag = null;
+    // The last step may have aimed ahead of a pointer that was still moving;
+    // drop the pill exactly where it was let go.
+    const to = this.browser.isDestroyed()
+      ? null
+      : dragTarget(screen.getCursorScreenPoint(), drag.offset);
+    if (to && (!drag.last || to.x !== drag.last.x || to.y !== drag.last.y)) {
+      try {
+        this.browser.setPosition(to.x, to.y, false);
+      } catch (err) {
+        this.logger.error('Pill drop failed', { to, err: String(err) });
+      }
+    }
     this.persist();
   }
 
