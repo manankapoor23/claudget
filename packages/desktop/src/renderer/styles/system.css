@@ -2321,3 +2321,15 @@ body {
 .cmeter__track {
   overflow: visible;
 }
+
+/* Linux without a compositor: the windows are opaque (main/compositor.ts), so
+   corners that relied on see-through pixels would show the window ground.
+   Square them off, and keep the pill inside the shape its window is cut to. */
+:root[data-opaque] .app {
+  border-radius: 0;
+}
+:root[data-opaque] .pshell,
+:root[data-opaque] .pshell:hover,
+:root[data-opaque] .pshell--drag {
+  transform: none;
+}

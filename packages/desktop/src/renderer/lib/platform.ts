@@ -13,3 +13,10 @@ export const PLATFORM: string =
 export const IS_MAC = PLATFORM === 'darwin';
 
 document.documentElement.dataset.platform = PLATFORM;
+
+/**
+ * Linux without a compositor (main passes `?opaque=1`): windows are opaque,
+ * so nothing may rely on see-through corners. See main/compositor.ts.
+ */
+export const OPAQUE = new URLSearchParams(window.location.search).get('opaque') === '1';
+if (OPAQUE) document.documentElement.dataset.opaque = '';

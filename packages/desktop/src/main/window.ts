@@ -6,16 +6,23 @@ import type { Surface } from '../shared/ipc';
 export interface RendererSource {
   rendererUrl: string | undefined;
   rendererFile: string;
+  /**
+   * Linux without a compositor: windows that would be transparent are opaque
+   * instead (see compositor.ts), and the renderer is told so (`?opaque=1`).
+   */
+  opaque?: boolean;
 }
 
 /** Loads the shared renderer bundle as a given surface (`?surface=`). */
 export function loadSurface(browser: BrowserWindow, src: RendererSource, surface: Surface): void {
+  const query: Record<string, string> = { surface };
+  if (src.opaque) query['opaque'] = '1';
   if (src.rendererUrl) {
     const url = new URL(src.rendererUrl);
-    url.searchParams.set('surface', surface);
+    for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
     void browser.loadURL(url.toString());
   } else {
-    void browser.loadFile(src.rendererFile, { query: { surface } });
+    void browser.loadFile(src.rendererFile, { query });
   }
 }
 
@@ -38,10 +45,8 @@ interface PersistedState {
   height?: number;
 }
 
-export interface WidgetWindowDeps {
+export interface WidgetWindowDeps extends RendererSource {
   preloadPath: string;
-  rendererUrl: string | undefined;
-  rendererFile: string;
   iconPath: string;
   statePath: string;
   config: WidgetConfig;
@@ -96,9 +101,13 @@ export class WidgetWindow {
   private config: WidgetConfig;
   private expanded: { width: number; height: number };
   private saveTimer: NodeJS.Timeout | null = null;
+  /** An opaque window, whose ground has to follow the theme (macOS, and
+   * Linux without a compositor). */
+  private readonly solid: boolean;
 
   constructor(deps: WidgetWindowDeps) {
     this.statePath = deps.statePath;
+    this.solid = MAC || deps.opaque === true;
     this.config = deps.config;
 
     let saved = readState(deps.statePath);
@@ -128,7 +137,9 @@ export class WidgetWindow {
             trafficLightPosition: { x: 16, y: 14 },
             backgroundColor: groundColour(),
           }
-        : { frame: false, transparent: true, backgroundColor: '#00000000' }),
+        : deps.opaque
+          ? { frame: false, backgroundColor: groundColour() }
+          : { frame: false, transparent: true, backgroundColor: '#00000000' }),
       resizable: true,
       maximizable: MAC,
       minimizable: true,
@@ -196,7 +207,7 @@ export class WidgetWindow {
 
     // nativeTheme.themeSource is set app-wide in main (this window may not
     // exist); here just match the opaque ground to it.
-    if (changed('theme') && MAC) this.browser.setBackgroundColor(groundColour());
+    if (changed('theme') && this.solid) this.browser.setBackgroundColor(groundColour());
     // 'screen-saver' level floats above fullscreen apps; 'floating' doesn't.
     if (changed('alwaysOnTop')) {
       this.browser.setAlwaysOnTop(config.alwaysOnTop, 'screen-saver');
@@ -218,9 +229,9 @@ export class WidgetWindow {
     if (changed('showInTaskbar')) this.browser.setSkipTaskbar(!config.showInTaskbar);
   }
 
-  /** Re-matches the native window ground to the current appearance (macOS). */
+  /** Re-matches the native window ground to the current appearance (opaque windows). */
   syncGround(): void {
-    if (MAC && !this.browser.isDestroyed()) this.browser.setBackgroundColor(groundColour());
+    if (this.solid && !this.browser.isDestroyed()) this.browser.setBackgroundColor(groundColour());
   }
 
   show(): void {
