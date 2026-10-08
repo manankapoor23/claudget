@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/manankapoor23/claudget/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/manankapoor23/claudget?style=flat-square&color=ff7f57"></a>
-  <a href="https://github.com/manankapoor23/claudget/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/manankapoor23/claudget/total?style=flat-square&color=ff7f57"></a>
+  <a href="https://github.com/manankapoor23/claudget/releases"><img alt="Downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fclaudget.vercel.app%2Fapi%2Fdownloads&style=flat-square"></a>
   <a href="https://github.com/manankapoor23/claudget/actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/manankapoor23/claudget/release.yml?style=flat-square"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/github/license/manankapoor23/claudget?style=flat-square"></a>
   <a href="https://github.com/manankapoor23/claudget/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/manankapoor23/claudget?style=flat-square"></a>
