@@ -1183,6 +1183,114 @@ code {
 }
 
 /* =========================================================================
+   /get/<build> — the page a download button opens. The file is already on
+   its way; this is the receipt, and what the first launch asks of you.
+   ========================================================================= */
+
+.get__theme {
+  margin-left: auto;
+}
+
+/* The header narrows to the column, so the mark sits over the content. */
+.get,
+.get__bar {
+  max-width: calc(560px + 2 * var(--gutter));
+}
+
+.get {
+  padding-top: 96px;
+  padding-bottom: 96px;
+}
+
+.get__icon {
+  width: 64px;
+  height: 64px;
+  margin: -4px 0 20px -4px;
+}
+
+.get__title {
+  font-family: var(--display);
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+.get__file {
+  margin-top: 10px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.get__file code {
+  color: var(--ink-2);
+  font-size: 0.93em;
+}
+
+.get__direct {
+  margin-top: 24px;
+  color: var(--ink-2);
+}
+
+.get__direct a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--dur-press) var(--ease-std);
+}
+
+.get__direct a:hover {
+  text-decoration-color: currentColor;
+}
+
+.get__steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin-top: 40px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.get__steps-title {
+  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.get__steps p {
+  max-width: 34em;
+  color: var(--ink-2);
+}
+
+.get__back {
+  margin-top: 48px;
+}
+
+/* The arrow points home. */
+.get__back svg {
+  transform: rotate(180deg);
+}
+
+.get__back:hover svg {
+  transform: rotate(180deg) translateX(2px);
+}
+
+@media (max-width: 640px) {
+  .get {
+    padding-top: 56px;
+    padding-bottom: 64px;
+  }
+
+  .get__title {
+    font-size: 26px;
+  }
+}
+
+/* =========================================================================
    Responsive
    ========================================================================= */
 

@@ -22,6 +22,35 @@ export const MAC_VARIANTS = [
   { key: "mac", label: "Universal" },
 ] as const satisfies readonly { key: PlatformKey; label: string }[];
 
+/**
+ * Every build the site offers, by the slug of its /get/<slug> page. Each page
+ * view there is one click on a download button: Vercel Web Analytics counts
+ * page views on the Hobby plan, but not custom events. Order is the order the
+ * pages are generated in, nothing more.
+ */
+export const BUILDS = [
+  { slug: "mac", key: "mac", os: "mac", label: "macOS (Universal)" },
+  { slug: "mac-arm64", key: "macArm64", os: "mac", label: "macOS (Apple Silicon)" },
+  { slug: "mac-intel", key: "macX64", os: "mac", label: "macOS (Intel)" },
+  { slug: "windows", key: "win", os: "win", label: "Windows" },
+  { slug: "windows-portable", key: "winPortable", os: "win", label: "Windows (Portable)" },
+  { slug: "linux-appimage", key: "linux", os: "linux", label: "Linux (AppImage)" },
+  { slug: "linux-deb", key: "linuxDeb", os: "linux", label: "Linux (.deb)" },
+] as const satisfies readonly {
+  slug: string;
+  key: PlatformKey;
+  os: "mac" | "win" | "linux";
+  label: string;
+}[];
+
+export type Build = (typeof BUILDS)[number];
+
+/** The /get/ page that counts a click on this build, then starts its download. */
+export function getHref(key: PlatformKey): string {
+  const build = BUILDS.find((b) => b.key === key);
+  return build ? `/get/${build.slug}` : RELEASES_URL;
+}
+
 export interface ReleaseAsset {
   /** Direct download URL for the installer itself. */
   url: string;

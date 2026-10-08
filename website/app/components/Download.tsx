@@ -10,9 +10,9 @@ import CopyButton from "./CopyButton";
 import {
   MAC_VARIANTS,
   REPO_URL,
-  downloadHref,
   formatCount,
   getDownloadCount,
+  getHref,
   getLatestRelease,
   type PlatformKey,
   type Release,
@@ -34,11 +34,11 @@ interface PlatformMeta {
   unblock: string;
 }
 
-const XATTR = "xattr -dr com.apple.quarantine /Applications/claudget.app";
+export const XATTR = "xattr -dr com.apple.quarantine /Applications/claudget.app";
 const ALL_RELEASES_URL = `${REPO_URL}/releases`;
 const BUILD_URL = `${REPO_URL}#building-from-source`;
 
-const PLATFORMS: PlatformMeta[] = [
+export const PLATFORMS: PlatformMeta[] = [
   {
     key: "mac",
     os: "macOS",
@@ -67,7 +67,8 @@ const PLATFORMS: PlatformMeta[] = [
 /**
  * macOS ships three builds. The universal one is rendered — always correct, and
  * correct with JS off — and MacArch swaps in the smaller per-arch build (href
- * and size label) only when it can prove which arch this is.
+ * and size label) only when it can prove which arch this is. Every href is a
+ * /get/ page, which counts the click and then starts the download.
  */
 function archSwap(release: Release, key: Os) {
   const arm = key === "mac" ? release.assets.macArm64 : undefined;
@@ -75,17 +76,12 @@ function archSwap(release: Release, key: Os) {
   return arm && x64
     ? {
         "data-arch-swap": "",
-        "data-href-arm64": arm.url,
+        "data-href-arm64": getHref("macArm64"),
         "data-size-arm64": arm.size,
-        "data-href-x64": x64.url,
+        "data-href-x64": getHref("macX64"),
         "data-size-x64": x64.size,
       }
     : {};
-}
-
-/** Without a direct asset the link goes to the releases page, in a new tab. */
-function external(release: Release, key: PlatformKey) {
-  return release.assets[key] ? {} : { target: "_blank", rel: "noreferrer" };
 }
 
 /** "Download for macOS" etc., shown only on the matching OS. */
@@ -100,8 +96,7 @@ export async function DownloadCta() {
           <a
             key={key}
             className={`btn btn--primary btn--lg dl-cta dl-cta--${key}`}
-            href={downloadHref(release, key)}
-            {...external(release, key)}
+            href={getHref(key)}
             {...archSwap(release, key)}
           >
             <IconDownload />
@@ -200,9 +195,8 @@ function Row({ meta, release }: { meta: PlatformMeta; release: Release }) {
             <a
               key={b.key}
               className={`btn dl__get dl__get--${b.key}${i === 0 ? " dl__get--default" : ""}`}
-              href={downloadHref(release, b.key)}
+              href={getHref(b.key)}
               aria-label={`Download claudget ${release.version} for ${os}, ${b.label}${asset ? `, ${asset.size}` : ""}`}
-              {...external(release, b.key)}
             >
               <IconDownload />
               {b.label}
@@ -250,7 +244,7 @@ export async function DownloadGrid() {
 }
 
 /** A shell command, selectable as one piece, with a copy button. */
-function Command({ text, what }: { text: string; what: string }) {
+export function Command({ text, what }: { text: string; what: string }) {
   return (
     <div className="cmd">
       {/* A named region: focusable so the keyboard can scroll a long line. */}
