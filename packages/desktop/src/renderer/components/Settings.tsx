@@ -1,5 +1,6 @@
 import { useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
-import type { WidgetConfig } from '@shared/ipc';
+import type { NotificationStatus, WidgetConfig } from '@shared/ipc';
+import { notificationStatusLine, settingsAppName } from '../../shared/notifications';
 import { IS_MAC as MAC, PLATFORM } from '../lib/platform';
 import { trayName } from '../../shared/copy';
 import { SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
@@ -311,6 +312,56 @@ function General({
   );
 }
 
+const SETTINGS_NAME = settingsAppName(MAC);
+
+function NotificationsRow(): JSX.Element {
+  const bridge = getBridge();
+  const [status, setStatus] = useState<NotificationStatus | null>(null);
+  const [sending, setSending] = useState(false);
+  useEffect(() => {
+    if (!bridge) return;
+    const load = (): void => void bridge.getNotificationStatus().then(setStatus);
+    load();
+    // Coming back from System Settings: show what changed there.
+    window.addEventListener('focus', load);
+    return () => window.removeEventListener('focus', load);
+  }, [bridge]);
+  const test = async (): Promise<void> => {
+    if (!bridge) return;
+    setSending(true);
+    try {
+      await bridge.testNotification();
+      setStatus(await bridge.getNotificationStatus());
+    } finally {
+      setSending(false);
+    }
+  };
+  const line = notificationStatusLine(status, MAC);
+  return (
+    <Row label="Notifications" hint={line.text}>
+      <span className="btns">
+        {line.offerSettings ? (
+          <button
+            className="btn2"
+            type="button"
+            onClick={() => void bridge?.openNotificationSettings()}
+          >
+            Open {SETTINGS_NAME} <ExternalIcon />
+          </button>
+        ) : null}
+        <button
+          className="btn2"
+          type="button"
+          disabled={!bridge || sending || status?.supported === false}
+          onClick={() => void test()}
+        >
+          {sending ? 'Sending…' : 'Send test notification'}
+        </button>
+      </span>
+    </Row>
+  );
+}
+
 function Alerts({
   c,
   set,
@@ -328,6 +379,9 @@ function Alerts({
   };
   return (
     <>
+      <Group>
+        <NotificationsRow />
+      </Group>
       <Group title="Plan limits">
         <Row
           label="Notify me"

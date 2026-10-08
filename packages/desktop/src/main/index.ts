@@ -24,7 +24,12 @@ import { detectCliVersion, resolveIconPath, resolveTrayIconDir } from './app-pat
 import { probeCompositor, transparencyFor } from './compositor';
 import { queryPointer } from './x11';
 import { readSandboxFacts, sandboxStatus } from './sandbox';
-import { applyUserDataOverride, runPopoverSelfTest, startMemoryLog } from './diagnostics';
+import {
+  applyUserDataOverride,
+  runNotificationSelfTest,
+  runPopoverSelfTest,
+  startMemoryLog,
+} from './diagnostics';
 import { BudgetAlerter } from './budget-alerts';
 import { ConfigStore } from './config-store';
 import { registerIpc } from './ipc';
@@ -34,6 +39,7 @@ import { createAppLogger } from './logger';
 import { LimitAlerter } from './limit-alerts';
 import { LimitHistoryStore } from './limit-history';
 import { MiniBar } from './minibar';
+import { APP_ID, Notifier } from './notifier';
 import { SettingsWindow } from './settings-window';
 import { Pill } from './pill';
 import { Popover } from './popover';
@@ -43,6 +49,10 @@ import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
 import { popoverAnchor } from '../shared/placement';
 
 applyUserDataOverride();
+// Windows: toasts are attributed to this ID, which must match the Start-menu
+// shortcut's (the installer sets it to the appId). Without it, Windows files
+// them under the Electron executable, or drops them.
+if (process.platform === 'win32') app.setAppUserModelId(APP_ID);
 const singleInstanceLock = app.requestSingleInstanceLock();
 
 if (!singleInstanceLock) {
@@ -354,8 +364,19 @@ if (!singleInstanceLock) {
     // dashboard, which is the only way in.
     onSecondInstance = () => (trayAvailable ? showPopover() : openDashboard());
 
-    const budgetAlerter = new BudgetAlerter(logger);
-    const limitAlerter = new LimitAlerter(path.join(userData, 'limit-alerts.json'), logger);
+    // Clicking an alert opens the glance, like relaunching does.
+    const notifier = new Notifier(logger, () => onSecondInstance());
+    notifier.init();
+    const budgetAlerter = new BudgetAlerter(
+      path.join(userData, 'budget-alerts.json'),
+      logger,
+      notifier,
+    );
+    const limitAlerter = new LimitAlerter(
+      path.join(userData, 'limit-alerts.json'),
+      logger,
+      notifier,
+    );
 
     engine.on('snapshot', sendSnapshot);
     engine.on('snapshot', (s) => trayHandle?.setStatus(s));
@@ -464,6 +485,7 @@ if (!singleInstanceLock) {
       nudgePill: (dx, dy) => pill.peek()?.nudge(dx, dy),
       shapePill: (rect, radius) => pill.peek()?.setShapeFrom(rect, radius),
       fitPopover: (h) => popover.peek()?.setContentHeight(h),
+      notifier,
       quit,
     });
 
@@ -557,6 +579,7 @@ if (!singleInstanceLock) {
       window: () => popover.peek()?.browser ?? null,
       log: (msg, data) => logger.info(msg, data),
     });
+    runNotificationSelfTest(notifier, (msg, data) => logger.info(msg, data));
 
     // Auto-update from GitHub Releases (config comes from electron-builder's
     // publish block). Windows/Linux only: macOS builds are unsigned and
