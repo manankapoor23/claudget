@@ -244,6 +244,7 @@ export function createDemoData(): {
       compact: false,
       pillLimit,
       miniBar: false,
+      notchLine: true,
       opacity: 1,
       showInTaskbar: true,
       launchOnLogin: false,
@@ -260,6 +261,7 @@ export function createDemoData(): {
       pricingNote: 'Demo data only',
       firstRun: new URLSearchParams(window.location.search).has('welcome'),
       trayAvailable: true,
+      notch: true,
     },
   };
 }

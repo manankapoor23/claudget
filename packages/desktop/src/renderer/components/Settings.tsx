@@ -98,10 +98,12 @@ function Toggle({
   id,
   on,
   onChange,
+  disabled = false,
 }: {
   id: string;
   on: boolean;
   onChange: (on: boolean) => void;
+  disabled?: boolean;
 }): JSX.Element {
   return (
     <button
@@ -110,6 +112,7 @@ function Toggle({
       type="button"
       role="switch"
       aria-checked={on}
+      disabled={disabled}
       onClick={() => onChange(!on)}
     />
   );
@@ -213,6 +216,14 @@ function MoneyInput({
   );
 }
 
+/** The Notch line's hint: what it does, or why it can't. */
+function notchHint(notch: boolean | null, limitsOn: boolean): string {
+  if (notch === false) return 'This Mac has no notch.';
+  if (notch === null) return 'Not available in this build.';
+  if (!limitsOn) return 'Needs plan limits, under Data.';
+  return 'Traces the notch with your 5-hour limit. Hover it for details.';
+}
+
 function General({
   c,
   set,
@@ -220,6 +231,7 @@ function General({
   c: WidgetConfig;
   set: (p: Partial<WidgetConfig>) => void;
 }): JSX.Element {
+  const notch = useStore((s) => s.appInfo?.notch ?? null);
   return (
     <>
       <Group>
@@ -255,6 +267,16 @@ function General({
         >
           <Toggle id="set-bar" on={c.miniBar} onChange={(miniBar) => set({ miniBar })} />
         </Row>
+        {MAC ? (
+          <Row label="Notch line" hint={notchHint(notch, c.enableOfficial)} htmlFor="set-notch">
+            <Toggle
+              id="set-notch"
+              on={c.notchLine && notch === true && c.enableOfficial}
+              disabled={notch !== true || !c.enableOfficial}
+              onChange={(notchLine) => set({ notchLine })}
+            />
+          </Row>
+        ) : null}
         <Row label="Open at login" htmlFor="set-login">
           <Toggle
             id="set-login"
