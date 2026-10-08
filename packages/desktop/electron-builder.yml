@@ -89,10 +89,29 @@ mac:
       arch: [universal, arm64, x64]
   category: public.app-category.developer-tools
   icon: build/icon.icns
-  # Unsigned + ad-hoc signed (no paid Apple cert). The app launches on Apple
-  # Silicon; users clear Gatekeeper quarantine once on first open
-  # (right-click → Open, or `xattr -cr "/Applications/claudget.app"`).
-  identity: null
+  # Ad-hoc signed, as the whole bundle (no paid Apple cert, so no notarization:
+  # users still clear Gatekeeper quarantine once on first open, with
+  # right-click → Open or `xattr -cr "/Applications/claudget.app"`).
+  #
+  # This used to be `identity: null`, which skips signing altogether. The app
+  # then kept only the linker's ad-hoc signature on the main executable, still
+  # named "Electron", with Info.plist unbound and no sealed resources, so
+  # `codesign --verify` failed. macOS's notification daemon checks that an
+  # app's signing identifier matches its bundle ID; "Electron" posting for
+  # com.claudget.app was refused (UNErrorDomain error 1), so no limit alert
+  # ever reached Notification Center. "-" signs the bundle properly (identifier
+  # com.claudget.app, from Info.plist), after afterPack has pruned locales and,
+  # for the universal build, after the two arches are merged.
+  identity: '-'
+  # The hardened runtime only matters for notarization, and ad-hoc signed code
+  # under it fails library validation unless an entitlement turns that off.
+  hardenedRuntime: false
+  # Native helpers in Contents/Resources that sign themselves at build time
+  # (claudget-notch, from the Notch line) keep their own signature and
+  # identifier; the app's seal still covers them as resources. A no-op until
+  # such a helper exists.
+  signIgnore:
+    - 'Contents/Resources/claudget-notch$'
   notarize: false
 
 # AppImage runtime. The default (legacy) runtime needs libfuse2, which Ubuntu

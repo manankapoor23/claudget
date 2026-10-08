@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { app, type BrowserWindow } from 'electron';
+import type { Notifier } from './notifier';
 
 /**
  * Developer hooks, both off unless their env var is set:
@@ -7,6 +8,9 @@ import { app, type BrowserWindow } from 'electron';
  * - `CLAUDGET_USER_DATA=<dir>` runs against a separate data directory, so a
  *   dev build can run next to the installed app (the single-instance lock and
  *   all state live in userData). Must run before `requestSingleInstanceLock`.
+ * - `CLAUDGET_NOTIFY_TEST=1` sends the Settings → Alerts test notification a
+ *   few seconds after launch and logs what the OS made of it. How a packaged
+ *   build's notifications are checked without clicking through Settings.
  * - `CLAUDGET_MEMLOG=<file>` appends one JSON line of memory use per process
  *   (main, renderers, GPU, utility) every 15 s — how the before/after numbers
  *   in the memory work were taken.
@@ -89,4 +93,17 @@ export function startMemoryLog(): void {
   };
   write();
   setInterval(write, 15_000).unref();
+}
+
+export function runNotificationSelfTest(
+  notifier: Notifier,
+  log: (msg: string, data: Record<string, unknown>) => void,
+): void {
+  if (!process.env['CLAUDGET_NOTIFY_TEST']) return;
+  setTimeout(() => {
+    void notifier.test().then((outcome) => {
+      log('selftest notification', { ...outcome });
+      log('selftest notification status', { ...notifier.status() });
+    });
+  }, 3_000);
 }

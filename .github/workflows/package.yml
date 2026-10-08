@@ -40,6 +40,17 @@ jobs:
         run: npx electron-builder --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false' # don't hunt for a signing cert
+          # electron-builder skips all signing on pull-request builds unless
+          # told otherwise. The mac build is ad-hoc signed (identity "-"),
+          # which uses no secrets, and an unsigned app can't post notifications.
+          CSC_FOR_PULL_REQUEST: 'true'
+
+      # Every mac app must be signed as a whole bundle under its own ID, or
+      # macOS silently drops its notifications.
+      - name: Check the mac apps' signatures (macOS)
+        if: runner.os == 'macOS'
+        working-directory: packages/desktop
+        run: scripts/check-mac-signature.sh release/mac*/claudget.app
 
       - uses: actions/upload-artifact@v4
         with:
