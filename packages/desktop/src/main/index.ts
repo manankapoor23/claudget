@@ -40,6 +40,7 @@ import { LimitAlerter } from './limit-alerts';
 import { LimitHistoryStore } from './limit-history';
 import { MiniBar } from './minibar';
 import { APP_ID, Notifier } from './notifier';
+import { NotchLine, resolveNotchHelper } from './notch';
 import { SettingsWindow } from './settings-window';
 import { Pill } from './pill';
 import { Popover } from './popover';
@@ -47,6 +48,7 @@ import { createTray, type TrayHandle } from './tray';
 import { WidgetWindow } from './window';
 import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
 import { popoverAnchor } from '../shared/placement';
+import { notchPayload } from '../shared/notch';
 
 applyUserDataOverride();
 // Windows: toasts are attributed to this ID, which must match the Start-menu
@@ -364,6 +366,34 @@ if (!singleInstanceLock) {
     // dashboard, which is the only way in.
     onSecondInstance = () => (trayAvailable ? showPopover() : openDashboard());
 
+    // macOS, notched MacBooks: the 5-hour limit as a line round the notch,
+    // drawn by a small native helper. See main/notch.ts.
+    const notchHelper = MAC ? resolveNotchHelper(app.isPackaged, app.getAppPath()) : null;
+    if (MAC) logger.info('Notch helper', { path: notchHelper });
+    const notch = MAC
+      ? new NotchLine({
+          helperPath: notchHelper,
+          logger: logger.child('notch'),
+          onOpen: () => togglePopover('other'),
+        })
+      : null;
+    // Plan limits off means there's no 5-hour % to draw: don't run it at all.
+    const notchWanted = (cfg: WidgetConfig): boolean => cfg.notchLine && cfg.enableOfficial;
+    if (notch) {
+      notch.update(notchPayload(engine.getSnapshot(), Date.now()));
+      void notch.reprobe().then(() => notch.setEnabled(notchWanted(config)));
+      // Lid closed or opened, a display plugged in, scaling changed.
+      let displayTimer: ReturnType<typeof setTimeout> | null = null;
+      const displaysChanged = (): void => {
+        if (displayTimer) clearTimeout(displayTimer);
+        displayTimer = setTimeout(() => notch.displaysChanged(), 1_000);
+      };
+      screen.on('display-added', displaysChanged);
+      screen.on('display-removed', displaysChanged);
+      screen.on('display-metrics-changed', displaysChanged);
+      engine.on('snapshot', (s) => notch.update(notchPayload(s, Date.now())));
+    }
+
     // Clicking an alert opens the glance, like relaunching does.
     const notifier = new Notifier(logger, () => onSecondInstance());
     notifier.init();
@@ -407,6 +437,7 @@ if (!singleInstanceLock) {
       dashboard.peek()?.applyConfig(config);
       if (config.compact !== prev.compact || config.miniBar !== prev.miniBar) syncFloating();
       if (config.logLevel !== prev.logLevel) logger.setLevel(config.logLevel);
+      notch?.setEnabled(notchWanted(config));
       if (config.launchOnLogin !== prev.launchOnLogin) {
         app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });
       }
@@ -434,6 +465,7 @@ if (!singleInstanceLock) {
       pricingNote: PRICING_NOTE,
       firstRun,
       trayAvailable,
+      notch: notch?.hasNotch ?? null,
     });
 
     const quit = (): void => {
@@ -563,6 +595,7 @@ if (!singleInstanceLock) {
     if (config.launchOnLogin) app.setLoginItemSettings({ openAtLogin: true });
     app.on('will-quit', () => {
       globalShortcut.unregisterAll();
+      notch?.dispose();
       calibration.flush();
       void engine.stop();
     });

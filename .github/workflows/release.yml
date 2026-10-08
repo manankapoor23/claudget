@@ -35,6 +35,12 @@ jobs:
       - run: npm run build:core
       - run: npm run build -w @claude-widget/desktop
 
+      # The Notch line's native helper: universal (arm64 + x86_64), ad-hoc
+      # signed. Fails loudly if swiftc is missing rather than shipping without it.
+      - name: Build notch helper (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:notch -w @claude-widget/desktop
+
       # Package + publish. electron-builder reads packages/desktop/electron-builder.yml
       # and uploads to the GitHub Release for this tag.
       - name: Package and publish

@@ -75,6 +75,11 @@ export interface AppInfo {
   firstRun: boolean;
   /** False when there's (probably) no tray to show an icon in (Linux). */
   trayAvailable: boolean;
+  /**
+   * macOS: whether a connected screen has a camera notch (the Notch line needs
+   * one). Null off macOS, or before it's known.
+   */
+  notch: boolean | null;
 }
 
 /** The API surface exposed to the renderer on `window.claudeWidget`. */
