@@ -35,11 +35,38 @@ jobs:
       - run: npm run build:core
       - run: npm run build -w @claude-widget/desktop
 
+      # The Notch line's native helper: universal (arm64 + x86_64), ad-hoc
+      # signed. Fails loudly if swiftc is missing rather than shipping without it.
+      - name: Build notch helper (macOS)
+        if: runner.os == 'macOS'
+        run: npm run build:notch -w @claude-widget/desktop
+
       - name: Package (no publish)
         working-directory: packages/desktop
         run: npx electron-builder --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false' # don't hunt for a signing cert
+
+      - name: Check the notch helper is packed (macOS)
+        if: runner.os == 'macOS'
+        working-directory: packages/desktop
+        run: |
+          set -euo pipefail
+          for app in release/mac*/claudget.app; do
+            bin="$app/Contents/Resources/claudget-notch"
+            test -x "$bin" || { echo "missing: $bin"; exit 1; }
+            lipo -info "$bin"
+            codesign -dv "$bin"
+            "$bin" --version
+          done
+          for dmg in release/*.dmg; do
+            mnt=$(mktemp -d)
+            hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg" >/dev/null
+            test -x "$mnt/claudget.app/Contents/Resources/claudget-notch" \
+              && echo "ok: $dmg contains the notch helper" \
+              || { hdiutil detach "$mnt" >/dev/null; echo "missing in $dmg"; exit 1; }
+            hdiutil detach "$mnt" >/dev/null
+          done
 
       - uses: actions/upload-artifact@v4
         with:
