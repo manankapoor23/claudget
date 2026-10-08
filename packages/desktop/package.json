@@ -29,7 +29,7 @@
     "@claude-widget/core": "*",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "^6.1.2",
     "electron": "^42.11.12",
     "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
