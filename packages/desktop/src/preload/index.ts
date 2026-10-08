@@ -38,6 +38,9 @@ const bridge: WidgetBridge = {
     return () => ipcRenderer.removeListener(IPC.LimitHistoryPush, listener);
   },
   revealProject: (path: string) => ipcRenderer.invoke(IPC.RevealProject, path),
+  testNotification: () => ipcRenderer.invoke(IPC.TestNotification),
+  getNotificationStatus: () => ipcRenderer.invoke(IPC.GetNotificationStatus),
+  openNotificationSettings: () => ipcRenderer.invoke(IPC.OpenNotificationSettings),
   onNavigate: (callback) => {
     const listener = (_event: IpcRendererEvent, view: DashboardView): void => callback(view);
     ipcRenderer.on(IPC.Navigate, listener);

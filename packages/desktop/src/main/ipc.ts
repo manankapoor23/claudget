@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import { BrowserWindow, ipcMain, shell } from 'electron';
 import type { UsageEngine, WidgetConfig } from '@claude-widget/core';
+import type { Notifier } from './notifier';
 import {
   IPC,
   type AppInfo,
@@ -25,6 +26,7 @@ export interface IpcDeps {
     radius: number,
   ) => void;
   fitPopover: (height: number) => void;
+  notifier: Notifier;
   quit: () => void;
 }
 
@@ -52,6 +54,9 @@ export function registerIpc(deps: IpcDeps): void {
     if (!known || !fs.existsSync(target) || !fs.statSync(target).isDirectory()) return false;
     return (await shell.openPath(target)) === '';
   });
+  ipcMain.handle(IPC.TestNotification, () => deps.notifier.test());
+  ipcMain.handle(IPC.GetNotificationStatus, () => deps.notifier.status());
+  ipcMain.handle(IPC.OpenNotificationSettings, () => deps.notifier.openSystemSettings());
   ipcMain.handle(IPC.WindowAction, (event, action: WindowAction) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     switch (action.type) {

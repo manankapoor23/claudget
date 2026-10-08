@@ -1,7 +1,8 @@
 import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
 import type { LimitHistory } from './history';
+import type { NotificationStatus, NotifyOutcome } from './notifications';
 
-export type { LimitHistory, UsageSnapshot, WidgetConfig };
+export type { LimitHistory, NotificationStatus, NotifyOutcome, UsageSnapshot, WidgetConfig };
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -23,6 +24,11 @@ export const IPC = {
   LimitHistoryPush: 'history:changed',
   /** Open a session's project folder in the file manager. */
   RevealProject: 'app:reveal-project',
+  /** Settings → Alerts: send a sample notification now. */
+  TestNotification: 'notify:test',
+  GetNotificationStatus: 'notify:status',
+  /** Opens the OS's notification settings (macOS, Windows). */
+  OpenNotificationSettings: 'notify:open-settings',
 } as const;
 
 /**
@@ -96,4 +102,8 @@ export interface WidgetBridge {
   onLimitHistory(callback: (history: LimitHistory) => void): () => void;
   /** Opens a session's project folder in Finder / Explorer. Resolves false if refused. */
   revealProject(path: string): Promise<boolean>;
+  /** Sends a sample notification and resolves with what the OS made of it. */
+  testNotification(): Promise<NotifyOutcome>;
+  getNotificationStatus(): Promise<NotificationStatus>;
+  openNotificationSettings(): Promise<void>;
 }
