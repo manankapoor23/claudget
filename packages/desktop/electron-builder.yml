@@ -89,6 +89,12 @@ mac:
       arch: [universal, arm64, x64]
   category: public.app-category.developer-tools
   icon: build/icon.icns
+  # The Notch line's native helper (native/notch), a universal, ad-hoc signed
+  # binary built by `npm run build:notch`. macOS only, so it lives outside
+  # resources/ (which every platform packs) and lands in Contents/Resources.
+  extraResources:
+    - from: native/notch/out/claudget-notch
+      to: claudget-notch
   # Ad-hoc signed, as the whole bundle (no paid Apple cert, so no notarization:
   # users still clear Gatekeeper quarantine once on first open, with
   # right-click → Open or `xattr -cr "/Applications/claudget.app"`).

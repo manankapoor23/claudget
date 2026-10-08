@@ -12,8 +12,9 @@
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit --composite false -p tsconfig.node.json && tsc --noEmit --composite false -p tsconfig.web.json",
-    "package": "electron-vite build && electron-builder",
-    "package:dir": "electron-vite build && electron-builder --dir",
+    "build:notch": "node scripts/build-notch.mjs",
+    "package": "npm run build:notch && electron-vite build && electron-builder",
+    "package:dir": "npm run build:notch && electron-vite build && electron-builder --dir",
     "lint": "eslint src",
     "test": "vitest run"
   },
