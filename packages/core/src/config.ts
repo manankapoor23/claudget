@@ -62,6 +62,11 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   pillLimit: z.enum(['fiveHour', 'weekly', 'highest']).default('fiveHour'),
   /** Show the floating bar: both limits and today, always on top. */
   miniBar: z.boolean().default(false),
+  /**
+   * macOS, notched MacBooks only: an orange line traces the camera notch, its
+   * length the 5-hour limit. On by default; a no-op without a notch.
+   */
+  notchLine: z.boolean().default(true),
   opacity: z.number().min(0.3).max(1).default(1),
   showInTaskbar: z.boolean().default(true),
   launchOnLogin: z.boolean().default(false),

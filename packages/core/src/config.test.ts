@@ -67,3 +67,19 @@ describe('mergeConfig', () => {
     expect(mergeConfig(DEFAULT_CONFIG, { opacity: 99 }).opacity).toBe(DEFAULT_CONFIG.opacity);
   });
 });
+
+describe('notchLine', () => {
+  it('is on by default, including for saved configs from before it existed', () => {
+    expect(DEFAULT_CONFIG.notchLine).toBe(true);
+    expect(resolveConfig({ compact: true, theme: 'dark' }).notchLine).toBe(true);
+  });
+  it('keeps an explicit off, and repairs a bad value to the default', () => {
+    expect(resolveConfig({ notchLine: false }).notchLine).toBe(false);
+    const c = resolveConfig({ notchLine: 'yes', theme: 'dark' });
+    expect(c.notchLine).toBe(true);
+    expect(c.theme).toBe('dark');
+  });
+  it('turns off through a patch', () => {
+    expect(mergeConfig(DEFAULT_CONFIG, { notchLine: false }).notchLine).toBe(false);
+  });
+});
