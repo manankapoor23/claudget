@@ -388,7 +388,8 @@ final class NotchLineView: NSView {
         base.strokeEnd = m.pct
         base.strokeColor = color.cgColor
         base.opacity = m.estimated ? 0.72 : 1
-        track.strokeColor = color.withAlphaComponent(m.pct > 0 ? 0.14 : 0.12).cgColor
+        // The unfilled part is the notch's own black, so only usage shows.
+        track.strokeColor = NSColor.black.cgColor
         CATransaction.commit()
 
         let newPlan = CometPlan.make(pct: m.pct, outlineLength: o.length)
