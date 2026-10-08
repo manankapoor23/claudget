@@ -7,6 +7,10 @@ All notable changes to claudget. Format loosely follows
 
 ## [Unreleased]
 
+### Security
+
+- **Electron 42.11.12** (from 42.4.1), which picks up Electron's and Chromium's security fixes since June.
+
 ### Fixed
 
 - **Limit alerts on macOS now actually arrive.** The Mac app was never signed as a whole, so its code signature still said "Electron" and macOS refused every notification it posted, without a word. It's now ad-hoc signed as claudget, and asks for permission the first time it runs: choose **Allow**.

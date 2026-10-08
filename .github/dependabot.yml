@@ -1,0 +1,55 @@
+# Dependabot version updates, weekly. Minor and patch bumps arrive as one
+# grouped PR per ecosystem; majors come one PR each, so each can be judged
+# on its own. Security updates are separate: they need "Dependabot alerts" and
+# "Dependabot security updates" turned on in the repo settings, and then open
+# as soon as an advisory lands, using the groups and ignores below.
+version: 2
+updates:
+  # The app: the root workspace (packages/core, packages/desktop), one lockfile.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      app-minor-and-patch:
+        update-types: [minor, patch]
+        # Electron gets a PR of its own (below), never buried in the group.
+        exclude-patterns: [electron]
+    ignore:
+      # Electron majors are manual: each one needs the release notes read and
+      # the packaged app (tray, notch line, notifications, signing) re-checked.
+      # Dependabot can't edit electron-builder.yml: on each Electron patch PR,
+      # push a commit setting electronVersion there to the same version.
+      - dependency-name: electron
+        update-types: ['version-update:semver-major']
+
+  # The website, deployed from main on Vercel; its own lockfile.
+  - package-ecosystem: npm
+    directory: /website
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(website)
+    groups:
+      website-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Next.js majors are manual too.
+      - dependency-name: next
+        update-types: ['version-update:semver-major']
+
+  # Workflow actions, pinned to commit SHAs; Dependabot updates the SHA and
+  # the version comment together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions-minor-and-patch:
+        update-types: [minor, patch]
