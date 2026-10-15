@@ -31,6 +31,6 @@
   },
   "devDependencies": {
     "tsup": "^8.3.5",
-    "vitest": "^2.1.8"
+    "vitest": "^5.0.4"
   }
 }
