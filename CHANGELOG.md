@@ -5,7 +5,17 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
-## [Unreleased]
+## [0.3.3] — 2026-10-15
+
+### Added
+
+- **The notch line (macOS).** On MacBooks with a notch, a thin line traces the
+  notch's outline to show how much of your 5-hour limit you've used: orange,
+  then amber from 70% and red from 90%, with a bright comet travelling along
+  it. Hover the notch for a card with both limits, the reset time and "Full
+  by"; click it to open the popover. On by default on notched Macs; turn it off
+  in Settings → General → Notch line. Reduce Motion stops the travelling.
+- **Settings → Alerts → Send test notification**, with a line saying whether the last one got through and, if your system refused it, a button to its notification settings.
 
 ### Security
 
@@ -16,10 +26,6 @@ All notable changes to claudget. Format loosely follows
 - **Limit alerts on macOS now actually arrive.** The Mac app was never signed as a whole, so its code signature still said "Electron" and macOS refused every notification it posted, without a word. It's now ad-hoc signed as claudget, and asks for permission the first time it runs: choose **Allow**.
 - **One alert per threshold, not one per refresh.** After a limit window reset, its last reading (often 100%) could linger until the next successful check, and claudget alerted on it again every 1–3 minutes. Expired windows are now ignored, and readings a second apart count as the same window.
 - **Budget alerts don't repeat after a restart**, and start over when you change the budget.
-
-### Added
-
-- **Settings → Alerts → Send test notification**, with a line saying whether the last one got through and, if your system refused it, a button to its notification settings.
 
 ## [0.3.2] — 2026-10-04
 
@@ -234,6 +240,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.3]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.3
 [0.3.2]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.2
 [0.3.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.1
 [0.3.0]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.0
