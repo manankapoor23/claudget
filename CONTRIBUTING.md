@@ -5,7 +5,7 @@ Thanks for your interest in contributing! This guide covers installing dependenc
 ## Prerequisites
 
 - Git
-- Node.js 20 or newer
+- Node.js 22.12 or newer (24 recommended: the Node that Electron 42 runs, and what CI uses)
 - One package manager: npm, pnpm, Bun, or Yarn
 
 Claude Code is **not** required to build or launch the app. The app reads locally saved Claude Code data when available; Anthropic plan limits require a Claude Code login stored on this machine. You do not need an active Claude Code session just to run the app.

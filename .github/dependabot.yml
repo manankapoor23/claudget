@@ -25,6 +25,16 @@ updates:
       # push a commit setting electronVersion there to the same version.
       - dependency-name: electron
         update-types: ['version-update:semver-major']
+      # TypeScript majors wait for typescript-eslint, which supports
+      # TypeScript >=4.8.4 <6.1.0 as of 8.71; TypeScript 7 fails its peer
+      # range. Drop this once a typescript-eslint release supports 7.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
+      # @types/node must match the Node that Electron ships, not the newest
+      # Node: Electron 42 runs Node 24, so stay on @types/node 24.x. Raise this
+      # bound together with an Electron major that moves to a newer Node.
+      - dependency-name: '@types/node'
+        versions: ['>=25']
 
   # The website, deployed from main on Vercel; its own lockfile.
   - package-ecosystem: npm
@@ -40,6 +50,11 @@ updates:
     ignore:
       # Next.js majors are manual too.
       - dependency-name: next
+        update-types: ['version-update:semver-major']
+      # TypeScript majors move with the root's (above). The site doesn't lint
+      # with typescript-eslint itself; this keeps one TypeScript major across
+      # the repo until the root can take TypeScript 7 as well.
+      - dependency-name: typescript
         update-types: ['version-update:semver-major']
 
   # Workflow actions, pinned to commit SHAs; Dependabot updates the SHA and

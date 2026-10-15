@@ -1,3 +1,9 @@
+// Stay on chokidar 3. On macOS it watches the whole tree through one FSEvents
+// stream. chokidar 4+ dropped FSEvents for one fs.watch per file, so it holds
+// a file descriptor per transcript: on a synthetic 11,000-transcript history
+// it hit EMFILE (the per-process limit is 10,240) and the app exited seconds
+// after launch, where chokidar 3 held ~130 fds. Re-check a large history
+// before any bump.
 import chokidar, { type FSWatcher } from 'chokidar';
 import type { Stats } from 'node:fs';
 import type { Logger } from './logger';
