@@ -9,6 +9,9 @@ export default defineConfig({
       '@renderer': resolve(__dirname, 'src/renderer'),
       '@shared': resolve(__dirname, 'src/shared'),
     },
+    // Same as the renderer in electron.vite.config.ts: zustand must get the
+    // app's React.
+    dedupe: ['react', 'react-dom'],
   },
   plugins: [react()],
   server: {
