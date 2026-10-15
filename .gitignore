@@ -2,6 +2,11 @@
 node_modules/
 .npm/
 
+# npm's package-lock.json is the committed lockfile; other managers generate local locks.
+bun.lock
+pnpm-lock.yaml
+yarn.lock
+
 # Build output
 dist/
 out/

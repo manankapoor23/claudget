@@ -1,0 +1,6 @@
+packages:
+  - 'packages/*'
+linkWorkspacePackages: true
+allowBuilds:
+  esbuild: true
+  electron-winstaller: true
