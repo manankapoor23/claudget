@@ -4,11 +4,15 @@
  * the real app does, since every surface renders one snapshot.
  *
  * The story: Thursday Sep 24, 2:30 PM. The 5-hour window opened at noon, so
- * half of it has passed with 62% used — ahead of pace. The app's projection
+ * half of it has passed with 62% used (62.18%, a live estimate between
+ * Anthropic's checks) — ahead of pace. The app's projection
  * (packages/desktop/src/shared/pace.ts: the average rate so far, as a straight
- * line) puts it full at 4:01 PM. Numbers are formatted the way the app formats
- * them (renderer/lib/format.ts: "26M", "198k", "4.8M"). Everything is a fixed
- * string, never computed from the clock, so server and client always agree.
+ * line) puts it full at 4:01:15 PM: early in the minute, so the popover, which
+ * truncates, and the notch card, which rounds to the minute
+ * (shared/notch.ts), both read 4:01 PM. Numbers are formatted the way the app
+ * formats them (renderer/lib/format.ts: "26M", "198k", "4.8M"). Everything is
+ * a fixed string, never computed from the clock, so server and client always
+ * agree.
  */
 
 export type Tone = "ok" | "warn" | "bad";
@@ -29,6 +33,8 @@ export interface DemoLimit {
   left: string;
   /** Only when the pace so far would fill it before reset. */
   fullBy: string | null;
+  /** A live estimate between Anthropic's checks: shown as "~62%". */
+  estimated?: boolean;
 }
 
 export const FIVE_HOUR: DemoLimit = {
@@ -37,6 +43,7 @@ export const FIVE_HOUR: DemoLimit = {
   tick: 50,
   left: "2h 30m left",
   fullBy: "4:01 PM",
+  estimated: true,
 };
 
 /** Resets Sunday 4:30 PM: 74 of 168 hours left. */
@@ -57,6 +64,7 @@ export const TODAY = { tokens: "26M", rate: "198k", requests: "89" };
  * afternoon session, a light evening, a quiet night, a morning session, a
  * lunch dip, and the current window running hot. Today's hours sum to 26.1M.
  */
+// prettier-ignore
 export const HOURLY: number[] = [
   3.1, 4.2, 2.8, 1.5, 0.6, // 3p–7p
   0.9, 1.4, 0.3, 0, // 8p–11p

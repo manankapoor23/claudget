@@ -13,10 +13,10 @@ import { Figures, Live, TopSessions } from "./Popover";
 import { FIVE_HOUR, WEEKLY, WEEKS, WINDOWS, toneOf } from "./demo";
 
 const NAV = [
-  { label: "Overview", Icon: IconOverview, on: true },
-  { label: "Activity", Icon: IconActivity },
-  { label: "Sessions", Icon: IconSessions },
-  { label: "Insights", Icon: IconInsights },
+  { label: "Overview", Icon: IconOverview, key: "1", on: true },
+  { label: "Activity", Icon: IconActivity, key: "2" },
+  { label: "Sessions", Icon: IconSessions, key: "3" },
+  { label: "Insights", Icon: IconInsights, key: "4" },
 ];
 
 /**
@@ -89,10 +89,11 @@ export function Dashboard() {
           <span className="side__brand">claudget</span>
         </div>
         <div className="side__nav">
-          {NAV.map(({ label, Icon, on }) => (
+          {NAV.map(({ label, Icon, key, on }) => (
             <span key={label} className={on ? "side__item side__item--on" : "side__item"}>
               <Icon width={16} height={16} />
               {label}
+              <kbd className="side__kbd">⌘{key}</kbd>
             </span>
           ))}
         </div>

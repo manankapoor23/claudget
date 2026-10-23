@@ -59,8 +59,7 @@ export const PLATFORMS: PlatformMeta[] = [
     os: "Linux",
     Icon: IconLinux,
     requires: "x64",
-    unblock:
-      "Make the AppImage executable (chmod +x), then run it. Or install the .deb with apt.",
+    unblock: "Make the AppImage executable (chmod +x), then run it. Or install the .deb with apt.",
   },
 ];
 
@@ -276,12 +275,12 @@ export function InstallNotes() {
       <details className="install__more">
         <summary>Unsigned builds and updates</summary>
         <p>
-          claudget isn’t signed because Apple and Microsoft charge a yearly fee for it. Every
-          release is built from the public source by GitHub Actions.
+          claudget isn’t signed with a paid certificate: Apple and Microsoft charge a yearly fee for
+          one. Every release is built from the public source by GitHub Actions.
         </p>
         <p>
-          The Windows installer and the Linux AppImage update themselves. On a Mac, or with the
-          Portable .exe, download new versions here.
+          The Windows installer, the AppImage and the .deb update themselves. On a Mac, download new
+          versions here.
         </p>
         <a className="more" href={BUILD_URL} target="_blank" rel="noreferrer">
           Build from source on GitHub

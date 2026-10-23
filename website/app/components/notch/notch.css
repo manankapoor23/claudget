@@ -1,0 +1,319 @@
+/* =========================================================================
+   The notch line (Notch.tsx) and its card (NotchCard.tsx)
+
+   Drawn in points and scaled as one: set --k (pixels per point) on the
+   notch or any ancestor. The unfilled track is the notch's own black, so
+   only usage shows; the comet is a stack of dashes of a bright copy of the
+   line, placed relative to its front (--nl-h), animated per instance.
+   ========================================================================= */
+
+@property --nl-h {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+.notch {
+  --k: 1;
+  display: block;
+  width: calc(var(--k) * 207px);
+  height: auto;
+  overflow: visible;
+}
+
+/* Stroked a hair wider than the cutout, so the gap between the hardware edge
+   and the line is black too: drawn large, the unfilled track then reads as
+   part of the notch, as it does on the machine. */
+.notch__hw {
+  fill: #000;
+  stroke: #000;
+  stroke-width: 1.6;
+}
+
+.notch__track,
+.notch__fill,
+.notch__c,
+.notch__halo {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+}
+
+.notch__track {
+  stroke: #000;
+}
+
+.notch__fill {
+  stroke: var(--nl-tone);
+  transition:
+    stroke-dasharray 0.6s cubic-bezier(0.42, 0, 0.58, 1),
+    stroke 0.6s cubic-bezier(0.42, 0, 0.58, 1);
+}
+
+/* The comet: invisible until its animation runs, so a still or reduced-
+   motion notch is simply the line. */
+.notch__comet {
+  opacity: 0;
+}
+
+/* Each band ends --b behind the front (--nl-h); its length is set inline.
+   Square ends, so the bands' edges meet without a seam: the softness comes
+   from stacking, not from caps. */
+.notch__c {
+  stroke: var(--nl-bright);
+  stroke-linecap: butt;
+  stroke-dashoffset: calc(var(--b) - var(--nl-h));
+}
+
+/* The head: white-hot, softened a touch (Notch.tsx), over the solid part. */
+.notch__head {
+  fill: none;
+  stroke: var(--nl-core);
+  stroke-width: 2.1;
+  stroke-linecap: butt;
+  stroke-opacity: 0.9;
+  stroke-dashoffset: calc(var(--b) - var(--nl-h));
+}
+
+/* A soft glow round the head (blurred in Notch.tsx). */
+.notch__halo {
+  stroke: var(--nl-bright);
+  stroke-width: 4.5;
+  stroke-linecap: butt;
+  stroke-dashoffset: calc(var(--b) - var(--nl-h));
+}
+
+/* Drawing in: the fill grows from the start of the line to its value. */
+@keyframes nl-draw {
+  from {
+    stroke-dasharray: 0 2000;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .notch[data-draw] .notch__fill {
+    animation: nl-draw var(--nl-draw-dur, 1.2s) cubic-bezier(0.5, 0, 0.2, 1)
+      var(--nl-draw-delay, 0s) both;
+  }
+}
+
+/* Driven frame by frame (a played demo): no easing to lag behind. */
+.notch.is-live .notch__fill {
+  transition: stroke 0.6s cubic-bezier(0.42, 0, 0.58, 1);
+}
+
+/* ---- a notched menu bar (NotchMenuBar.tsx) ------------------------------- */
+/* Three columns: menus, the notch, status items. Each side is one line that
+   wraps what doesn't fit onto a hidden second line, so items drop away
+   whole, never half-drawn under the notch. */
+
+.nmb {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 207px minmax(0, 1fr);
+  align-items: start;
+  height: 33px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.92);
+  font-family: var(--ui-sans);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.nmb__side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 18px;
+  height: 33px;
+  overflow: hidden;
+}
+
+.nmb__side > * {
+  display: inline-flex;
+  align-items: center;
+  height: 33px;
+}
+
+.nmb__left {
+  padding: 0 14px 0 20px;
+}
+
+.nmb__left b {
+  font-weight: 700;
+}
+
+.nmb__notch {
+  position: relative;
+  z-index: 2;
+}
+
+.nmb__rightcol {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 33px;
+  padding: 0 12px 0 0;
+}
+
+.nmb__right {
+  flex: 1;
+  justify-content: flex-end;
+  gap: 0 14px;
+  min-width: 0;
+  padding-left: 14px;
+}
+
+/* Just right of the notch, where the newest status item lands. */
+.nmb__item {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin-left: -4px;
+  padding: 0 7px;
+  border-radius: 6px;
+}
+
+.nmb__item[data-pressed] {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ---- the card that drops from the notch ---------------------------------- */
+/* NotchCardView: 248 × 112 pt, black like the notch, a hairline edge for dark
+   wallpapers, 16 pt in. Drawn at 1×; scale with zoom. */
+
+.ncard {
+  --tone: #ff6b1f;
+  position: relative;
+  box-sizing: border-box;
+  width: 248px;
+  height: 112px;
+  padding: 13px 16px 0;
+  border-radius: 16px;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  color: rgba(255, 255, 255, 0.95);
+  font-family: -apple-system, "BlinkMacSystemFont", var(--font-geist), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-align: left;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.ncard[data-tone="warn"] {
+  --tone: #ffb224;
+}
+
+.ncard[data-tone="bad"] {
+  --tone: #ff453a;
+}
+
+.ncard__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ncard__k {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ncard__pct {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.ncard__pct i,
+.ncard__wk i {
+  color: rgba(255, 255, 255, 0.45);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.ncard__bar {
+  position: relative;
+  height: 4px;
+  margin-top: 5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ncard__bar > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 4px;
+  border-radius: 2px;
+  background: var(--tone);
+  transition:
+    width 0.6s cubic-bezier(0.42, 0, 0.58, 1),
+    background-color 0.6s cubic-bezier(0.42, 0, 0.58, 1);
+}
+
+.ncard.is-live .ncard__bar > span {
+  transition: background-color 0.6s cubic-bezier(0.42, 0, 0.58, 1);
+}
+
+.ncard[data-estimated] .ncard__bar > span {
+  opacity: 0.75;
+}
+
+.ncard__meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.42);
+  font-size: 11px;
+}
+
+/* "Full by" in amber while the line is orange; in the line's own colour once
+   it has turned. */
+.ncard__full {
+  color: rgba(255, 178, 36, 0.9);
+  font-weight: 500;
+}
+
+.ncard[data-tone="bad"] .ncard__full {
+  color: rgba(255, 69, 58, 0.9);
+}
+
+.ncard__rule {
+  height: 1px;
+  margin: 10px 0 9px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ncard__wk {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ncard__wk-k {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Words for the visitor's own pointer: "hover" with a mouse, "tap" on touch. */
+.on-touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .on-touch {
+    display: inline;
+  }
+
+  .on-hover {
+    display: none;
+  }
+}

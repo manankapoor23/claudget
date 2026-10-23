@@ -11,8 +11,8 @@
 /* ---- tokens: paper (the default, for everyone) ---------------------------- */
 /* Light first, whatever the system says: warm paper and near-black type. The
    neutrals lean a touch warm (hue ~80) so they sit with the icon's orange,
-   never brown. Orange is reserved: the product's own data, and one large
-   moment on the page (the 62% in the pace diagram). Every button is ink. */
+   never brown. Orange is reserved for the product's own data: the notch
+   line and the mocks. Every button is ink. */
 :root {
   --bg: #f7f5f0;
   --bg-2: #efece5;
@@ -27,9 +27,6 @@
   --track: rgba(40, 30, 15, 0.08);
   --seg-on: #ffffff;
   --tint: #f25a0f;
-  /* Orange as type: only the pace diagram's 64px figure, large text, which
-     needs 3:1 (3.38:1 here). Not for body-size text. */
-  --tint-text: #ee4d00;
   /* Amber as text and as a fill: on paper a fill-strength amber is too light
      to read, so the two differ. */
   --c-warn: #8a6200;
@@ -52,17 +49,16 @@
   --nav-h: 56px;
 
   --sans:
-    -apple-system, "BlinkMacSystemFont", "Segoe UI Variable Text", "Segoe UI",
-    var(--font-geist), system-ui, sans-serif;
+    -apple-system, "BlinkMacSystemFont", "Segoe UI Variable Text", "Segoe UI", var(--font-geist),
+    system-ui, sans-serif;
   --display:
-    -apple-system, "BlinkMacSystemFont", "Segoe UI Variable Display", "Segoe UI",
-    var(--font-geist), system-ui, sans-serif;
+    -apple-system, "BlinkMacSystemFont", "Segoe UI Variable Display", "Segoe UI", var(--font-geist),
+    system-ui, sans-serif;
   /* The app's own stack, for the mocks: SF Pro on a Mac, Geist elsewhere. */
   --ui-sans: -apple-system, "BlinkMacSystemFont", var(--font-geist), system-ui, sans-serif;
   /* Menlo before the web font: Chrome and Firefox on a Mac don't resolve
      ui-monospace or "SF Mono", and would otherwise download Geist Mono. */
-  --code:
-    ui-monospace, "SF Mono", "Menlo", var(--font-geist-mono), "Consolas", monospace;
+  --code: ui-monospace, "SF Mono", "Menlo", var(--font-geist-mono), "Consolas", monospace;
 
   color-scheme: light;
 }
@@ -115,8 +111,10 @@
 /* ---- the product's own tokens ------------------------------------------------ */
 /* The mocks always show the app in its dark appearance, set on the page like
    photographs, in either theme. Scoped to the scene, so the page and the
-   product can't restyle each other. */
-.scene {
+   product can't restyle each other. `.ui-dark` carries the same tokens for a
+   mock set somewhere other than a scene. */
+.scene,
+.ui-dark {
   --bg: #161514;
   --bg-2: #1c1b19;
   --surface: #1c1c1c;
@@ -263,43 +261,25 @@ code {
   padding-inline: var(--gutter);
 }
 
-/* Platform words, switched by the data-os hint like the downloads.
-   Tray name: both when unknown ("menu bar or system tray"), one when known. */
-:root[data-os="mac"] .tray-or,
-:root[data-os="mac"] .tray-other,
-:root[data-os="win"] .tray-mac,
-:root[data-os="win"] .tray-or,
-:root[data-os="linux"] .tray-mac,
-:root[data-os="linux"] .tray-or {
-  display: none;
-}
-
-/* Either/or details inside the mocks: the Mac version unless told otherwise. */
-.os-other {
-  display: none;
-}
-
+/* Either/or, by platform: the Mac version unless the visitor is on Windows
+   or Linux (the data-os hint, set before first paint, so nothing swaps
+   later). Whatever display a block has of its own is kept when it shows. */
+:root:not([data-os="win"]):not([data-os="linux"]) .os-other,
 :root[data-os="win"] .os-mac,
 :root[data-os="linux"] .os-mac {
   display: none;
 }
 
-:root[data-os="win"] .os-other,
-:root[data-os="linux"] .os-other {
-  display: inline;
-}
-
 /* =========================================================================
-   Type — four sizes outside the mocks, two weights
+   Type — few sizes outside the mocks, two weights
 
-   56  the hero title (40 on phones)
-   40  section titles (30 on phones)
-   19  ledes and captions
-   15  everything else: nav, rows, notes, footer
+   36–60  the hero title and section titles (components/home/home.css)
+   17–20  ledes
+   15     everything else: nav, rows, notes, footer
 
    600 for headings and button labels, 400 for everything else. Prose is the
    ink-2 grey, headings full ink. Buttons are ink; orange is kept for the
-   product's data and the pace diagram's large figure.
+   product's own data: the notch line and the mocks.
    ========================================================================= */
 
 /* =========================================================================
@@ -532,57 +512,6 @@ code {
 }
 
 /* =========================================================================
-   Hero
-   ========================================================================= */
-
-.hero {
-  padding-top: 96px;
-}
-
-.hero__copy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.hero__title {
-  max-width: 13em;
-  font-family: var(--display);
-  font-size: 56px;
-  font-weight: 600;
-  line-height: 1.07;
-  letter-spacing: -0.022em;
-  text-wrap: balance;
-}
-
-.hero__lede {
-  margin-top: 20px;
-  max-width: 34em;
-  font-size: 19px;
-  line-height: 1.5;
-  color: var(--ink-2);
-}
-
-.hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 16px 28px;
-  margin-top: 32px;
-}
-
-.hero__meta {
-  margin-top: 16px;
-  color: var(--ink-3);
-}
-
-.hero__stage {
-  margin-top: 64px;
-}
-
-/* =========================================================================
    Download button — one per platform, promoted in CSS by data-os
    ========================================================================= */
 
@@ -614,294 +543,6 @@ code {
   padding-left: 12px;
   border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   font-variant-numeric: tabular-nums;
-}
-
-/* =========================================================================
-   Sections
-   ========================================================================= */
-
-.sec {
-  --sec-pad: clamp(96px, 12vw, 160px);
-  padding-top: var(--sec-pad);
-  /* A jump to a section lands on its title, not on its empty top padding. */
-  scroll-margin-top: calc(32px - var(--sec-pad));
-}
-
-.sec__head {
-  margin-bottom: 48px;
-}
-
-.sec__head--center {
-  text-align: center;
-}
-
-.sec__title {
-  font-family: var(--display);
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  text-wrap: balance;
-}
-
-/* Ledes and captions. */
-.caption {
-  max-width: 34em;
-  font-size: 19px;
-  line-height: 1.5;
-  color: var(--ink-2);
-}
-
-/* ---- pace + alerts --------------------------------------------------------- */
-
-.pace {
-  display: grid;
-  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-  align-items: center;
-  gap: 48px 64px;
-}
-
-.anatomy {
-  padding: 8px 0 104px;
-}
-
-.anatomy__row {
-  position: relative;
-  width: 100%;
-  max-width: 560px;
-}
-
-/* Labels on thin leaders, pointing at the thing they describe. */
-.callout {
-  position: absolute;
-  line-height: 1.35;
-  color: var(--ink-2);
-  white-space: nowrap;
-}
-
-.callout::before,
-.callout::after {
-  content: "";
-  position: absolute;
-  background: color-mix(in srgb, var(--ink) 34%, transparent);
-}
-
-/* Leader line. */
-.callout::before {
-  width: 1px;
-}
-
-/* Where it lands. */
-.callout::after {
-  width: 5px;
-  height: 5px;
-  margin-left: -2px;
-  border-radius: 50%;
-  background: var(--ink-2);
-}
-
-/* Anchored to the tick itself: --tick comes from the same data as the bar. */
-.callout--tick {
-  right: calc(100% - var(--tick, 50%));
-  top: calc(100% + 46px);
-  padding-right: 14px;
-  text-align: right;
-}
-
-.callout--tick::before {
-  right: 0;
-  bottom: calc(100% - 9px);
-  height: 88px;
-}
-
-.callout--tick::after {
-  right: -2px;
-  bottom: calc(100% + 78px);
-}
-
-.callout--full {
-  right: 0;
-  top: calc(100% + 46px);
-  text-align: right;
-}
-
-.callout--full::before {
-  right: 62px;
-  bottom: calc(100% + 4px);
-  height: 38px;
-}
-
-.callout--full::after {
-  right: 60px;
-  bottom: calc(100% + 40px);
-}
-
-.alerts {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* As wide as the column allows, so the notices can shrink on a narrow phone. */
-.alerts .scene {
-  width: 100%;
-}
-
-/* ---- features: a segmented control over one stage --------------------------- */
-
-.picker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-}
-
-.picker__tabs {
-  display: inline-flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-  background: var(--fill);
-}
-
-/* The selected tab is set in 600; a hidden bold copy of the label reserves
-   that width, so selecting a tab doesn't nudge its neighbours. */
-.picker__tab {
-  display: inline-grid;
-  align-content: center;
-  justify-items: center;
-  height: 36px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--ink-2);
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background var(--dur-fade) var(--ease-std),
-    color var(--dur-fade) var(--ease-std),
-    box-shadow var(--dur-fade) var(--ease-std),
-    transform var(--dur-press) var(--ease-std);
-}
-
-.picker__tab::after {
-  content: attr(data-label);
-  height: 0;
-  overflow: hidden;
-  font-weight: 600;
-  visibility: hidden;
-}
-
-.picker__tab:hover {
-  color: var(--ink);
-}
-
-.picker__tab[aria-selected="true"] {
-  background: var(--seg-on);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.18),
-    inset 0 0 0 0.5px var(--line-2);
-}
-
-/* Panels stack in one grid cell, so the stage is as tall as the tallest and
-   never jumps when the selection changes. Off screen it isn't rendered at all,
-   which also stops the pill's ring from costing anything. */
-.picker__stage {
-  display: grid;
-  width: 100%;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 560px;
-}
-
-.picker__panel {
-  grid-area: 1 / 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  min-width: 0;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity var(--dur-fade) var(--ease-std),
-    visibility 0s linear var(--dur-fade);
-}
-
-.picker__panel[data-active] {
-  opacity: 1;
-  visibility: visible;
-  transition: opacity var(--dur-fade) var(--ease-std);
-}
-
-.picker__panel:focus-visible {
-  outline-offset: 6px;
-  border-radius: 24px;
-}
-
-.picker__panel > .scene {
-  flex: 1;
-  align-self: stretch;
-}
-
-/* Hidden panels keep still. */
-.picker__panel:not([data-active]) *,
-.picker__panel:not([data-active]) *::before,
-.picker__panel:not([data-active]) *::after {
-  animation-play-state: paused !important;
-}
-
-.picker__caption {
-  max-width: 46em;
-  font-size: 19px;
-  line-height: 1.5;
-  text-align: center;
-  color: var(--ink-2);
-}
-
-/* ---- privacy ---------------------------------------------------------------- */
-
-.privacy {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  grid-template-areas:
-    "title mock"
-    "facts mock";
-  grid-template-rows: auto 1fr;
-  gap: 0 64px;
-  align-items: start;
-}
-
-.privacy__title {
-  grid-area: title;
-  margin-bottom: 40px;
-}
-
-.facts {
-  grid-area: facts;
-  display: grid;
-  gap: 28px;
-}
-
-.privacy__mock {
-  grid-area: mock;
-  align-self: center;
-}
-
-.facts dt {
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.facts dd {
-  margin-top: 4px;
-  max-width: 34em;
-  font-size: 19px;
-  line-height: 1.5;
-  color: var(--ink-2);
 }
 
 /* ---- download ---------------------------------------------------------------- */
@@ -1294,16 +935,6 @@ code {
    Responsive
    ========================================================================= */
 
-@media (max-width: 1080px) {
-  .pace {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .alerts {
-    align-items: flex-start;
-  }
-}
-
 @media (max-width: 880px) {
   .footer__grid {
     grid-template-columns: minmax(0, 1fr);
@@ -1311,20 +942,6 @@ code {
 
   .footer__links {
     justify-content: flex-start;
-  }
-
-  /* Heading, then the window, then what it means. */
-  .privacy {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "title"
-      "mock"
-      "facts";
-    grid-template-rows: auto;
-  }
-
-  .privacy__mock {
-    margin-bottom: 40px;
   }
 }
 
@@ -1372,52 +989,15 @@ code {
     display: none;
   }
 
-  .hero {
-    padding-top: 48px;
-  }
-
-  .hero__title {
-    font-size: 40px;
-  }
-
-  .hero__stage {
-    margin-top: 48px;
-  }
-
-  .sec__title {
-    font-size: 30px;
-  }
-
-  .sec__head,
   .dl-head {
     margin-bottom: 32px;
-  }
-
-  .picker__tabs {
-    align-self: stretch;
-  }
-
-  .picker__tab {
-    flex: 1;
-    padding: 0 8px;
-  }
-
-  /* The leaders need room; on a phone the bar speaks for itself, and the
-     figure's caption still says it all to a screen reader. */
-  .anatomy {
-    padding: 0;
-  }
-
-  .callout {
-    display: none;
   }
 }
 
 /* Fingers, not pointers: every target at least 44px. */
 @media (pointer: coarse) {
   .icon-btn,
-  .btn,
-  .picker__tab {
+  .btn {
     height: 44px;
   }
 
@@ -1430,28 +1010,14 @@ code {
   }
 }
 
-/* Windows High Contrast: selection and the diagram's marks can't rely on
-   backgrounds and tints, which the system replaces. */
+/* Windows High Contrast: the product pictures keep their own colours — the
+   notch line is meaningless redrawn in the system's — and say what they show
+   in their labels. */
 @media (forced-colors: active) {
-  .picker__tab[aria-selected="true"] {
-    outline: 2px solid Highlight;
-  }
-
-  .lim--xl .lim__bar {
-    border: 1px solid CanvasText;
-  }
-
-  .lim--xl .lim__fill {
-    background: Highlight;
-  }
-
-  .lim--xl .lim__tick,
-  .callout::before,
-  .callout::after {
-    background: CanvasText;
-  }
-
-  .scene {
+  .scene,
+  .ui-dark,
+  .notch,
+  .ncard {
     forced-color-adjust: none;
   }
 }

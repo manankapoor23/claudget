@@ -25,18 +25,21 @@ const geistMono = Geist_Mono({
 });
 
 const SITE_URL = "https://claudget.vercel.app";
-/* Kept under ~155 characters: Google truncates the snippet around there, and the
-   old 207-character version was being cut mid-sentence in results. */
+
+/* Kept to about 155 characters: Google truncates the snippet around there, and
+   an old 207-character version was being cut mid-sentence in results. */
+const TITLE = "claudget — your Claude Code limit, traced round the notch";
+
 const DESCRIPTION =
-  "See your Claude Code 5-hour and weekly limits in the menu bar and get warned before you run out. Free and open source for macOS, Windows and Linux.";
+  "Your Claude Code 5-hour limit as a line round your MacBook’s notch, and both limits in the menu bar, or a click away in the system tray. Free and open source.";
 
 /* Social cards allow more room than a search snippet, so this one can breathe. */
 const SOCIAL_DESCRIPTION =
-  "See your Claude Code 5-hour and weekly limits in the menu bar, get warned before you run out, and track tokens and sessions from your local transcripts. Free and open source for macOS, Windows and Linux.";
+  "A thin line round your MacBook’s notch grows as you use your Claude Code 5-hour limit; hover it for the details. Both limits sit in the menu bar, or a click away in the system tray, with alerts at 80% and 95%. Free and open source for macOS, Windows and Linux.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "claudget — Claude Code usage limits in your menu bar",
+  title: TITLE,
   description: DESCRIPTION,
   // The canonical URL is declared by app/page.tsx: set here, every other route
   // (the 404 included) would claim to be the home page.
@@ -48,6 +51,7 @@ export const metadata: Metadata = {
     "5-hour limit",
     "weekly limit",
     "menu bar app",
+    "MacBook notch",
     "token usage",
     "Anthropic",
     "plan limits",
@@ -55,7 +59,7 @@ export const metadata: Metadata = {
   authors: [{ name: "Manan Kapoor", url: "https://github.com/manankapoor23" }],
   creator: "Manan Kapoor",
   openGraph: {
-    title: "claudget — Claude Code usage limits in your menu bar",
+    title: TITLE,
     description: SOCIAL_DESCRIPTION,
     url: SITE_URL,
     siteName: "claudget",
@@ -66,7 +70,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "claudget — Claude Code usage limits in your menu bar",
+    title: TITLE,
     description: SOCIAL_DESCRIPTION,
     // Image comes from app/twitter-image.tsx.
   },
@@ -86,24 +90,14 @@ export const viewport: Viewport = {
 // nothing saved, the site is paper (light), whatever the system prefers.
 const THEME_BOOT = `(function(){try{var t=localStorage.getItem('claudget-theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}})();`;
 
-// Same trick for the download buttons: tag the platform before first paint so
-// CSS can promote the visitor's own installer with no spinner and no swap.
-// Left unset on mobile / unknown UAs, which shows the neutral "Download".
-// iPadOS presents a Mac user agent by default; touch points give it away (a
-// real Mac reports none).
-const OS_BOOT = `(function(){try{var n=navigator,u=n.userAgent||"",p=(n.userAgentData&&n.userAgentData.platform)||n.platform||"",s=p+" "+u,o="";if(/android/i.test(s)){}else if(/iphone|ipad|ipod/i.test(s)){}else if(/mac/i.test(s)){if(!(n.maxTouchPoints>1)){o="mac";}}else if(/win/i.test(s)){o="win";}else if(/linux|x11|cros/i.test(s)){o="linux";}if(o){document.documentElement.dataset.os=o;}}catch(e){}})();`;
-
-// The opening moment (the .intro overlay, motion.css). Decided here, before
-// first paint, so neither the page nor the intro ever flashes: it plays once
-// per browser session, on a landing at the top of the page, with motion
-// allowed. A hash in the URL, a reload, reduced motion, blocked storage or no
-// JS at all mean no intro — the overlay is display: none unless `data-intro`
-// is set. Nor does any page but the home page: a /get/ download page shows
-// its first-launch steps at once. Any click, tap, key, wheel or scroll ends it
-// at once. When its hold ends, the icon flies into the header logo's place (a FLIP measured now) as
-// the ground fades; that is also when the hero's sequence is released. The
-// overlay goes when the icon lands (or after 1s, should that event not come).
-const INTRO_BOOT = `(function(){var d=document.documentElement,K="claudget-intro";try{if(location.pathname!=="/"||location.hash||matchMedia("(prefers-reduced-motion: reduce)").matches)return;var s=window.sessionStorage;if(s.getItem(K))return;s.setItem(K,"1");}catch(e){return;}d.dataset.intro="in";var done=false,t1,t2,E=["pointerdown","keydown","wheel","touchstart","scroll"];function end(){if(done)return;done=true;clearTimeout(t1);clearTimeout(t2);delete d.dataset.intro;E.forEach(function(t){removeEventListener(t,end,true);});document.removeEventListener("animationend",onA);document.removeEventListener("transitionend",onT);}function out(){if(done||d.dataset.intro!=="in")return;try{var a=document.querySelector(".intro__fly"),b=document.querySelector(".brand img");if(a&&b){var r=a.getBoundingClientRect(),q=b.getBoundingClientRect();if(q.width&&r.width){d.style.setProperty("--intro-x",(q.left+q.width/2-r.left-r.width/2)+"px");d.style.setProperty("--intro-y",(q.top+q.height/2-r.top-r.height/2)+"px");d.style.setProperty("--intro-s",String(q.width/r.width));}}}catch(e){}d.dataset.intro="out";t1=setTimeout(end,1000);}function onA(e){if(e.animationName==="intro-hold")out();}function onT(e){if(e.propertyName==="transform"&&e.target.classList&&e.target.classList.contains("intro__fly"))end();}E.forEach(function(t){addEventListener(t,end,{capture:true,passive:true});});document.addEventListener("animationend",onA);document.addEventListener("transitionend",onT);t2=setTimeout(out,3000);})();`;
+// Same trick for the platform: tag it before first paint so CSS can promote
+// the visitor's own installer and show their own version of the page (the
+// notch on a Mac, the tray on Windows and Linux) with no spinner and no swap.
+// Left unset on mobile / unknown UAs, which get the Mac page and the neutral
+// "Download". iPadOS presents a Mac user agent by default; touch points give
+// it away (a real Mac reports none). `?os=mac|windows|linux` forces it, to
+// preview each version; nothing links there.
+const OS_BOOT = `(function(){try{var n=navigator,u=n.userAgent||"",p=(n.userAgentData&&n.userAgentData.platform)||n.platform||"",s=p+" "+u,o="",q=/[?&]os=(mac|windows|linux)(&|$)/.exec(location.search);if(q){o=q[1]==="windows"?"win":q[1];}else if(/android/i.test(s)){}else if(/iphone|ipad|ipod/i.test(s)){}else if(/mac/i.test(s)){if(!(n.maxTouchPoints>1)){o="mac";}}else if(/win/i.test(s)){o="win";}else if(/linux|x11|cros/i.test(s)){o="linux";}if(o){document.documentElement.dataset.os=o;}}catch(e){}})();`;
 
 // Scroll entrances, as progressive enhancement. Only when this script runs, the
 // observer exists and motion is welcome does `data-motion` go on <html>; only
@@ -144,22 +138,13 @@ const jsonLd = (version: string) => ({
   // one is exactly the kind of thing that earns a structured-data penalty.
 });
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { version } = await getLatestRelease();
   return (
-    <html
-      lang="en"
-      className={`${geist.variable} ${geistMono.variable}`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: OS_BOOT }} />
-        <script dangerouslySetInnerHTML={{ __html: INTRO_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: MOTION_BOOT }} />
         <script
           type="application/ld+json"
@@ -170,33 +155,6 @@ export default async function RootLayout({
         />
       </head>
       <body>
-        {/* The opening moment: decorative, hidden from assistive tech, and
-            display: none unless the boot script chose to play it. */}
-        <div className="intro" aria-hidden="true">
-          <div className="intro__mark">
-            <span className="intro__fly">
-              {/* Lazy: while the overlay is display: none (every visit but the
-                  first), the 2x file is never fetched. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className="intro__icon"
-                src="/app-icon.png"
-                srcSet="/app-icon.png 1x, /app-icon-192.png 2x"
-                alt=""
-                width={96}
-                height={96}
-                loading="lazy"
-              />
-            </span>
-            <span className="intro__words">
-              <span className="intro__name">claudget</span>
-              <span className="intro__bars">
-                <i />
-                <i />
-              </span>
-            </span>
-          </div>
-        </div>
         {children}
         {/* Vercel Web Analytics — page views only, no cookies, no cross-site
             identifiers. Sends nothing outside production. */}
