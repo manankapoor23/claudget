@@ -6,17 +6,14 @@ import {
   GlyphGlobe,
   GlyphSearch,
   GlyphStart,
-  GlyphSwitches,
   GlyphTerminal,
-  GlyphTray,
   GlyphVolume,
   GlyphWifi,
-  IconApple,
   IconClose,
   IconMinus,
   IconSquare,
 } from "../../icons";
-import { CLOCK, FIVE_HOUR, WEEKLY } from "./demo";
+import { CLOCK } from "./demo";
 
 /**
  * A slice of desktop: wallpaper, and whatever sits on it. Announced once, by
@@ -51,56 +48,11 @@ export function Scene({
 }
 
 /**
- * macOS menu bar. The claudget item is the glyph plus both limits, 5-hour
- * first (main/tray.ts), drawn pressed: its popover is open.
+ * Windows and Linux: a taskbar with the tray. claudget's tray icon is the
+ * logo, the same in every state — trays there don't tint template glyphs and
+ * don't show text (main/tray.ts) — drawn pressed while its popover is open.
  */
-export function MenuBar() {
-  return (
-    <div className="menubar">
-      <span className="menubar__apple">
-        <IconApple width={14} height={14} />
-      </span>
-      <span className="menubar__app">Terminal</span>
-      <span className="menubar__menus">
-        <span>Shell</span>
-        <span>Edit</span>
-        <span>View</span>
-        <span>Window</span>
-        <span>Help</span>
-      </span>
-      <span className="menubar__status">
-        <span className="mbi mbi--claudget">
-          <GlyphTray width={16} height={16} />
-          <span>
-            {FIVE_HOUR.pct}% · {WEEKLY.pct}%
-          </span>
-        </span>
-        <span className="mbi">
-          <GlyphWifi width={16} height={16} />
-        </span>
-        <span className="mbi">
-          <GlyphBattery width={25} height={13} />
-        </span>
-        <span className="mbi mbi--hide-sm">
-          <GlyphSearch width={15} height={15} />
-        </span>
-        <span className="mbi mbi--hide-sm">
-          <GlyphSwitches width={15} height={15} />
-        </span>
-        <span className="mbi mbi--clock">
-          <span className="mbi__day">{CLOCK.day}&nbsp;&nbsp;</span>
-          {CLOCK.time}
-        </span>
-      </span>
-    </div>
-  );
-}
-
-/**
- * Windows and Linux: a taskbar with the tray. The tray icon is the logo — trays
- * there don't tint template glyphs (main/tray.ts), and don't show text.
- */
-export function Taskbar() {
+export function Taskbar({ pressed = false }: { pressed?: boolean }) {
   return (
     <div className="taskbar">
       <span className="taskbar__apps">
@@ -122,7 +74,7 @@ export function Taskbar() {
       </span>
       <span className="taskbar__tray">
         <GlyphChevronUp width={14} height={14} />
-        <span className="tbi tbi--claudget">
+        <span className={pressed ? "tbi tbi--claudget tbi--on" : "tbi tbi--claudget"}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/tray-logo.png" alt="" width={16} height={16} loading="lazy" />
         </span>

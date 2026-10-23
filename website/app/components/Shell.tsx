@@ -2,7 +2,7 @@ import ThemeToggle from "./ThemeToggle";
 import { DownloadCount } from "./Download";
 
 /** In page order; Download is the header's own button instead. */
-const NAV = [
+const DEFAULT_NAV = [
   { id: "features", label: "Features" },
   { id: "privacy", label: "Privacy" },
 ];
@@ -10,13 +10,18 @@ const NAV = [
 export default function Shell({
   children,
   footer,
+  nav = DEFAULT_NAV,
+  headerClass = "",
 }: {
   children: React.ReactNode;
   footer?: React.ReactNode;
+  nav?: { id: string; label: string }[];
+  /** Extra class on the header, for a page that restyles it. */
+  headerClass?: string;
 }) {
   return (
     <div className="shell">
-      <header className="header">
+      <header className={`header ${headerClass}`.trim()}>
         <div className="wrap header__inner">
           <a href="#top" className="brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -24,7 +29,7 @@ export default function Shell({
             claudget
           </a>
           <nav className="nav" aria-label="Sections">
-            {NAV.map(({ id, label }) => (
+            {nav.map(({ id, label }) => (
               <a key={id} href={`#${id}`}>
                 {label}
               </a>

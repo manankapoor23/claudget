@@ -1,6 +1,6 @@
 import { Chart } from "./Chart";
 import { Limit } from "./Limit";
-import { FIVE_HOUR, SESSIONS, TODAY, WEEKLY } from "./demo";
+import { FIVE_HOUR, SESSIONS, TODAY, WEEKLY, type DemoLimit } from "./demo";
 
 /** Today's three figures, as the overview shows them. */
 export function Figures() {
@@ -55,9 +55,9 @@ export function Live() {
 /**
  * The menu-bar popover (renderer/components/PopoverApp.tsx): brand and plan,
  * then the overview — limits, today, sessions — and the footer actions.
- * `count` lets both percentages roll up as it opens, as the app's do.
+ * `five` replaces the 5-hour limit, for a live demo.
  */
-export function Popover({ count = false }: { count?: boolean }) {
+export function Popover({ five = FIVE_HOUR }: { five?: DemoLimit }) {
   return (
     <div className="ui pop">
       <div className="pop__bar">
@@ -68,8 +68,8 @@ export function Popover({ count = false }: { count?: boolean }) {
       </div>
       <div className="pop__body">
         <div className="sect lims">
-          <Limit limit={FIVE_HOUR} count={count} />
-          <Limit limit={WEEKLY} count={count} />
+          <Limit limit={five} />
+          <Limit limit={WEEKLY} />
         </div>
         <div className="sect">
           <Figures />

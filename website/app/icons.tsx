@@ -79,32 +79,6 @@ export function IconArrowRight(props: P) {
   );
 }
 
-export function IconCheck(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="m5 12.5 4.5 4.5L19 7.5" />
-    </svg>
-  );
-}
-
-export function IconFolder(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M3.5 7.5a2 2 0 0 1 2-2h3.6l2 2.2h7.4a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z" />
-    </svg>
-  );
-}
-
-export function IconGauge(props: P) {
-  return (
-    <svg {...base} {...props}>
-      <path d="M4.2 17.5a8.5 8.5 0 1 1 15.6 0" />
-      <path d="m12 13.5 4-4.5" />
-      <circle cx="12" cy="13.5" r="1.1" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
 /* ---- glyphs used inside the product mocks ------------------------------ */
 
 /** The menu-bar glyph: three ascending capsules (mirrors main/tray.ts). */
@@ -132,17 +106,6 @@ export function GlyphBattery(props: P) {
       <rect x="0.75" y="1.25" width="21.5" height="11.5" rx="3.25" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1.2" />
       <rect x="2.6" y="3.1" width="14.4" height="7.8" rx="1.7" fill="currentColor" />
       <path d="M23.8 5.2v3.6c.8-.3 1.3-1 1.3-1.8s-.5-1.5-1.3-1.8Z" fill="currentColor" fillOpacity="0.45" />
-    </svg>
-  );
-}
-
-export function GlyphSwitches(props: P) {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" aria-hidden {...props}>
-      <rect x="1.7" y="2.7" width="12.6" height="4.3" rx="2.15" />
-      <circle cx="12.2" cy="4.85" r="1.1" fill="currentColor" stroke="none" />
-      <rect x="1.7" y="9" width="12.6" height="4.3" rx="2.15" />
-      <circle cx="3.8" cy="11.15" r="1.1" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -260,44 +223,6 @@ export function IconMore(props: P) {
       <circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none" />
       <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
       <circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none" />
-    </svg>
-  );
-}
-
-/* Settings tabs (renderer/components/icons.tsx). */
-export function IconSliders(props: P) {
-  return (
-    <svg {...base} strokeWidth={2} {...props}>
-      <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
-    </svg>
-  );
-}
-
-export function IconBell(props: P) {
-  return (
-    <svg {...base} strokeWidth={2} {...props}>
-      <path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z" />
-      <path d="M10 20.5a2 2 0 0 0 4 0" />
-    </svg>
-  );
-}
-
-export function IconData(props: P) {
-  return (
-    <svg {...base} strokeWidth={2} {...props}>
-      <ellipse cx="12" cy="6" rx="7" ry="2.8" />
-      <path d="M5 6v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6" />
-      <path d="M5 12v6c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8v-6" />
-    </svg>
-  );
-}
-
-export function IconInfo(props: P) {
-  return (
-    <svg {...base} strokeWidth={2} {...props}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 11v5.5" />
-      <circle cx="12" cy="7.8" r="0.6" fill="currentColor" />
     </svg>
   );
 }
