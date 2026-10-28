@@ -186,6 +186,38 @@ body {
   background: none;
   color: var(--c-bad);
 }
+/* Manual refresh: in the popover bar and beside "Updated …" in the sidebar. */
+.refreshbtn {
+  -webkit-app-region: no-drag;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  color: var(--ink-3);
+}
+.refreshbtn:disabled {
+  cursor: default;
+  background: none;
+  color: var(--ink-3);
+}
+.refreshbtn--busy svg {
+  animation: refresh-spin 0.9s linear infinite;
+}
+@keyframes refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refreshbtn--busy svg {
+    animation: none;
+  }
+}
+.footer__refresh {
+  margin-left: auto;
+  margin-right: -6px;
+}
 .iconbtn:focus-visible,
 .cbtn:focus-visible,
 .menu__item:focus-visible,
