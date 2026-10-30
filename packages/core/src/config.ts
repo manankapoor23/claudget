@@ -46,6 +46,11 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   limitAlerts: z.boolean().default(true),
   /** Plan-limit alert thresholds, in percent used. Deduplicated and sorted on use. */
   limitAlertThresholds: z.array(z.number().int().min(10).max(100)).min(1).max(6).default([80, 95]),
+  /**
+   * Also count usage from OpenCode's local database (read-only). Off by
+   * default: while off, nothing of OpenCode's is read.
+   */
+  opencodeUsage: z.boolean().default(false),
 
   // ── UI / Window (consumed by the desktop shell) ───────────────────────────
   theme: z.enum(['system', 'dark', 'light']).default('system'),

@@ -99,6 +99,7 @@ export {
   type OfficialReading,
   type RateEstimate,
 } from './estimate';
+export * from './providers';
 export {
   OfficialUsageClient,
   OfficialPollScheduler,

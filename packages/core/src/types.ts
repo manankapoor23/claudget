@@ -41,6 +41,10 @@ export interface UsageEntry {
   sessionTitle?: string | null;
   /** Git branch captured from the transcript, when Claude Code recorded one. */
   gitBranch?: string | null;
+  /** Usage provider it came from (e.g. `opencode`); absent for Claude Code transcripts. */
+  source?: string;
+  /** Cost the source reported. When absent, it's estimated from the pricing table. */
+  costUSD?: number;
 }
 
 /** Tokens + estimated cost + request count for an aggregate bucket. */
