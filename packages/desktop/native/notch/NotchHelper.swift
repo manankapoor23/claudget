@@ -36,6 +36,8 @@ struct StateIn: Decodable, Equatable {
     let weekly: LimitIn?
     let fullAt: Double?
     let reducedMotion: Bool?
+    /// False: no hover card, and nothing over the notch takes the mouse. Absent means true.
+    let card: Bool?
 }
 
 enum Out {
@@ -779,8 +781,11 @@ final class Controller: NSObject {
                           estimated: five.estimated == true)
         lineView.set(m, animated: !first && lineWindow.isVisible)
         cardView.state = s
-        if !lineWindow.isVisible {
-            lineWindow.orderFrontRegardless()
+        if !lineWindow.isVisible { lineWindow.orderFrontRegardless() }
+        if s.card == false {
+            zoneWindow.orderOut(nil)
+            hideCard(animated: false)
+        } else if !zoneWindow.isVisible {
             zoneWindow.orderFrontRegardless()
         }
         syncTravel()
@@ -1036,7 +1041,7 @@ enum RenderTest {
                 fiveHour: LimitIn(pct: sc.pct, estimated: sc.estimated, tone: toneFor(sc.pct).rawValue,
                                   resetsAt: Date().timeIntervalSince1970 * 1000 + 8_040_000),
                 weekly: LimitIn(pct: 31, estimated: sc.estimated, tone: "ok", resetsAt: nil),
-                fullAt: Date().timeIntervalSince1970 * 1000 + 5_400_000, reducedMotion: nil)
+                fullAt: Date().timeIntervalSince1970 * 1000 + 5_400_000, reducedMotion: nil, card: nil)
             let cardTop = H - menuBar - 4
             NSGraphicsContext.saveGraphicsState()
             let g = NSGraphicsContext(cgContext: ctx, flipped: false)

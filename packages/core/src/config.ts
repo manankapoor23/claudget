@@ -67,6 +67,11 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
    * length the 5-hour limit. On by default; a no-op without a notch.
    */
   notchLine: z.boolean().default(true),
+  /**
+   * Hovering the notch drops a card with both limits. Off: nothing over the
+   * notch takes the mouse, so another notch app gets the hover.
+   */
+  notchCard: z.boolean().default(true),
   opacity: z.number().min(0.3).max(1).default(1),
   showInTaskbar: z.boolean().default(true),
   launchOnLogin: z.boolean().default(false),

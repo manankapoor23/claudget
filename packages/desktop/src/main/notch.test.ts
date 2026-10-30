@@ -17,6 +17,7 @@ const pay = (pct: number): NotchPayload => ({
   fiveHour: { pct, estimated: false, tone: 'ok', resetsAt: null },
   weekly: null,
   fullAt: null,
+  card: true,
 });
 
 beforeEach(() => {
