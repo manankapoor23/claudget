@@ -8,6 +8,13 @@
 
 export type ModelId = string;
 
+/**
+ * Which Claude Code front end wrote a transcript line, from its `entrypoint`:
+ * the terminal CLI, the VS Code extension, the Claude desktop app's Code tab,
+ * or the Agent SDK. Anything else Claude Code reports is `other`.
+ */
+export type UsageSource = 'cli' | 'vscode' | 'desktop' | 'sdk' | 'other';
+
 /** Raw token counts for a request or an aggregate. */
 export interface TokenCounts {
   input: number;
@@ -41,6 +48,8 @@ export interface UsageEntry {
   sessionTitle?: string | null;
   /** Git branch captured from the transcript, when Claude Code recorded one. */
   gitBranch?: string | null;
+  /** Where the request was made, when the transcript says (older ones don't). */
+  source?: UsageSource | null;
 }
 
 /** Tokens + estimated cost + request count for an aggregate bucket. */
@@ -62,8 +71,16 @@ export interface SessionStat extends TokenAndCost {
   projectSlug: string;
   sessionTitle: string | null;
   gitBranch: string | null;
+  /** Where the session ran: CLI, VS Code, the desktop app… null when unknown. */
+  source: UsageSource | null;
   firstAt: number;
   lastAt: number;
+}
+
+/** Usage per front end over the last 30 days (see {@link UsageSource}). */
+export interface SourceBreakdown extends TokenAndCost {
+  /** null collects entries from transcripts too old to record a source. */
+  source: UsageSource | null;
 }
 
 /** Per-project rollup across the full history (not sliced). */
@@ -115,6 +132,8 @@ export interface LocalUsage {
   perModel: ModelBreakdown[];
   /** Per-project rollup across all history, sorted by cost desc. */
   perProject: ProjectBreakdown[];
+  /** Per front end over the last 30 days, most tokens first. */
+  perSource: SourceBreakdown[];
   sessions: SessionStat[];
   blocks: UsageBlock[];
   activeBlock: ActiveBlockStat | null;

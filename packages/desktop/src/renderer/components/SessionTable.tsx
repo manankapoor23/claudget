@@ -3,7 +3,7 @@ import type { ActiveSession, SessionStat } from '@claude-widget/core';
 import { getBridge } from '../lib/api';
 import { useCostCopy } from '../lib/billing';
 import { formatCompact, formatRelative, formatUSD } from '../lib/format';
-import { projectName } from '../lib/sessions';
+import { projectName, sourceLabel } from '../lib/sessions';
 import { CopyIcon, FolderIcon, SortIcon } from './icons';
 
 type SortKey = 'project' | 'tokens' | 'cost' | 'last';
@@ -42,7 +42,13 @@ export function SessionTable({
     const q = query.trim().toLowerCase();
     const filtered = q
       ? sessions.filter((s) =>
-          [projectName(s), s.sessionTitle, s.gitBranch, s.projectPath]
+          [
+            projectName(s),
+            s.sessionTitle,
+            s.gitBranch,
+            s.projectPath,
+            s.source ? sourceLabel(s.source) : null,
+          ]
             .filter(Boolean)
             .some((v) => String(v).toLowerCase().includes(q)),
         )
@@ -113,7 +119,7 @@ export function SessionTable({
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filter by project, branch or title"
+          placeholder="Filter by project, branch, title or app"
           aria-label="Filter sessions"
         />
         <span className="st__count">
@@ -150,7 +156,14 @@ export function SessionTable({
                         className={live.has(s.sessionId) ? 'st__dot st__dot--live' : 'st__dot'}
                       />
                       <div className="st__names">
-                        <strong title={s.projectPath}>{projectName(s)}</strong>
+                        <span className="st__name">
+                          <strong title={s.projectPath}>{projectName(s)}</strong>
+                          {s.source ? (
+                            <span className="st__src" title="Where this session ran">
+                              {sourceLabel(s.source)}
+                            </span>
+                          ) : null}
+                        </span>
                         <span title={s.sessionTitle || undefined}>
                           {s.sessionTitle || s.gitBranch || 'Untitled session'}
                         </span>

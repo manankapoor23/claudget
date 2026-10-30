@@ -9,6 +9,7 @@ import type {
   TokenAndCost,
   TokenCounts,
   UsageSnapshot,
+  UsageSource,
 } from '@claude-widget/core';
 import type { AppInfo, LimitHistory, WidgetConfig } from '@shared/ipc';
 
@@ -36,6 +37,7 @@ function session(
   total: number,
   costUSD: number,
   count: number,
+  source: UsageSource,
 ): SessionStat {
   return {
     ...aggregate(total, costUSD, count),
@@ -44,6 +46,7 @@ function session(
     projectSlug: projectPath.split('/').pop() ?? projectPath,
     sessionTitle: title,
     gitBranch: branch,
+    source,
     firstAt: lastAt - 90 * 60_000,
     lastAt,
   };
@@ -81,6 +84,7 @@ export function createDemoData(): {
       18_400_000,
       42.8,
       48,
+      'cli',
     ),
     session(
       'demo-2',
@@ -91,6 +95,7 @@ export function createDemoData(): {
       4_800_000,
       12.4,
       16,
+      'vscode',
     ),
     session(
       'demo-3',
@@ -101,6 +106,7 @@ export function createDemoData(): {
       2_100_000,
       5.8,
       9,
+      'desktop',
     ),
     session(
       'demo-4',
@@ -111,6 +117,7 @@ export function createDemoData(): {
       1_200_000,
       3.1,
       6,
+      'cli',
     ),
   ];
 
@@ -158,6 +165,11 @@ export function createDemoData(): {
     last24h: aggregate(31_100_000, 68.9, 104),
     perModel,
     perProject,
+    perSource: [
+      { source: 'cli', ...aggregate(212_000_000, 498.2, 702) },
+      { source: 'vscode', ...aggregate(126_000_000, 301.6, 433) },
+      { source: 'desktop', ...aggregate(38_000_000, 88.9, 121) },
+    ],
     sessions,
     blocks: [activeBlock],
     activeBlock,

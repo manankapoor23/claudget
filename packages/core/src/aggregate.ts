@@ -6,11 +6,13 @@ import type {
   ModelBreakdown,
   ProjectBreakdown,
   SessionStat,
+  SourceBreakdown,
   TimeBucket,
   TokenAndCost,
   TokenCounts,
   UsageBlock,
   UsageEntry,
+  UsageSource,
 } from './types';
 import {
   DAY,
@@ -71,10 +73,12 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
   const dayStart = startOfDay(now);
   const monthStart = startOfMonth(now);
   const since24 = now - DAY;
+  const since30d = now - 30 * DAY;
   const historyStart = startOfHour(now - opts.historyWindowHours * HOUR);
 
   const perModelMap = new Map<string, ModelBreakdown>();
   const perProjectMap = new Map<string, ProjectBreakdown>();
+  const perSourceMap = new Map<UsageSource | null, SourceBreakdown>();
   const sessionMap = new Map<string, SessionStat>();
   const hourlyMap = new Map<number, TimeBucket>();
 
@@ -83,6 +87,16 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
     if (e.timestamp >= dayStart) accumulate(today, e, pricing);
     if (e.timestamp >= monthStart) accumulate(thisMonth, e, pricing);
     if (e.timestamp >= since24) accumulate(last24h, e, pricing);
+
+    if (e.timestamp >= since30d) {
+      const source = e.source ?? null;
+      let sb = perSourceMap.get(source);
+      if (!sb) {
+        sb = { source, ...emptyTAC() };
+        perSourceMap.set(source, sb);
+      }
+      accumulate(sb, e, pricing);
+    }
 
     let pb = perProjectMap.get(e.projectSlug);
     if (!pb) {
@@ -107,6 +121,7 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
         projectSlug: e.projectSlug,
         sessionTitle: e.sessionTitle ?? null,
         gitBranch: e.gitBranch ?? null,
+        source: e.source ?? null,
         firstAt: e.timestamp,
         lastAt: e.timestamp,
         ...emptyTAC(),
@@ -115,6 +130,7 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
     } else {
       if (!s.sessionTitle && e.sessionTitle) s.sessionTitle = e.sessionTitle;
       if (!s.gitBranch && e.gitBranch) s.gitBranch = e.gitBranch;
+      if (!s.source && e.source) s.source = e.source;
     }
     s.firstAt = Math.min(s.firstAt, e.timestamp);
     s.lastAt = Math.max(s.lastAt, e.timestamp);
@@ -141,6 +157,11 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
 
   const perModel = [...perModelMap.values()].sort((a, b) => b.tokens.total - a.tokens.total);
   const perProject = [...perProjectMap.values()].sort((a, b) => b.costUSD - a.costUSD);
+  // Most tokens first; transcripts too old to say where they ran go last.
+  const perSource = [...perSourceMap.values()].sort(
+    (a, b) =>
+      Number(a.source === null) - Number(b.source === null) || b.tokens.total - a.tokens.total,
+  );
   const sessions = [...sessionMap.values()]
     .sort((a, b) => b.lastAt - a.lastAt)
     .slice(0, opts.recentSessionLimit);
@@ -152,6 +173,7 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
     last24h,
     perModel,
     perProject,
+    perSource,
     sessions,
     blocks: [...blocks].reverse(),
     activeBlock,

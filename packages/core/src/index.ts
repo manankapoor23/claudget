@@ -63,6 +63,7 @@ export {
   parseTranscriptLine,
   parseTranscriptContent,
   createTranscriptParser,
+  sourceFromEntrypoint,
   type ParseContext,
   type TranscriptParser,
 } from './parse';

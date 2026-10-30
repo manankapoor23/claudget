@@ -20,6 +20,7 @@ function entry(over: Partial<UsageEntry> & { timestamp: number }): UsageEntry {
     messageId: 'm',
     sessionTitle: over.sessionTitle,
     gitBranch: over.gitBranch,
+    source: over.source,
   };
 }
 
@@ -133,5 +134,29 @@ describe('buildLocalUsage', () => {
     expect(u.thisMonth.count).toBe(1);
     expect(u.thisMonth.tokens.total).toBe(30);
     expect(u.allTime.count).toBe(2);
+  });
+
+  it('tags each session with where it ran and splits the last 30 days by app', () => {
+    const DAY = 24 * HOUR;
+    const u = buildLocalUsage(
+      [
+        entry({ timestamp: NOW - HOUR, sessionId: 'a', source: 'cli' }),
+        entry({ timestamp: NOW - 2 * HOUR, sessionId: 'a', source: 'cli' }),
+        entry({ timestamp: NOW - 3 * HOUR, sessionId: 'b', source: 'vscode' }),
+        entry({ timestamp: NOW - 4 * HOUR, sessionId: 'c' }),
+        // Older than 30 days: in the session list, not in the split.
+        entry({ timestamp: NOW - 40 * DAY, sessionId: 'd', source: 'desktop' }),
+      ],
+      opts,
+    );
+    const byId = new Map(u.sessions.map((s) => [s.sessionId, s.source]));
+    expect(byId.get('a')).toBe('cli');
+    expect(byId.get('b')).toBe('vscode');
+    expect(byId.get('c')).toBeNull();
+    expect(u.perSource.map((s) => [s.source, s.count])).toEqual([
+      ['cli', 2],
+      ['vscode', 1],
+      [null, 1],
+    ]);
   });
 });

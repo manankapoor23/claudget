@@ -1,4 +1,4 @@
-import type { TokenCounts, UsageEntry } from './types';
+import type { TokenCounts, UsageEntry, UsageSource } from './types';
 
 interface RawUsage {
   input_tokens?: unknown;
@@ -15,6 +15,7 @@ interface RawLine {
   sessionId?: unknown;
   cwd?: unknown;
   gitBranch?: unknown;
+  entrypoint?: unknown;
   isSidechain?: unknown;
   message?: {
     id?: unknown;
@@ -34,6 +35,22 @@ export interface ParseContext {
 interface SessionMetadata {
   sessionTitle?: string | null;
   gitBranch?: string | null;
+  source?: UsageSource | null;
+}
+
+/**
+ * Maps Claude Code's `entrypoint` to a {@link UsageSource}. Values seen in real
+ * transcripts: `cli`, `claude-vscode`, `claude-desktop` (the desktop app's Code
+ * tab) and `sdk-cli` / `sdk-ts` / `sdk-py` (the Agent SDK).
+ */
+export function sourceFromEntrypoint(entrypoint: unknown): UsageSource | null {
+  if (typeof entrypoint !== 'string' || !entrypoint.trim()) return null;
+  const e = entrypoint.trim().toLowerCase();
+  if (e === 'cli') return 'cli';
+  if (e === 'claude-vscode') return 'vscode';
+  if (e === 'claude-desktop') return 'desktop';
+  if (e.startsWith('sdk')) return 'sdk';
+  return 'other';
 }
 
 function parseRawLine(line: string): RawLine | null {
@@ -123,6 +140,7 @@ function entryFromRaw(
     typeof obj.gitBranch === 'string' && obj.gitBranch.trim()
       ? obj.gitBranch.trim()
       : (metadata.gitBranch ?? null);
+  const source = sourceFromEntrypoint(obj.entrypoint) ?? metadata.source ?? null;
 
   return {
     key: `${messageId ?? 'noid'}:${requestId ?? uuid ?? 'noreq'}`,
@@ -137,6 +155,7 @@ function entryFromRaw(
     messageId,
     sessionTitle: metadata.sessionTitle ?? null,
     gitBranch,
+    source,
   };
 }
 
@@ -187,6 +206,7 @@ export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
   let projectPath = ctx.projectPath;
   let sessionTitle: string | null = null;
   let gitBranch: string | null = null;
+  let source: UsageSource | null = null;
   return {
     wantsTitle: () => sessionTitle === null,
     skim(head) {
@@ -203,8 +223,9 @@ export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
       if (typeof raw.gitBranch === 'string' && raw.gitBranch.trim()) {
         gitBranch = raw.gitBranch.trim();
       }
+      source = sourceFromEntrypoint(raw.entrypoint) ?? source;
       sessionTitle ??= sessionTitleFromRaw(raw);
-      return entryFromRaw(raw, { ...ctx, projectPath }, { sessionTitle, gitBranch });
+      return entryFromRaw(raw, { ...ctx, projectPath }, { sessionTitle, gitBranch, source });
     },
   };
 }
