@@ -5,6 +5,15 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [Unreleased]
+
+### Added
+
+- A refresh button in the menu-bar popover and beside "Updated …" in the
+  dashboard: rescans your transcripts and checks your plan limits now. After a
+  click it rests for 10 seconds, so repeated clicks can't hammer Anthropic's
+  rate-limited endpoint.
+
 ## [0.3.3] — 2026-10-15
 
 ### Added

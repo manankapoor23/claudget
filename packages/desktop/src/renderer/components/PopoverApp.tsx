@@ -9,6 +9,7 @@ import { PLATFORM } from '../lib/platform';
 import { Welcome } from './Welcome';
 import { WidgetOverview } from './WidgetOverview';
 import { ErrorState, LoadingState } from './States';
+import { RefreshButton } from './RefreshButton';
 
 /**
  * The menu-bar dropdown: the everyday glance. The overview, plus the few
@@ -85,6 +86,7 @@ export function PopoverApp(): JSX.Element {
         <span className="titlebar__brand">claudget</span>
         {plan ? <span className="titlebar__sub">{planName(plan)}</span> : null}
         <span className="titlebar__spacer" />
+        <RefreshButton />
         <span className={live ? 'titlebar__live titlebar__live--on' : 'titlebar__live'}>
           <span className="titlebar__live-dot" />
           {live ? 'Live' : 'Idle'}

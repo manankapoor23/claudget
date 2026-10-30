@@ -1,6 +1,7 @@
 import { useEffect, useState, type JSX } from 'react';
 import type { SnapshotHealth } from '@claude-widget/core';
 import { formatRelative } from '../lib/format';
+import { RefreshButton } from './RefreshButton';
 
 interface FooterProps {
   localUpdatedAt: number | null;
@@ -38,6 +39,7 @@ export function Footer({ localUpdatedAt, health, officialEnabled }: FooterProps)
           ? 'Waiting for usage data'
           : 'Updated ' + formatRelative(localUpdatedAt)}
       </span>
+      <RefreshButton className="footer__refresh" />
     </div>
   );
 }
