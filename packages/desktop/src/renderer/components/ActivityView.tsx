@@ -3,6 +3,7 @@ import type { LocalUsage } from '@claude-widget/core';
 import { formatCompact, formatUSD } from '../lib/format';
 import { useCostCopy } from '../lib/billing';
 import { BarChart } from './BarChart';
+import { sourceLabel } from '../lib/sessions';
 
 export function ActivityView({
   local,
@@ -18,6 +19,11 @@ export function ActivityView({
     value: metric === 'tokens' ? bucket.tokens.total : bucket.count,
   }));
   const total = metric === 'tokens' ? local.last24h.tokens.total : local.last24h.count;
+  // Only worth a panel once at least one transcript says where it ran.
+  const sources = local.perSource.some((s) => s.source !== null) ? local.perSource : [];
+  const sourceValue = (s: { tokens: { total: number }; count: number }): number =>
+    metric === 'tokens' ? s.tokens.total : s.count;
+  const sourceTotal = sources.reduce((sum, s) => sum + sourceValue(s), 0);
 
   return (
     <>
@@ -72,6 +78,33 @@ export function ActivityView({
           label={metric === 'tokens' ? 'Tokens per hour' : 'Requests per hour'}
         />
       </div>
+      {sources.length > 0 && sourceTotal > 0 ? (
+        <div className="panel">
+          <div className="panel__head">
+            <span className="panel__title">Where you used it</span>
+            <span className="panel__spacer" />
+            <span className="chart-total">last 30 days</span>
+          </div>
+          <div className="sources">
+            {sources.map((s) => {
+              const value = sourceValue(s);
+              const share = value / sourceTotal;
+              return (
+                <div className="source" key={s.source ?? 'unknown'}>
+                  <span className="source__name">{sourceLabel(s.source)}</span>
+                  <span className="source__bar" aria-hidden="true">
+                    <span style={{ width: `${share * 100}%` }} />
+                  </span>
+                  <span className="source__value">
+                    {metric === 'tokens' ? formatCompact(value) : value}
+                  </span>
+                  <span className="source__share">{Math.round(share * 100)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
       <div className="stat-grid stat-grid--three">
         <div className="stat stat--accent">
           <span className="stat__label">Today</span>

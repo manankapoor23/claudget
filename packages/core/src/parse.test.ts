@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseTranscriptContent, parseTranscriptLine } from './parse';
+import { parseTranscriptContent, parseTranscriptLine, sourceFromEntrypoint } from './parse';
 
 const ctx = { projectSlug: 'c--Dev-x', projectPath: 'x' };
 
@@ -98,5 +98,41 @@ describe('parseTranscriptContent', () => {
     ].join('\n');
     const entries = parseTranscriptContent(content, ctx);
     expect(entries.length).toBe(2);
+  });
+});
+
+describe('where a request was made (entrypoint)', () => {
+  it('maps the entrypoints Claude Code writes', () => {
+    expect(sourceFromEntrypoint('cli')).toBe('cli');
+    expect(sourceFromEntrypoint('claude-vscode')).toBe('vscode');
+    expect(sourceFromEntrypoint('claude-desktop')).toBe('desktop');
+    expect(sourceFromEntrypoint('sdk-cli')).toBe('sdk');
+    expect(sourceFromEntrypoint('sdk-ts')).toBe('sdk');
+    expect(sourceFromEntrypoint('something-new')).toBe('other');
+    expect(sourceFromEntrypoint('')).toBeNull();
+    expect(sourceFromEntrypoint(undefined)).toBeNull();
+    expect(sourceFromEntrypoint(42)).toBeNull();
+  });
+
+  it('tags an entry with its own entrypoint', () => {
+    const e = parseTranscriptLine(
+      assistant({ input_tokens: 1, output_tokens: 1 }, { entrypoint: 'claude-desktop' }),
+      ctx,
+    );
+    expect(e?.source).toBe('desktop');
+  });
+
+  it('carries the last entrypoint seen in the file to lines without one', () => {
+    const content = [
+      JSON.stringify({ type: 'user', entrypoint: 'claude-vscode', message: { content: 'hi' } }),
+      assistant({ input_tokens: 1, output_tokens: 1 }),
+    ].join('\n');
+    const [e] = parseTranscriptContent(content, ctx);
+    expect(e?.source).toBe('vscode');
+  });
+
+  it('leaves older transcripts without an entrypoint unknown', () => {
+    const e = parseTranscriptLine(assistant({ input_tokens: 1, output_tokens: 1 }), ctx);
+    expect(e?.source).toBeNull();
   });
 });

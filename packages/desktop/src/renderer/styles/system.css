@@ -1751,6 +1751,62 @@ body {
   font-size: 12px;
   color: var(--ink-3);
 }
+.st__names .st__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  font-size: inherit;
+  color: inherit;
+}
+/* Where the session ran: a quiet tag, not a button. */
+.st__names .st__src {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--fill);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+/* Activity: tokens per front end (CLI, VS Code, the Claude app…). */
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.source {
+  display: grid;
+  grid-template-columns: minmax(0, 9ch) minmax(0, 1fr) 7ch 4ch;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.source__name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.source__bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--track);
+}
+.source__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--tint);
+}
+.source__value,
+.source__share {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.source__share {
+  color: var(--ink-3);
+}
 .st__tokens {
   display: inline-flex;
   align-items: center;
