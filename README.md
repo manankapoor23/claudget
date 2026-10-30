@@ -73,6 +73,16 @@ I built it because I kept checking my usage again and again. I wanted something 
 
 Grab the latest build from the **[Releases page →](https://github.com/manankapoor23/claudget/releases/latest)**
 
+**On a Mac with [Homebrew](https://brew.sh):**
+
+```bash
+brew tap manankapoor23/tap
+brew trust manankapoor23/tap   # Homebrew 7+ only loads casks from taps you trust
+brew install --cask claudget
+```
+
+This also clears the first-launch block below for you, and `brew upgrade --cask claudget` gets new versions.
+
 **Which file do I download?** One per machine:
 
 | Your OS                       | File                              | Notes                     |
@@ -98,7 +108,7 @@ I'm not paying Apple/Microsoft to sign an open-source side project, so your OS w
 - **Windows** — SmartScreen → **More info** → **Run anyway**.
 - **Linux** — no prompt; `chmod +x` and run.
 
-Auto-update works on Windows/Linux. macOS being unsigned means no auto-update — grab new versions from Releases when you want them.
+Auto-update works on Windows/Linux. macOS being unsigned means no auto-update — grab new versions from Releases when you want them, or install with Homebrew and run `brew upgrade --cask claudget`.
 
 ## Screenshots
 

@@ -1,0 +1,80 @@
+name: Homebrew cask
+
+# When a release is published, point the cask in manankapoor23/homebrew-tap at
+# its DMGs. Checksums come from GitHub's own asset digests, so nothing is
+# downloaded. Needs the HOMEBREW_TAP_TOKEN secret: a fine-grained token with
+# Contents: read and write on manankapoor23/homebrew-tap only.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to point the cask at (e.g. v0.3.3)
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-cask
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: github.event_name == 'workflow_dispatch' || !github.event.release.prerelease
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Read the DMG checksums
+        id: dmg
+        run: |
+          set -euo pipefail
+          [ -n "$TAP_TOKEN" ] || { echo "::error::HOMEBREW_TAP_TOKEN secret is not set"; exit 1; }
+          [[ "$TAG" =~ ^v[0-9]+(\.[0-9]+){1,3}$ ]] || { echo "::error::unexpected tag '$TAG'"; exit 1; }
+          version="${TAG#v}"
+          digest() {
+            gh api "repos/$REPO/releases/tags/$TAG" \
+              --jq ".assets[] | select(.name == \"claudget-$version-$1.dmg\") | .digest" \
+              | sed -n 's/^sha256://p'
+          }
+          arm=$(digest arm64)
+          intel=$(digest x64)
+          [[ "$arm" =~ ^[0-9a-f]{64}$ && "$intel" =~ ^[0-9a-f]{64}$ ]] \
+            || { echo "::error::arm64/x64 DMG missing from $TAG"; exit 1; }
+          {
+            echo "version=$version"
+            echo "arm=$arm"
+            echo "intel=$intel"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update the cask
+        env:
+          VERSION: ${{ steps.dmg.outputs.version }}
+          ARM: ${{ steps.dmg.outputs.arm }}
+          INTEL: ${{ steps.dmg.outputs.intel }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "https://x-access-token:${TAP_TOKEN}@github.com/manankapoor23/homebrew-tap.git" tap
+          cd tap
+          cask=Casks/claudget.rb
+          sed -i -E \
+            -e "s/^  version \"[^\"]+\"/  version \"$VERSION\"/" \
+            -e "s/(sha256 arm: +\")[0-9a-f]{64}/\1$ARM/" \
+            -e "s/(intel: +\")[0-9a-f]{64}/\1$INTEL/" \
+            "$cask"
+          grep -q "version \"$VERSION\"" "$cask" && grep -q "$ARM" "$cask" && grep -q "$INTEL" "$cask" \
+            || { echo "::error::cask did not update as expected"; git diff; exit 1; }
+          if git diff --quiet; then
+            echo "Cask already at $VERSION"
+            exit 0
+          fi
+          git diff
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "claudget $VERSION"
+          git push
