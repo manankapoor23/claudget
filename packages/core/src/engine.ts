@@ -8,6 +8,7 @@ import { createLogger, type Logger } from './logger';
 import { OfficialPollScheduler, OfficialUsageClient, type PollReason } from './official';
 import { claudePaths, prettifyProjectSlug, type ClaudePaths } from './paths';
 import { DEFAULT_PRICING, type PricingTable } from './pricing';
+import { OpenCodeProvider, type UsageProvider } from './providers';
 import {
   EMPTY_CALIBRATION,
   estimateWindow,
@@ -40,6 +41,10 @@ import { watchTranscripts, type TranscriptWatcher } from './watch';
  */
 const LOCAL_QUIET_MS = 200;
 
+/** How often enabled providers read what's new, and how many reads between full passes. */
+const PROVIDER_POLL_MS = 5_000;
+const PROVIDER_FULL_EVERY = 60;
+
 /**
  * Config fields a {@link UsageSnapshot} actually depends on. Anything absent here
  * (opacity, theme, alwaysOnTop, ...) is presentation-only and cannot change a
@@ -55,6 +60,7 @@ const SNAPSHOT_AFFECTING_KEYS = [
   'currency',
   'dailyBudgetUSD',
   'monthlyBudgetUSD',
+  'opencodeUsage',
 ] as const satisfies readonly (keyof WidgetConfig)[];
 
 export interface UsageEngineOptions {
@@ -72,6 +78,8 @@ export interface UsageEngineOptions {
    * it's learned afresh each run (from the first reading, see calibration.ts).
    */
   calibrationStore?: CalibrationStore;
+  /** OpenCode database to read when `opencodeUsage` is on; found automatically when omitted. */
+  openCodeDbPath?: string | null;
 }
 
 /**
@@ -118,6 +126,11 @@ export class UsageEngine extends EventEmitter {
   private rescanTimer: NodeJS.Timeout | null = null;
   private started = false;
 
+  private readonly openCodeDbPath: string | null | undefined;
+  private providers: UsageProvider[] = [];
+  private providerTimer: NodeJS.Timeout | null = null;
+  private providerTicks = 0;
+
   constructor(opts: UsageEngineOptions) {
     super();
     this.config = opts.config;
@@ -135,6 +148,7 @@ export class UsageEngine extends EventEmitter {
       cliVersion: this.cliVersion,
     };
     this.official = this.createOfficialClient();
+    this.openCodeDbPath = opts.openCodeDbPath;
     this.calibrationStore = opts.calibrationStore ?? null;
     this.calibration = this.calibrationStore?.load() ?? EMPTY_CALIBRATION;
     this.officialScheduler = new OfficialPollScheduler({
@@ -171,6 +185,7 @@ export class UsageEngine extends EventEmitter {
     await this.fullRescan();
     this.startWatcher();
     this.scheduleRescan();
+    await this.applyProviders();
     this.scheduleOfficial();
     this.emitSnapshot();
   }
@@ -180,6 +195,7 @@ export class UsageEngine extends EventEmitter {
     this.officialScheduler.stop();
     if (this.rescanTimer) clearInterval(this.rescanTimer);
     this.rescanTimer = null;
+    await this.applyProviders();
     if (this.watcher) {
       await this.watcher.close();
       this.watcher = null;
@@ -218,6 +234,9 @@ export class UsageEngine extends EventEmitter {
     }
     if (this.config.fullRescanIntervalMs !== prev.fullRescanIntervalMs && this.started) {
       this.scheduleRescan();
+    }
+    if (this.config.opencodeUsage !== prev.opencodeUsage && this.started) {
+      void this.applyProviders().then(() => this.emitSnapshot());
     }
 
     // ponytail: a snapshot is a full re-aggregate of every entry plus a structured
@@ -353,12 +372,55 @@ export class UsageEngine extends EventEmitter {
     }
   }
 
-  private allEntries(): UsageEntry[] {
+  /** Claude Code's entries only: what plan limits, and so their estimates, count. */
+  private claudeEntries(): UsageEntry[] {
     const byKey = new Map<string, UsageEntry>();
     for (const list of this.transcripts.entryLists()) {
       for (const entry of list) byKey.set(entry.key, entry);
     }
     return [...byKey.values()];
+  }
+
+  private allEntries(): UsageEntry[] {
+    const claude = this.claudeEntries();
+    return this.providers.length === 0
+      ? claude
+      : claude.concat(...this.providers.map((p) => p.entries()));
+  }
+
+  // ── Usage providers ─────────────────────────────────────────────────────────
+
+  /**
+   * Starts or stops providers to match the config (all of them once stopped).
+   * A provider that isn't enabled is never constructed, so it reads nothing.
+   */
+  private async applyProviders(): Promise<void> {
+    const want = this.started && this.config.opencodeUsage;
+    const had = this.providers;
+    if (want === had.length > 0) return;
+    if (this.providerTimer) clearInterval(this.providerTimer);
+    this.providerTimer = null;
+    this.providers = [];
+    await Promise.all(had.map((p) => p.close()));
+    if (!want) return;
+    const opencode = new OpenCodeProvider({
+      logger: this.logger.child('opencode'),
+      dbPath: this.openCodeDbPath,
+    });
+    this.providers = [opencode];
+    await opencode.sync(true);
+    this.providerTicks = 0;
+    this.providerTimer = setInterval(() => void this.syncProviders(), PROVIDER_POLL_MS);
+    this.providerTimer.unref?.();
+  }
+
+  private async syncProviders(): Promise<void> {
+    const full = ++this.providerTicks % PROVIDER_FULL_EVERY === 0;
+    const results = await Promise.all(this.providers.map((p) => p.sync(full)));
+    if (results.some(Boolean)) {
+      this.localUpdatedAt = this.now();
+      this.emitSnapshot();
+    }
   }
 
   // ── Official data ─────────────────────────────────────────────────────────
@@ -411,7 +473,7 @@ export class UsageEngine extends EventEmitter {
     if (usage.fetchedAt === this.calibratedAt) return;
     const at = usage.fetchedAt;
     this.calibratedAt = at;
-    const entries = this.allEntries();
+    const entries = this.claudeEntries();
     const between = (from: number, to: number): number =>
       weightBetween(entries, from, to, this.pricing);
     let next = this.calibration;
@@ -543,7 +605,10 @@ export class UsageEngine extends EventEmitter {
       localUpdatedAt: this.localUpdatedAt,
       schemaVersion: SNAPSHOT_SCHEMA_VERSION,
       local,
-      official: this.officialSection(entries, now),
+      official: this.officialSection(
+        this.providers.length === 0 ? entries : entries.filter((e) => e.source === undefined),
+        now,
+      ),
       meta: this.meta,
       health: { ...this.health },
     };

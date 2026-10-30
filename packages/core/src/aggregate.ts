@@ -41,7 +41,7 @@ function emptyTAC(): TokenAndCost {
 
 function accumulate(tac: TokenAndCost, entry: UsageEntry, pricing: PricingTable): void {
   addTokensInto(tac.tokens, entry.tokens);
-  tac.costUSD += estimateCost(entry.tokens, entry.model, pricing).costUSD;
+  tac.costUSD += entry.costUSD ?? estimateCost(entry.tokens, entry.model, pricing).costUSD;
   tac.count += 1;
 }
 

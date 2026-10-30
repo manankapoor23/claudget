@@ -199,3 +199,51 @@ describe('UsageEngine live updates', () => {
     }
   }, 15_000);
 });
+
+describe('UsageEngine usage providers', () => {
+  it('reads OpenCode only while opencodeUsage is on', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudget-engine-oc-'));
+    const dbPath = path.join(dir, 'opencode.db');
+    const { DatabaseSync } = process.getBuiltinModule('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    db.exec(
+      'CREATE TABLE message (id text PRIMARY KEY, session_id text, time_created integer, time_updated integer, data text)',
+    );
+    db.prepare('INSERT INTO message VALUES (?, ?, ?, ?, ?)').run(
+      'msg_1',
+      'ses_1',
+      Date.now(),
+      Date.now(),
+      JSON.stringify({
+        role: 'assistant',
+        modelID: 'gpt-5',
+        tokens: { input: 40, output: 2, reasoning: 0, cache: { read: 0, write: 0 } },
+        cost: 0.5,
+        time: { created: Date.now(), completed: Date.now() },
+      }),
+    );
+    db.close();
+    const engine = new UsageEngine({
+      config: { ...DEFAULT_CONFIG, enableOfficial: false, claudeDir: path.join(dir, 'claude') },
+      logger: silent,
+      openCodeDbPath: dbPath,
+    });
+    let last: UsageSnapshot | null = null;
+    engine.on('snapshot', (s) => (last = s));
+    try {
+      await engine.start();
+      expect(engine.getSnapshot().local.allTime.count).toBe(0);
+
+      engine.updateConfig({ opencodeUsage: true });
+      await expect.poll(() => last?.local.allTime.count).toBe(1);
+      expect(last!.local.allTime.costUSD).toBe(0.5);
+      expect(last!.local.allTime.tokens.total).toBe(42);
+
+      engine.updateConfig({ opencodeUsage: false });
+      await expect.poll(() => last?.local.allTime.count).toBe(0);
+    } finally {
+      await engine.stop();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

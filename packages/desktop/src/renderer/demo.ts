@@ -238,6 +238,7 @@ export function createDemoData(): {
       monthlyBudgetUSD: 500,
       limitAlerts: true,
       limitAlertThresholds: [80, 95],
+      opencodeUsage: false,
       theme: 'dark',
       alwaysOnTop: false,
       clickThrough: false,
