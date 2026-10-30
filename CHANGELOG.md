@@ -5,14 +5,23 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
-## [Unreleased]
+## [0.3.4] — 2026-10-30
 
 ### Added
 
-- A refresh button in the menu-bar popover and beside "Updated …" in the
-  dashboard: rescans your transcripts and checks your plan limits now. After a
-  click it rests for 10 seconds, so repeated clicks can't hammer Anthropic's
-  rate-limited endpoint.
+- **A refresh button**, in the menu-bar popover beside Live and beside
+  "Updated …" in the dashboard. It rescans your transcripts and checks your
+  plan limits now. After a click it waits 10 seconds before the next one, so
+  repeated clicks can't hammer Anthropic's rate-limited endpoint.
+- **Where each session ran.** Sessions are tagged CLI, VS Code, Claude app or
+  Agent SDK, from what Claude Code already records in its transcripts, and
+  Activity shows how your last 30 days split between them. No new files are
+  read. The desktop app's Chat and Cowork keep no usage on your Mac, so they
+  still only show up in the plan %.
+- **Install with Homebrew on macOS**: `brew tap manankapoor23/tap`,
+  `brew trust manankapoor23/tap`, `brew install --cask claudget`. Then
+  `brew upgrade --cask claudget` gets new versions, and the first-launch
+  block is handled for you.
 
 ## [0.3.3] — 2026-10-15
 
