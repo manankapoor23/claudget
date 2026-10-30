@@ -74,8 +74,17 @@ func mix(_ a: NSColor, _ b: NSColor, _ t: CGFloat) -> NSColor {
 enum Metrics {
     /// The stroke, in points.
     static let lineWidth: CGFloat = 2.5
-    /// Approximate radius of the notch's bottom corners in hardware.
-    static let notchCornerRadius: CGFloat = 8
+    /// The cutout is smaller than NSScreen reports: `safeAreaInsets.top` is the
+    /// menu bar's height and the auxiliary areas stop short of its sides. This
+    /// much comes off each side and the bottom. In millimetres, because the
+    /// hardware is fixed while points per mm change with display scaling (and
+    /// a MacBook Air is scaled by default). Measured on a 14" MacBook Pro.
+    static let trimMM: CGFloat = 0.5
+    /// Radius of the cutout's bottom corners, in hardware.
+    static let cornerRadiusMM: CGFloat = 1.68
+    /// Points per mm on a 14" MacBook Pro at Default scaling, for when a
+    /// display reports no physical size.
+    static let fallbackPtPerMM: CGFloat = 1512 / 301.8
     /// The small outward curve where the line meets the top edge of the screen.
     static let flare: CGFloat = 4
     /// Gap between the hardware edge and the inner edge of the stroke.
@@ -96,6 +105,19 @@ struct Notch: Equatable {
     let scale: CGFloat
     let builtin: Bool
     let name: String
+    /// The cutout's bottom-corner radius, in points.
+    let cornerRadius: CGFloat
+}
+
+/// Calibration knobs for a notch the defaults don't fit, in points:
+/// CLAUDGET_NOTCH_TRIM="side,bottom" and CLAUDGET_NOTCH_RADIUS.
+enum Override {
+    static let env = ProcessInfo.processInfo.environment
+    static let trim: [CGFloat]? = {
+        let v = (env["CLAUDGET_NOTCH_TRIM"] ?? "").split(separator: ",").compactMap { Double($0) }
+        return v.isEmpty ? nil : [CGFloat(v[0]), CGFloat(v.count > 1 ? v[1] : v[0])]
+    }()
+    static let radius: CGFloat? = Double(env["CLAUDGET_NOTCH_RADIUS"] ?? "").map { CGFloat($0) }
 }
 
 func findNotch() -> Notch? {
@@ -116,13 +138,19 @@ func findNotch() -> Notch? {
         let w = r.minX - l.maxX
         guard w > 40, w < f.width / 2, h > 10, h < 80 else { continue }
         let id = s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
+        let mm = CGDisplayScreenSize(id).width
+        let ptPerMM = mm > 0 ? f.width / mm : Metrics.fallbackPtPerMM
+        let side = Override.trim?[0] ?? Metrics.trimMM * ptPerMM
+        let bottom = Override.trim?[1] ?? Metrics.trimMM * ptPerMM
         found.append(Notch(
-            rect: NSRect(x: l.maxX, y: f.maxY - h, width: w, height: h),
+            rect: NSRect(x: l.maxX + side, y: f.maxY - h + bottom,
+                         width: w - 2 * side, height: h - bottom),
             screenFrame: f,
             menuBarBottom: min(f.maxY - h, s.visibleFrame.maxY),
             scale: s.backingScaleFactor,
             builtin: CGDisplayIsBuiltin(id) != 0,
-            name: s.localizedName))
+            name: s.localizedName,
+            cornerRadius: Override.radius ?? Metrics.cornerRadiusMM * ptPerMM))
     }
     return found.first(where: { $0.builtin }) ?? found.first
 }
@@ -134,6 +162,7 @@ func notchInfo(_ n: Notch?) -> [String: Any] {
         "width": n.rect.width, "height": n.rect.height,
         "x": n.rect.minX, "y": n.rect.minY,
         "scale": n.scale, "builtin": n.builtin, "screen": n.name,
+        "radius": n.cornerRadius,
     ]
 }
 
@@ -161,12 +190,12 @@ struct Outline {
 
     /// `notch` is the cutout in the view's coordinates (y up); `top` is the
     /// screen's top edge in the same coordinates.
-    init(notch r: CGRect, top: CGFloat) {
+    init(notch r: CGRect, top: CGFloat, radius: CGFloat) {
         let d = Metrics.lineWidth / 2 + Metrics.gap
         let f = Metrics.flare
         let x0 = r.minX - d, x1 = r.maxX + d
         let yBot = r.minY - d
-        let rad = min(Metrics.notchCornerRadius + d, (x1 - x0) / 2, (top - yBot) / 2)
+        let rad = min(radius + d, (x1 - x0) / 2, (top - yBot) / 2)
         let half = CGFloat.pi / 2
         segs = [
             .arc(center: CGPoint(x: x0 - f, y: top - f), radius: f, from: half, to: 0, clockwise: true),
@@ -361,8 +390,8 @@ final class NotchLineView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     /// `notch` in this view's coordinates; the view's top is the screen's top.
-    func setGeometry(notch: CGRect, scale: CGFloat) {
-        let o = Outline(notch: notch, top: bounds.height)
+    func setGeometry(notch: CGRect, radius: CGFloat, scale: CGFloat) {
+        let o = Outline(notch: notch, top: bounds.height, radius: radius)
         outline = o
         self.scale = scale
         CATransaction.begin()
@@ -802,7 +831,7 @@ final class Controller: NSObject {
         lineWindow.setFrame(lineFrame, display: false)
         lineView.frame = NSRect(origin: .zero, size: lineFrame.size)
         lineView.setGeometry(notch: NSRect(x: mx, y: my, width: n.rect.width, height: n.rect.height),
-                             scale: n.scale)
+                             radius: n.cornerRadius, scale: n.scale)
         // Just inside the cutout, so the edges never overlap a lit pixel.
         zoneWindow.setFrame(n.rect.insetBy(dx: 2, dy: 0).offsetBy(dx: 0, dy: 0), display: false)
         let size = NotchCardView.size
@@ -954,6 +983,7 @@ enum RenderTest {
         let real = findNotch()
         let notchSize = real?.rect.size ?? NSSize(width: 185, height: 32)
         let menuBar = real.map { $0.screenFrame.maxY - $0.menuBarBottom } ?? 33
+        let radius = real?.cornerRadius ?? Metrics.cornerRadiusMM * Metrics.fallbackPtPerMM
         var scenes: [Scene] = []
         for p in [0.0, 25, 62, 90, 100] {
             scenes.append(Scene(name: "line-\(Int(p))-dark", pct: p, estimated: false, times: [nil, 0, 0.5, 1.0], light: false, card: false))
@@ -968,7 +998,7 @@ enum RenderTest {
         var rows: [(String, CGImage)] = []
         for sc in scenes {
             for t in sc.times {
-                let img = render(sc, t: t, notchSize: notchSize, menuBar: menuBar)
+                let img = render(sc, t: t, notchSize: notchSize, radius: radius, menuBar: menuBar)
                 let tag = t.map { String(format: "t%.1f", $0) } ?? "static"
                 let path = "\(dir)/\(sc.name)-\(tag).png"
                 write(img, to: path)
@@ -985,13 +1015,13 @@ enum RenderTest {
         let sc = Scene(name: "loop", pct: 62, estimated: false, times: [], light: false, card: false)
         for i in 0..<36 {
             let t = Double(i) * 0.1
-            strip.append((String(format: "t=%.1fs", t), render(sc, t: t, notchSize: notchSize, menuBar: menuBar)))
+            strip.append((String(format: "t=%.1fs", t), render(sc, t: t, notchSize: notchSize, radius: radius, menuBar: menuBar)))
         }
         write(contactSheet(strip, columns: 6), to: "\(dir)/loop-62.png")
         print("\(dir)/loop-62.png")
     }
 
-    static func render(_ sc: Scene, t: Double?, notchSize: NSSize, menuBar: CGFloat) -> CGImage {
+    static func render(_ sc: Scene, t: Double?, notchSize: NSSize, radius r: CGFloat, menuBar: CGFloat) -> CGImage {
         let scale: CGFloat = 2
         let W: CGFloat = max(notchSize.width + 240, NotchCardView.size.width + 80)
         let H: CGFloat = sc.card ? menuBar + NotchCardView.size.height + 20 : menuBar + 40
@@ -1020,7 +1050,6 @@ enum RenderTest {
 
         let notch = CGRect(x: (W - notchSize.width) / 2, y: H - notchSize.height, width: notchSize.width, height: notchSize.height)
         let hw = CGMutablePath()
-        let r = Metrics.notchCornerRadius
         hw.move(to: CGPoint(x: notch.minX, y: H))
         hw.addLine(to: CGPoint(x: notch.minX, y: notch.minY + r))
         hw.addArc(center: CGPoint(x: notch.minX + r, y: notch.minY + r), radius: r, startAngle: .pi, endAngle: 1.5 * .pi, clockwise: false)
@@ -1058,7 +1087,7 @@ enum RenderTest {
         // The line view, exactly as the live window lays it out.
         let mx = Metrics.marginX, my = Metrics.marginY
         let view = NotchLineView(frame: NSRect(x: 0, y: 0, width: notch.width + 2 * mx, height: notch.height + my))
-        view.setGeometry(notch: NSRect(x: mx, y: my, width: notch.width, height: notch.height), scale: scale)
+        view.setGeometry(notch: NSRect(x: mx, y: my, width: notch.width, height: notch.height), radius: r, scale: scale)
         view.set(LineModel(pct: CGFloat(sc.pct / 100), tone: toneFor(sc.pct), estimated: sc.estimated), animated: false)
         view.pose(at: t)
         ctx.saveGState()
