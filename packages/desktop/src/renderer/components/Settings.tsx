@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
 import type { NotificationStatus, WidgetConfig } from '@shared/ipc';
 import { notificationStatusLine, settingsAppName } from '../../shared/notifications';
 import { IS_MAC as MAC, PLATFORM } from '../lib/platform';
@@ -8,6 +8,7 @@ import { SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
 import { useTheme } from '../lib/theme';
+import { ColorWheel, NotchPreview } from './ColorWheel';
 import { BellIcon, DataIcon, ExternalIcon, InfoIcon, SettingsIcon } from './icons';
 import logoUrl from '../assets/claudget-logo.png';
 
@@ -218,53 +219,21 @@ function MoneyInput({
   );
 }
 
-/**
- * A round colour well. Clicking it opens the system colour picker (the colour
- * wheel on macOS); the dot follows while you drag, and the choice is saved
- * once you pause, so dragging isn't a stream of config writes.
- */
-function ColorWell({
-  label,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  disabled: boolean;
-  onChange: (hex: string) => void;
-}): JSX.Element {
-  const [draft, setDraft] = useState(value);
-  useEffect(() => setDraft(value), [value]);
-  useEffect(() => {
-    if (draft === value) return;
-    const t = setTimeout(() => onChange(draft), 150);
-    return () => clearTimeout(t);
-  }, [draft, value, onChange]);
-  return (
-    <span
-      className={disabled ? 'cwell cwell--off' : 'cwell'}
-      style={{ ['--swatch' as string]: draft }}
-    >
-      <input
-        type="color"
-        className="cwell__input"
-        aria-label={label}
-        value={draft}
-        disabled={disabled}
-        onChange={(e) => setDraft(e.target.value.toLowerCase())}
-      />
-    </span>
-  );
-}
-
 const NOTCH_LEVELS: Array<{ tone: keyof NotchColors; label: string; hint: string }> = [
   { tone: 'ok', label: 'Low', hint: 'Under 70%' },
   { tone: 'warn', label: 'Medium', hint: '70 to 89%' },
   { tone: 'bad', label: 'High', hint: '90% and up' },
 ];
 
-/** The notch line's colour at each level of the 5-hour limit. */
+const sameColors = (a: NotchColors, b: NotchColors): boolean =>
+  a.ok === b.ok && a.warn === b.warn && a.bad === b.bad;
+
+/**
+ * The notch line's colour at each level of the 5-hour limit. Clicking a dot
+ * opens a colour wheel under it; the dot and the preview follow the wheel,
+ * and the choice is saved once you pause, so dragging isn't a stream of
+ * config writes.
+ */
 function NotchColorRows({
   colors,
   disabled,
@@ -274,28 +243,55 @@ function NotchColorRows({
   disabled: boolean;
   onChange: (colors: NotchColors) => void;
 }): JSX.Element {
-  const custom = NOTCH_LEVELS.some(
-    (l) => colors[l.tone].toLowerCase() !== DEFAULT_NOTCH_COLORS[l.tone],
-  );
+  const [open, setOpen] = useState<keyof NotchColors | null>(null);
+  const [draft, setDraft] = useState(colors);
+  useEffect(() => setDraft(colors), [colors]);
+  useEffect(() => {
+    if (sameColors(draft, colors)) return;
+    const t = setTimeout(() => onChange(draft), 150);
+    return () => clearTimeout(t);
+  }, [draft, colors, onChange]);
+  const custom = !sameColors(draft, DEFAULT_NOTCH_COLORS);
   return (
     <>
-      {NOTCH_LEVELS.map((l) => (
-        <Row key={l.tone} label={l.label} hint={l.hint}>
-          <ColorWell
-            label={`${l.label} colour`}
-            value={colors[l.tone]}
-            disabled={disabled}
-            onChange={(hex) => onChange({ ...colors, [l.tone]: hex })}
-          />
-        </Row>
-      ))}
+      {NOTCH_LEVELS.map((l) => {
+        const isOpen = open === l.tone && !disabled;
+        return (
+          <Fragment key={l.tone}>
+            <Row label={l.label} hint={l.hint}>
+              <button
+                type="button"
+                className={isOpen ? 'cdot cdot--open' : 'cdot'}
+                style={{ ['--swatch' as string]: draft[l.tone] }}
+                aria-label={`${l.label} colour, ${draft[l.tone]}`}
+                aria-expanded={isOpen}
+                disabled={disabled}
+                onClick={() => setOpen(isOpen ? null : l.tone)}
+              />
+            </Row>
+            {isOpen ? (
+              <div className="srow srow--wheel">
+                <ColorWheel
+                  label={`${l.label} colour`}
+                  value={draft[l.tone]}
+                  onChange={(hex) => setDraft((d) => ({ ...d, [l.tone]: hex }))}
+                />
+                <div className="cwheel__side">
+                  <NotchPreview color={draft[l.tone]} />
+                  <code className="cwheel__hex">{draft[l.tone]}</code>
+                </div>
+              </div>
+            ) : null}
+          </Fragment>
+        );
+      })}
       {custom ? (
         <Row label="Default colours" hint="Orange, amber and red.">
           <button
             type="button"
             className="chip"
             disabled={disabled}
-            onClick={() => onChange(DEFAULT_NOTCH_COLORS)}
+            onClick={() => setDraft(DEFAULT_NOTCH_COLORS)}
           >
             Reset
           </button>
