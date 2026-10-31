@@ -25,24 +25,6 @@ export type NotchColors = WidgetConfig['notchColors'];
 export type NotchPrefs = Pick<WidgetConfig, 'notchCard' | 'notchColors'>;
 
 /**
- * Colours to pick from in Settings. All bright enough to read against the
- * notch's black; the first three are the defaults.
- */
-export const NOTCH_SWATCHES: ReadonlyArray<{ hex: string; name: string }> = [
-  { hex: '#ff6b1f', name: 'Orange' },
-  { hex: '#ffb224', name: 'Amber' },
-  { hex: '#ff453a', name: 'Red' },
-  { hex: '#ffd60a', name: 'Yellow' },
-  { hex: '#30d158', name: 'Green' },
-  { hex: '#63e6e2', name: 'Mint' },
-  { hex: '#64d2ff', name: 'Cyan' },
-  { hex: '#0a84ff', name: 'Blue' },
-  { hex: '#bf5af2', name: 'Purple' },
-  { hex: '#ff375f', name: 'Pink' },
-  { hex: '#f2f2f7', name: 'White' },
-];
-
-/**
  * Orange, amber, red: core's defaults, repeated here because the renderer
  * imports this file and must not pull in core's runtime.
  */

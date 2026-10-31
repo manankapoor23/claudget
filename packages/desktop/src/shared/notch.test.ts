@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, type OfficialWindow, type UsageSnapshot } from '@claude-widget/core';
-import { DEFAULT_NOTCH_COLORS, NOTCH_SWATCHES, notchPayload } from './notch';
+import { DEFAULT_NOTCH_COLORS, notchPayload } from './notch';
 import { H, NOW, win } from './test-helpers';
 
 function snap(windows: OfficialWindow[], available = true): UsageSnapshot {
@@ -60,11 +60,8 @@ describe('notchPayload', () => {
     expect(JSON.stringify(p)).not.toBe(JSON.stringify(notchPayload(s, NOW)));
   });
 
-  it("matches core's default colours, and offers them first among the swatches", () => {
+  it("matches core's default colours", () => {
     expect(DEFAULT_NOTCH_COLORS).toEqual(DEFAULT_CONFIG.notchColors);
-    const { ok, warn, bad } = DEFAULT_NOTCH_COLORS;
-    expect(NOTCH_SWATCHES.slice(0, 3).map((c) => c.hex)).toEqual([ok, warn, bad]);
-    expect(new Set(NOTCH_SWATCHES.map((c) => c.hex)).size).toBe(NOTCH_SWATCHES.length);
   });
 
   it('clamps out-of-range readings', () => {

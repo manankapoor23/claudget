@@ -3,7 +3,7 @@ import type { NotificationStatus, WidgetConfig } from '@shared/ipc';
 import { notificationStatusLine, settingsAppName } from '../../shared/notifications';
 import { IS_MAC as MAC, PLATFORM } from '../lib/platform';
 import { trayName } from '../../shared/copy';
-import { DEFAULT_NOTCH_COLORS, NOTCH_SWATCHES, type NotchColors } from '../../shared/notch';
+import { DEFAULT_NOTCH_COLORS, type NotchColors } from '../../shared/notch';
 import { SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
@@ -218,8 +218,12 @@ function MoneyInput({
   );
 }
 
-/** One colour per swatch, picked like a radio button. */
-function Swatches({
+/**
+ * A round colour well. Clicking it opens the system colour picker (the colour
+ * wheel on macOS); the dot follows while you drag, and the choice is saved
+ * once you pause, so dragging isn't a stream of config writes.
+ */
+function ColorWell({
   label,
   value,
   disabled,
@@ -230,26 +234,27 @@ function Swatches({
   disabled: boolean;
   onChange: (hex: string) => void;
 }): JSX.Element {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  useEffect(() => {
+    if (draft === value) return;
+    const t = setTimeout(() => onChange(draft), 150);
+    return () => clearTimeout(t);
+  }, [draft, value, onChange]);
   return (
-    <div className="swatches" role="radiogroup" aria-label={label}>
-      {NOTCH_SWATCHES.map((sw) => {
-        const on = sw.hex === value.toLowerCase();
-        return (
-          <button
-            key={sw.hex}
-            type="button"
-            role="radio"
-            aria-checked={on}
-            aria-label={sw.name}
-            title={sw.name}
-            disabled={disabled}
-            className={on ? 'swatch swatch--on' : 'swatch'}
-            style={{ ['--swatch' as string]: sw.hex }}
-            onClick={() => onChange(sw.hex)}
-          />
-        );
-      })}
-    </div>
+    <span
+      className={disabled ? 'cwell cwell--off' : 'cwell'}
+      style={{ ['--swatch' as string]: draft }}
+    >
+      <input
+        type="color"
+        className="cwell__input"
+        aria-label={label}
+        value={draft}
+        disabled={disabled}
+        onChange={(e) => setDraft(e.target.value.toLowerCase())}
+      />
+    </span>
   );
 }
 
@@ -276,7 +281,7 @@ function NotchColorRows({
     <>
       {NOTCH_LEVELS.map((l) => (
         <Row key={l.tone} label={l.label} hint={l.hint}>
-          <Swatches
+          <ColorWell
             label={`${l.label} colour`}
             value={colors[l.tone]}
             disabled={disabled}
