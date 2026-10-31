@@ -5,6 +5,28 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.6] — 2026-10-31
+
+### Added
+
+- **Notch line colours.** Settings → General → Notch line colours: pick the
+  line's colour for low (under 70%), medium (70 to 89%) and high (90% and up)
+  from a colour wheel, with a preview of the notch. The hover card's bar
+  follows. Reset brings back orange, amber and red.
+- **Mac update notice.** Every 6 hours claudget asks GitHub whether a newer
+  version is out. If one is, the menu-bar dropdown and Settings → About say
+  so. **Download** fetches the installer for your Mac, checks it against
+  GitHub's SHA-256 and opens it, without the "damaged" warning. Installed with
+  Homebrew, it shows `brew upgrade claudget` instead. Only versions after
+  0.3.6 can be announced this way, so this one still comes by hand.
+- **Settings → Data → Check for new versions.** Switch update checks off on
+  every platform, Windows and Linux auto-update included.
+
+### Changed
+
+- The limits poll row in Settings → Data is now **Check limits**, so it doesn't
+  read like the update check.
+
 ## [0.3.5] — 2026-10-31
 
 ### Added
@@ -274,6 +296,9 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.6]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.6
+[0.3.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.5
+[0.3.4]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.4
 [0.3.3]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.3
 [0.3.2]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.2
 [0.3.1]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.1
