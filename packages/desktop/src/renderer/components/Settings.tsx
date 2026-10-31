@@ -281,7 +281,7 @@ function General({
         {MAC && notch === true ? (
           <Row
             label="Notch card"
-            hint="Hovering the notch shows both limits. Turn off if another notch app uses the hover."
+            hint="Hover the notch for both limits, click it to open claudget. Turn off if another notch app needs the notch; the line stays."
             htmlFor="set-notch-card"
           >
             <Toggle
