@@ -67,7 +67,7 @@ I built it because I kept checking my usage again and again. I wanted something 
 - **Dashboard** — Overview, Activity, Sessions and Insights: how close each recent 5-hour and weekly window came to the limit, how often you hit it, sessions by project, and an estimate of what it would cost at API prices (with optional daily / monthly budgets).
 - **Works offline** for everything local — tokens, sessions, per-model breakdown, ~5h blocks, burn rate and hourly activity, all computed from your transcripts.
 - **Dark / light / system** theme, and SF Pro on the Mac so it looks like part of the OS.
-- **Read-only &amp; private** — never writes to `~/.claude`, never logs your token. The only network calls are Anthropic's usage endpoint and, on Windows/Linux, update checks against GitHub Releases. ([details](#security--privacy))
+- **Read-only &amp; private** — never writes to `~/.claude`, never logs your token. The only network calls are Anthropic's usage endpoint and a check for new versions against GitHub Releases (switch it off in Settings → Data). ([details](#security--privacy))
 
 ## Download &amp; install
 
@@ -108,7 +108,7 @@ I'm not paying Apple/Microsoft to sign an open-source side project, so your OS w
 - **Windows** — SmartScreen → **More info** → **Run anyway**.
 - **Linux** — no prompt; `chmod +x` and run.
 
-Auto-update works on Windows/Linux. macOS being unsigned means no auto-update — grab new versions from Releases when you want them, or install with Homebrew and run `brew upgrade --cask claudget`.
+Auto-update works on Windows/Linux. macOS builds are unsigned, so a Mac can't install updates by itself: when a new version is out, claudget says so in the menu-bar dropdown and **Download** fetches the installer for you (checked against GitHub's SHA-256, and without the "damaged" warning). Installed with Homebrew? It shows `brew upgrade claudget` instead.
 
 ## Screenshots
 
@@ -193,7 +193,7 @@ If the endpoint is unreachable (offline, expired login, rate-limited), it shows 
 
 The whole point is that it's boring and trustworthy. It's also open source, so you don't have to take my word — you can check:
 
-- **One network endpoint in the code:** `api.anthropic.com` (the official usage check). On Windows/Linux the auto-updater also checks **GitHub Releases**. That's it — no telemetry, no analytics, no other servers.
+- **One network endpoint in the code:** `api.anthropic.com` (the official usage check). Every 6 hours it also asks **GitHub Releases** whether a newer claudget is out (Windows/Linux install it; a Mac shows a notice). Switch that off in Settings → Data. That's it — no telemetry, no analytics, no other servers.
 - **Your OAuth token** is read from the Keychain / credentials file and sent **only** to `api.anthropic.com`. It's never logged. Only non-secret fields (subscription type, rate-limit tier, scopes, org UUID) ever appear in snapshots/logs.
 - **Strictly read-only** on `~/.claude` — it never writes there. App state (config, window position, logs) stays in the app's own user-data dir.
 - **The binary matches the source:** every release is built by GitHub Actions from the tagged public commit, not hand-uploaded.

@@ -11,7 +11,7 @@ import type {
   UsageSnapshot,
   UsageSource,
 } from '@claude-widget/core';
-import type { AppInfo, LimitHistory, WidgetConfig } from '@shared/ipc';
+import type { AppInfo, LimitHistory, UpdateInfo, WidgetConfig } from '@shared/ipc';
 
 function tokenCounts(total: number): TokenCounts {
   const input = Math.round(total * 0.54);
@@ -57,6 +57,7 @@ export function createDemoData(): {
   config: WidgetConfig;
   appInfo: AppInfo;
   history: LimitHistory;
+  update: UpdateInfo | null;
 } {
   const now = Date.now();
   const activeStart = now - 92 * 60_000;
@@ -259,6 +260,7 @@ export function createDemoData(): {
       notchLine: true,
       notchCard: true,
       notchColors: { ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' },
+      checkForUpdates: true,
       opacity: 1,
       showInTaskbar: true,
       launchOnLogin: false,
@@ -277,6 +279,21 @@ export function createDemoData(): {
       trayAvailable: true,
       notch: true,
     },
+    // `?update` shows the macOS update notice; `?update=brew` as a Homebrew install.
+    update: demoUpdate(new URLSearchParams(window.location.search).get('update')),
+  };
+}
+
+function demoUpdate(param: string | null): UpdateInfo | null {
+  if (param === null) return null;
+  const tag = 'https://github.com/manankapoor23/claudget/releases/tag/v0.3.6';
+  return {
+    version: '0.3.6',
+    current: '0.3.5',
+    downloadUrl: tag,
+    sha256: null,
+    notesUrl: tag,
+    viaHomebrew: param === 'brew',
   };
 }
 

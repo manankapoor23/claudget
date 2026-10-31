@@ -9,6 +9,7 @@ import { useStore } from '../store';
 import { getBridge } from '../lib/api';
 import { useTheme } from '../lib/theme';
 import { ColorWheel, NotchPreview } from './ColorWheel';
+import { UpdateActions } from './UpdateNotice';
 import { BellIcon, DataIcon, ExternalIcon, InfoIcon, SettingsIcon } from './icons';
 import logoUrl from '../assets/claudget-logo.png';
 
@@ -299,6 +300,13 @@ function NotchColorRows({
       ) : null}
     </>
   );
+}
+
+/** What the update check does here: Windows and Linux install it, a Mac says so. */
+function updatesHint(platform: string): string {
+  return platform === 'darwin'
+    ? 'Asks GitHub every 6 hours and tells you when a newer claudget is out.'
+    : 'Asks GitHub every 6 hours and installs a newer claudget when you quit.';
 }
 
 /** The Notch line's hint: what it does, or why it can't. */
@@ -597,7 +605,7 @@ function Data({
           />
         </Row>
         {c.enableOfficial ? (
-          <Row label="Check for updates" hint={status ?? undefined} htmlFor="set-poll">
+          <Row label="Check limits" hint={status ?? undefined} htmlFor="set-poll">
             <Select
               id="set-poll"
               value={c.officialPollIntervalMs}
@@ -606,6 +614,15 @@ function Data({
             />
           </Row>
         ) : null}
+      </Group>
+      <Group title="Updates">
+        <Row label="Check for new versions" hint={updatesHint(PLATFORM)} htmlFor="set-updates">
+          <Toggle
+            id="set-updates"
+            on={c.checkForUpdates}
+            onChange={(checkForUpdates) => set({ checkForUpdates })}
+          />
+        </Row>
       </Group>
       <Group title="Local usage">
         <Row
@@ -658,6 +675,7 @@ function Data({
 
 function About(): JSX.Element {
   const appInfo = useStore((s) => s.appInfo);
+  const update = useStore((s) => s.update);
   return (
     <div className="about">
       <img className="about__icon" src={logoUrl} alt="" />
@@ -665,9 +683,21 @@ function About(): JSX.Element {
       <p className="about__version">Version {appInfo?.appVersion ?? '—'}</p>
       <p className="about__line">
         Claude Code usage in your {trayName(PLATFORM)}. Reads your local transcripts. The only
-        things it fetches are your plan limits, from Anthropic, and updates, from GitHub on Windows
-        and Linux.
+        things it fetches are your plan limits, from Anthropic, and new versions, from GitHub.
       </p>
+      {update ? (
+        <Group>
+          <div className="srow srow--update">
+            <div className="srow__text">
+              <span className="srow__label">Version {update.version} is out</span>
+              {update.viaHomebrew ? (
+                <span className="srow__hint">Installed with Homebrew. Update from Terminal:</span>
+              ) : null}
+            </div>
+            <UpdateActions update={update} />
+          </div>
+        </Group>
+      ) : null}
       <Group>
         <Row label="Claude Code">
           <span className="srow__static">{appInfo?.cliVersion ?? 'Not detected'}</span>

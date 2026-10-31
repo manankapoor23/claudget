@@ -6,6 +6,7 @@ import { planName } from '../lib/billing';
 import { rankLimits, shownWindows, verdictFor } from '../../shared/limits';
 import { matchesShortcut, SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { PLATFORM } from '../lib/platform';
+import { UpdateNotice } from './UpdateNotice';
 import { Welcome } from './Welcome';
 import { WidgetOverview } from './WidgetOverview';
 import { ErrorState, LoadingState } from './States';
@@ -96,6 +97,7 @@ export function PopoverApp(): JSX.Element {
       <div className="body">
         <div className="pop__content" ref={content}>
           {appInfo?.firstRun ? <Welcome /> : null}
+          <UpdateNotice />
           {loading ? (
             <LoadingState />
           ) : error || !snapshot || !config ? (

@@ -343,7 +343,7 @@ export default function Home() {
               limits.
             </p>
             <p>
-              <b>Nothing else leaves</b>, apart from an update check to GitHub on Windows and Linux.
+              <b>Nothing else leaves</b>, apart from a check for new versions on GitHub.
               The app has no analytics, no account, and never logs your token.
             </p>
           </div>

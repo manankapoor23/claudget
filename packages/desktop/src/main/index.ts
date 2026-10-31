@@ -5,6 +5,7 @@ import {
   globalShortcut,
   Menu,
   nativeTheme,
+  net,
   powerMonitor,
   screen,
   shell,
@@ -41,6 +42,13 @@ import { LimitHistoryStore } from './limit-history';
 import { MiniBar } from './minibar';
 import { APP_ID, Notifier } from './notifier';
 import { NotchLine, resolveNotchHelper } from './notch';
+import {
+  CHECK_INTERVAL_MS,
+  FIRST_CHECK_DELAY_MS,
+  MacUpdateCheck,
+  downloadInstaller,
+  installedViaHomebrew,
+} from './update-check';
 import { SettingsWindow } from './settings-window';
 import { Pill } from './pill';
 import { Popover } from './popover';
@@ -394,6 +402,77 @@ if (!singleInstanceLock) {
       engine.on('snapshot', (s) => notch.update(notchPayload(s, Date.now(), config)));
     }
 
+    // Updates, from GitHub Releases. Windows and Linux update themselves
+    // (electron-updater; its feed comes from electron-builder's publish block).
+    // A Mac can't: the builds are ad-hoc signed and Squirrel.Mac only installs
+    // an update signed with the same Developer ID, so there claudget says a
+    // newer version is out and where to get it. Packaged builds only;
+    // `CLAUDGET_UPDATE_AS=<version>` checks from a dev build as that version.
+    const updateAs = process.env['CLAUDGET_UPDATE_AS'];
+    const updatesOn = app.isPackaged || Boolean(updateAs);
+    const macUpdates =
+      MAC && updatesOn
+        ? new MacUpdateCheck({
+            currentVersion: updateAs || app.getVersion(),
+            arch: process.arch,
+            viaHomebrew: installedViaHomebrew(),
+            logger: logger.child('update'),
+            fetchJson: async (url) => {
+              const res = await net.fetch(url, {
+                headers: {
+                  Accept: 'application/vnd.github+json',
+                  'User-Agent': `claudget/${app.getVersion()}`,
+                },
+              });
+              if (!res.ok) throw new Error(`HTTP ${res.status}`);
+              return res.json();
+            },
+            onChange: (update) => broadcast(IPC.UpdatePush, update),
+          })
+        : null;
+    const checkForUpdates = (): void => {
+      if (!config.checkForUpdates) return;
+      if (macUpdates) void macUpdates.check();
+      else if (!MAC && app.isPackaged) {
+        autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+          logger.warn('Update check failed', { err: String(err) });
+        });
+      }
+    };
+    if (updatesOn) {
+      setTimeout(checkForUpdates, FIRST_CHECK_DELAY_MS);
+      setInterval(checkForUpdates, CHECK_INTERVAL_MS);
+    }
+    // Download → the DMG in Downloads, checked and opened; a second click while
+    // it downloads waits for the same one. Failing that, the release page.
+    let installer: Promise<boolean> | null = null;
+    const openUpdate = async (what: 'download' | 'notes'): Promise<boolean> => {
+      const update = macUpdates?.update;
+      if (!update) return false;
+      if (what === 'notes') {
+        await shell.openExternal(update.notesUrl);
+        return true;
+      }
+      installer ??= (async () => {
+        try {
+          const file = await downloadInstaller(update, app.getPath('downloads'), (u) =>
+            net.fetch(u),
+          );
+          logger.info('Update downloaded', { file });
+          const err = await shell.openPath(file);
+          if (err) throw new Error(err);
+          return true;
+        } catch (err) {
+          logger.warn('Update download failed', { err: String(err) });
+          await shell.openExternal(update.notesUrl);
+          return false;
+        } finally {
+          installer = null;
+        }
+      })();
+      return installer;
+    };
+
     // Clicking an alert opens the glance, like relaunching does.
     const notifier = new Notifier(logger, () => onSecondInstance());
     notifier.init();
@@ -440,6 +519,10 @@ if (!singleInstanceLock) {
       notch?.setEnabled(notchWanted(config));
       if (config.notchCard !== prev.notchCard || config.notchColors !== prev.notchColors) {
         notch?.update(notchPayload(engine.getSnapshot(), Date.now(), config));
+      }
+      if (config.checkForUpdates !== prev.checkForUpdates) {
+        if (config.checkForUpdates) checkForUpdates();
+        else macUpdates?.clear();
       }
       if (config.launchOnLogin !== prev.launchOnLogin) {
         app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });
@@ -521,6 +604,8 @@ if (!singleInstanceLock) {
       shapePill: (rect, radius) => pill.peek()?.setShapeFrom(rect, radius),
       fitPopover: (h) => popover.peek()?.setContentHeight(h),
       notifier,
+      getUpdate: () => macUpdates?.update ?? null,
+      openUpdate,
       quit,
     });
 
@@ -616,18 +701,5 @@ if (!singleInstanceLock) {
       log: (msg, data) => logger.info(msg, data),
     });
     runNotificationSelfTest(notifier, (msg, data) => logger.info(msg, data));
-
-    // Auto-update from GitHub Releases (config comes from electron-builder's
-    // publish block). Windows/Linux only: macOS builds are unsigned and
-    // Squirrel.Mac refuses to update without a valid signature. Packaged only.
-    if (app.isPackaged && process.platform !== 'darwin') {
-      const check = (): void => {
-        autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-          logger.warn('Update check failed', { err: String(err) });
-        });
-      };
-      check();
-      setInterval(check, 6 * 60 * 60 * 1000); // re-check every 6h
-    }
   }
 }

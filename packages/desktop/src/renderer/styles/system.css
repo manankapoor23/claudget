@@ -1623,6 +1623,72 @@ body {
 .welcome .btn2 {
   align-self: flex-start;
 }
+/* macOS: a newer claudget is out (UpdateNotice). Quieter than the welcome. */
+.update {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 12px 14px 14px;
+  border-radius: 10px;
+  background: var(--fill);
+}
+.update__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-right: -6px;
+}
+.update h2 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.update p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.update__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.update__actions .btn2:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.update__after {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.brewcmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 2px 2px 9px;
+  border-radius: 7px;
+  background: var(--fill-2);
+}
+.brewcmd code {
+  font: 12px var(--code);
+  color: var(--ink);
+  user-select: all;
+}
+.srow--update {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px 14px;
+}
+.app--dash .update {
+  margin-bottom: 0;
+}
 /* The dashboard spaces its sections itself (first-run welcome, Windows/Linux). */
 .app--dash .welcome {
   margin-bottom: 0;

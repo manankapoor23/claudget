@@ -3,6 +3,7 @@ import {
   IPC,
   type DashboardView,
   type LimitHistory,
+  type UpdateInfo,
   type UsageSnapshot,
   type WidgetBridge,
   type WidgetConfig,
@@ -41,6 +42,14 @@ const bridge: WidgetBridge = {
   testNotification: () => ipcRenderer.invoke(IPC.TestNotification),
   getNotificationStatus: () => ipcRenderer.invoke(IPC.GetNotificationStatus),
   openNotificationSettings: () => ipcRenderer.invoke(IPC.OpenNotificationSettings),
+  getUpdate: () => ipcRenderer.invoke(IPC.GetUpdate),
+  onUpdate: (callback) => {
+    const listener = (_event: IpcRendererEvent, update: UpdateInfo | null): void =>
+      callback(update);
+    ipcRenderer.on(IPC.UpdatePush, listener);
+    return () => ipcRenderer.removeListener(IPC.UpdatePush, listener);
+  },
+  openUpdate: (what) => ipcRenderer.invoke(IPC.OpenUpdate, what),
   onNavigate: (callback) => {
     const listener = (_event: IpcRendererEvent, view: DashboardView): void => callback(view);
     ipcRenderer.on(IPC.Navigate, listener);

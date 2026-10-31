@@ -85,6 +85,12 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   showInTaskbar: z.boolean().default(true),
   launchOnLogin: z.boolean().default(false),
 
+  /**
+   * Ask GitHub Releases every few hours whether a newer claudget is out:
+   * Windows and Linux then update themselves, macOS shows where to get it.
+   */
+  checkForUpdates: z.boolean().default(true),
+
   // ── Logging ───────────────────────────────────────────────────────────────
   logLevel: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

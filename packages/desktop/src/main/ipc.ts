@@ -7,6 +7,7 @@ import {
   type AppInfo,
   type DashboardView,
   type LimitHistory,
+  type UpdateInfo,
   type WindowAction,
 } from '../shared/ipc';
 
@@ -27,6 +28,9 @@ export interface IpcDeps {
   ) => void;
   fitPopover: (height: number) => void;
   notifier: Notifier;
+  getUpdate: () => UpdateInfo | null;
+  /** Downloads and opens the installer, or opens the notes; true once it's open. */
+  openUpdate: (what: 'download' | 'notes') => Promise<boolean>;
   quit: () => void;
 }
 
@@ -57,6 +61,11 @@ export function registerIpc(deps: IpcDeps): void {
   ipcMain.handle(IPC.TestNotification, () => deps.notifier.test());
   ipcMain.handle(IPC.GetNotificationStatus, () => deps.notifier.status());
   ipcMain.handle(IPC.OpenNotificationSettings, () => deps.notifier.openSystemSettings());
+  ipcMain.handle(IPC.GetUpdate, () => deps.getUpdate());
+  // Only ever opens what main itself got from GitHub, never a URL the renderer sends.
+  ipcMain.handle(IPC.OpenUpdate, (_event, what: unknown) =>
+    deps.openUpdate(what === 'notes' ? 'notes' : 'download'),
+  );
   ipcMain.handle(IPC.WindowAction, (event, action: WindowAction) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     switch (action.type) {
