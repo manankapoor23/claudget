@@ -5,6 +5,22 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.5] — 2026-10-31
+
+### Added
+
+- **Settings → General → Notch card.** Turn off the card that drops when you
+  hover the notch, if another notch app needs the hover. The line stays;
+  clicking the notch no longer opens claudget while the card is off.
+
+### Fixed
+
+- **The notch line fits a MacBook Pro's notch.** On 14" and 16" MacBook Pros,
+  macOS reports a notch a little bigger than the real cutout, so the line
+  floated outside it with menu bar showing in between. It's now traced round
+  the cutout itself, at every display scaling. MacBook Airs keep the fit they
+  had, which already matched.
+
 ## [0.3.4] — 2026-10-30
 
 ### Added
