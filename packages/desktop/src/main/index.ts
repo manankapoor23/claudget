@@ -380,7 +380,7 @@ if (!singleInstanceLock) {
     // Plan limits off means there's no 5-hour % to draw: don't run it at all.
     const notchWanted = (cfg: WidgetConfig): boolean => cfg.notchLine && cfg.enableOfficial;
     if (notch) {
-      notch.update(notchPayload(engine.getSnapshot(), Date.now(), config.notchCard));
+      notch.update(notchPayload(engine.getSnapshot(), Date.now(), config));
       void notch.reprobe().then(() => notch.setEnabled(notchWanted(config)));
       // Lid closed or opened, a display plugged in, scaling changed.
       let displayTimer: ReturnType<typeof setTimeout> | null = null;
@@ -391,7 +391,7 @@ if (!singleInstanceLock) {
       screen.on('display-added', displaysChanged);
       screen.on('display-removed', displaysChanged);
       screen.on('display-metrics-changed', displaysChanged);
-      engine.on('snapshot', (s) => notch.update(notchPayload(s, Date.now(), config.notchCard)));
+      engine.on('snapshot', (s) => notch.update(notchPayload(s, Date.now(), config)));
     }
 
     // Clicking an alert opens the glance, like relaunching does.
@@ -438,8 +438,8 @@ if (!singleInstanceLock) {
       if (config.compact !== prev.compact || config.miniBar !== prev.miniBar) syncFloating();
       if (config.logLevel !== prev.logLevel) logger.setLevel(config.logLevel);
       notch?.setEnabled(notchWanted(config));
-      if (config.notchCard !== prev.notchCard) {
-        notch?.update(notchPayload(engine.getSnapshot(), Date.now(), config.notchCard));
+      if (config.notchCard !== prev.notchCard || config.notchColors !== prev.notchColors) {
+        notch?.update(notchPayload(engine.getSnapshot(), Date.now(), config));
       }
       if (config.launchOnLogin !== prev.launchOnLogin) {
         app.setLoginItemSettings({ openAtLogin: config.launchOnLogin });

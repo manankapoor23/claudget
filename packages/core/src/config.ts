@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const HEX_COLOR = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
 /**
  * The single configuration schema for the whole app. The core consumes the data
  * fields; the desktop shell additionally consumes the UI/window fields. Keeping
@@ -72,6 +74,13 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
    * notch takes the mouse, so another notch app gets the hover.
    */
   notchCard: z.boolean().default(true),
+  /**
+   * The notch line's colour at each level of the 5-hour limit: under 70%
+   * (`ok`), 70–89% (`warn`), 90% and up (`bad`). `#rrggbb`.
+   */
+  notchColors: z
+    .object({ ok: HEX_COLOR, warn: HEX_COLOR, bad: HEX_COLOR })
+    .default({ ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' }),
   opacity: z.number().min(0.3).max(1).default(1),
   showInTaskbar: z.boolean().default(true),
   launchOnLogin: z.boolean().default(false),

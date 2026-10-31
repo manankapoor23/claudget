@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { OfficialWindow, UsageSnapshot } from '@claude-widget/core';
-import { notchPayload } from './notch';
+import { DEFAULT_CONFIG, type OfficialWindow, type UsageSnapshot } from '@claude-widget/core';
+import { DEFAULT_NOTCH_COLORS, NOTCH_SWATCHES, notchPayload } from './notch';
 import { H, NOW, win } from './test-helpers';
 
 function snap(windows: OfficialWindow[], available = true): UsageSnapshot {
@@ -33,7 +33,13 @@ describe('notchPayload', () => {
   });
 
   it('hides the line without plan limits or without a 5-hour window', () => {
-    const none = { fiveHour: null, weekly: null, fullAt: null, card: true };
+    const none = {
+      fiveHour: null,
+      weekly: null,
+      fullAt: null,
+      card: true,
+      colors: DEFAULT_CONFIG.notchColors,
+    };
     expect(notchPayload(snap([win('five_hour', 0.5, H)], false), NOW)).toEqual(none);
     expect(notchPayload(snap([win('seven_day', 0.5, H)]), NOW)).toEqual(none);
     expect(notchPayload(snap([]), NOW)).toEqual(none);
@@ -42,7 +48,23 @@ describe('notchPayload', () => {
   it('passes the card setting through, so turning it off is a new payload', () => {
     const s = snap([win('five_hour', 0.5, H)]);
     expect(notchPayload(s, NOW).card).toBe(true);
-    expect(notchPayload(s, NOW, false).card).toBe(false);
+    expect(notchPayload(s, NOW, { ...DEFAULT_CONFIG, notchCard: false }).card).toBe(false);
+  });
+
+  it('passes the chosen colours through, defaulting to orange, amber and red', () => {
+    const s = snap([win('five_hour', 0.5, H)]);
+    expect(notchPayload(s, NOW).colors).toEqual({ ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' });
+    const colors = { ok: '#30d158', warn: '#64d2ff', bad: '#bf5af2' };
+    const p = notchPayload(s, NOW, { ...DEFAULT_CONFIG, notchColors: colors });
+    expect(p.colors).toEqual(colors);
+    expect(JSON.stringify(p)).not.toBe(JSON.stringify(notchPayload(s, NOW)));
+  });
+
+  it("matches core's default colours, and offers them first among the swatches", () => {
+    expect(DEFAULT_NOTCH_COLORS).toEqual(DEFAULT_CONFIG.notchColors);
+    const { ok, warn, bad } = DEFAULT_NOTCH_COLORS;
+    expect(NOTCH_SWATCHES.slice(0, 3).map((c) => c.hex)).toEqual([ok, warn, bad]);
+    expect(new Set(NOTCH_SWATCHES.map((c) => c.hex)).size).toBe(NOTCH_SWATCHES.length);
   });
 
   it('clamps out-of-range readings', () => {

@@ -3,6 +3,7 @@ import type { NotificationStatus, WidgetConfig } from '@shared/ipc';
 import { notificationStatusLine, settingsAppName } from '../../shared/notifications';
 import { IS_MAC as MAC, PLATFORM } from '../lib/platform';
 import { trayName } from '../../shared/copy';
+import { DEFAULT_NOTCH_COLORS, NOTCH_SWATCHES, type NotchColors } from '../../shared/notch';
 import { SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
@@ -217,6 +218,88 @@ function MoneyInput({
   );
 }
 
+/** One colour per swatch, picked like a radio button. */
+function Swatches({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  onChange: (hex: string) => void;
+}): JSX.Element {
+  return (
+    <div className="swatches" role="radiogroup" aria-label={label}>
+      {NOTCH_SWATCHES.map((sw) => {
+        const on = sw.hex === value.toLowerCase();
+        return (
+          <button
+            key={sw.hex}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            aria-label={sw.name}
+            title={sw.name}
+            disabled={disabled}
+            className={on ? 'swatch swatch--on' : 'swatch'}
+            style={{ ['--swatch' as string]: sw.hex }}
+            onClick={() => onChange(sw.hex)}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+const NOTCH_LEVELS: Array<{ tone: keyof NotchColors; label: string; hint: string }> = [
+  { tone: 'ok', label: 'Low', hint: 'Under 70%' },
+  { tone: 'warn', label: 'Medium', hint: '70 to 89%' },
+  { tone: 'bad', label: 'High', hint: '90% and up' },
+];
+
+/** The notch line's colour at each level of the 5-hour limit. */
+function NotchColorRows({
+  colors,
+  disabled,
+  onChange,
+}: {
+  colors: NotchColors;
+  disabled: boolean;
+  onChange: (colors: NotchColors) => void;
+}): JSX.Element {
+  const custom = NOTCH_LEVELS.some(
+    (l) => colors[l.tone].toLowerCase() !== DEFAULT_NOTCH_COLORS[l.tone],
+  );
+  return (
+    <>
+      {NOTCH_LEVELS.map((l) => (
+        <Row key={l.tone} label={l.label} hint={l.hint}>
+          <Swatches
+            label={`${l.label} colour`}
+            value={colors[l.tone]}
+            disabled={disabled}
+            onChange={(hex) => onChange({ ...colors, [l.tone]: hex })}
+          />
+        </Row>
+      ))}
+      {custom ? (
+        <Row label="Default colours" hint="Orange, amber and red.">
+          <button
+            type="button"
+            className="chip"
+            disabled={disabled}
+            onClick={() => onChange(DEFAULT_NOTCH_COLORS)}
+          >
+            Reset
+          </button>
+        </Row>
+      ) : null}
+    </>
+  );
+}
+
 /** The Notch line's hint: what it does, or why it can't. */
 function notchHint(notch: boolean | null, limitsOn: boolean): string {
   if (notch === false) return 'This Mac has no notch.';
@@ -309,6 +392,15 @@ function General({
           </Row>
         )}
       </Group>
+      {MAC && notch === true ? (
+        <Group title="Notch line colours">
+          <NotchColorRows
+            colors={c.notchColors}
+            disabled={!c.notchLine || !c.enableOfficial}
+            onChange={(notchColors) => set({ notchColors })}
+          />
+        </Group>
+      ) : null}
       <Group title="Dashboard window">
         <Row label="Keep on top" hint="Float above other windows." htmlFor="set-top">
           <Toggle

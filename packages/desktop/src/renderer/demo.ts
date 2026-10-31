@@ -258,6 +258,7 @@ export function createDemoData(): {
       miniBar: false,
       notchLine: true,
       notchCard: true,
+      notchColors: { ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' },
       opacity: 1,
       showInTaskbar: true,
       launchOnLogin: false,

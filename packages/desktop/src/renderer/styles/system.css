@@ -2088,6 +2088,35 @@ body {
   opacity: 0.45;
   cursor: default;
 }
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  max-width: 280px;
+}
+.swatch {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.14);
+  cursor: pointer;
+}
+.swatch--on {
+  outline: 2px solid var(--ink-2);
+  outline-offset: 2px;
+}
+.swatch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--tint) 60%, transparent);
+  outline-offset: 2px;
+}
+.swatch:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .money {
   display: inline-flex;
   align-items: center;

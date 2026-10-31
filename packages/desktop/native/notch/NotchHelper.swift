@@ -8,7 +8,8 @@
 //
 // Protocol (newline-delimited JSON):
 //   stdin  ← {"fiveHour":{"pct":62,"estimated":true,"tone":"ok","resetsAt":<ms>},
-//             "weekly":{"pct":31,"estimated":false},"fullAt":<ms>|null,"reducedMotion":null}
+//             "weekly":{"pct":31,"estimated":false},"fullAt":<ms>|null,"reducedMotion":null,
+//             "colors":{"ok":"#ff6b1f","warn":"#ffb224","bad":"#ff453a"}}
 //            "fiveHour": null hides everything.
 //   stdout → {"event":"ready"} {"event":"notch",...} {"event":"no-notch"} {"event":"open"}
 //
@@ -38,6 +39,14 @@ struct StateIn: Decodable, Equatable {
     let reducedMotion: Bool?
     /// False: no hover card, and nothing over the notch takes the mouse. Absent means true.
     let card: Bool?
+    /// The user's colour for each tone, `#rrggbb`. Absent or unreadable: the defaults.
+    let colors: ColorsIn?
+}
+
+struct ColorsIn: Decodable, Equatable {
+    let ok: String?
+    let warn: String?
+    let bad: String?
 }
 
 enum Out {
@@ -60,6 +69,34 @@ enum Tone: String {
         case .ok: return NSColor(srgbRed: 1.0, green: 0x6B / 255, blue: 0x1F / 255, alpha: 1)
         case .warn: return NSColor(srgbRed: 1.0, green: 0xB2 / 255, blue: 0x24 / 255, alpha: 1)
         case .bad: return NSColor(srgbRed: 1.0, green: 0x45 / 255, blue: 0x3A / 255, alpha: 1)
+        }
+    }
+}
+
+/// `#rrggbb`, or nil.
+func color(hex: String?) -> NSColor? {
+    guard let hex, hex.count == 7, hex.hasPrefix("#"), let v = UInt32(hex.dropFirst(), radix: 16) else {
+        return nil
+    }
+    return NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,
+                   blue: CGFloat(v & 0xFF) / 255, alpha: 1)
+}
+
+/// A colour per tone: the user's choice where it reads, the default otherwise.
+struct Palette: Equatable {
+    let ok: NSColor, warn: NSColor, bad: NSColor
+
+    init(_ c: ColorsIn?) {
+        ok = color(hex: c?.ok) ?? Tone.ok.color
+        warn = color(hex: c?.warn) ?? Tone.warn.color
+        bad = color(hex: c?.bad) ?? Tone.bad.color
+    }
+
+    subscript(_ t: Tone) -> NSColor {
+        switch t {
+        case .ok: return ok
+        case .warn: return warn
+        case .bad: return bad
         }
     }
 }
@@ -374,7 +411,7 @@ func cometSprite(length: CGFloat, height: CGFloat, scale: CGFloat) -> CGImage {
 
 struct LineModel: Equatable {
     var pct: CGFloat // 0...1
-    var tone: Tone
+    var color: NSColor
     var estimated: Bool
 }
 
@@ -443,7 +480,7 @@ final class NotchLineView: NSView {
     func set(_ m: LineModel, animated: Bool) {
         guard let o = outline else { model = m; return }
         model = m
-        let color = m.tone.color
+        let color = m.color
         CATransaction.begin()
         CATransaction.setAnimationDuration(animated ? 0.6 : 0)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
@@ -468,7 +505,7 @@ final class NotchLineView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         bright.strokeEnd = plan.span
-        bright.strokeColor = mix(m.tone.color, .white, plan.glint ? 0.3 : 0.62)
+        bright.strokeColor = mix(m.color, .white, plan.glint ? 0.3 : 0.62)
             .withAlphaComponent(plan.glint ? 0.6 : 1).cgColor
         let h: CGFloat = 14
         sprite.bounds = CGRect(x: 0, y: 0, width: plan.tail, height: h)
@@ -652,6 +689,7 @@ final class NotchCardView: NSView {
         let pad: CGFloat = 16
         let w = b.width - pad * 2
         let tone = Tone(rawValue: five.tone ?? "ok") ?? .ok
+        let palette = Palette(st.colors)
         let label = NSColor(white: 1, alpha: 0.55)
         let quiet = NSColor(white: 1, alpha: 0.42)
 
@@ -674,7 +712,7 @@ final class NotchCardView: NSView {
         let fillW = max(0, min(1, five.pct / 100)) * w
         if fillW > 0 {
             let fill = NSBezierPath(roundedRect: NSRect(x: pad, y: barY, width: max(fillW, 4), height: 4), xRadius: 2, yRadius: 2)
-            tone.color.withAlphaComponent(five.estimated == true ? 0.75 : 1).setFill()
+            palette[tone].withAlphaComponent(five.estimated == true ? 0.75 : 1).setFill()
             fill.fill()
         }
 
@@ -687,7 +725,7 @@ final class NotchCardView: NSView {
         }
         if let full = st.fullAt {
             let s = text("Full by \(clockFormatter.string(from: Date(timeIntervalSince1970: full / 1000)))", 11, .medium,
-                         (tone == .ok ? Tone.warn : tone).color.withAlphaComponent(0.9), mono: true)
+                         palette[tone == .ok ? .warn : tone].withAlphaComponent(0.9), mono: true)
             right(s, y: metaY)
         }
 
@@ -838,7 +876,7 @@ final class Controller: NSObject {
         Out.emit(["event": "applied", "pct": s.fiveHour?.pct ?? NSNull(), "shown": s.fiveHour != nil && notch != nil])
         guard let five = s.fiveHour, notch != nil else { return hideAll() }
         let m = LineModel(pct: CGFloat(max(0, min(100, five.pct)) / 100),
-                          tone: Tone(rawValue: five.tone ?? "ok") ?? .ok,
+                          color: Palette(s.colors)[Tone(rawValue: five.tone ?? "ok") ?? .ok],
                           estimated: five.estimated == true)
         lineView.set(m, animated: !first && lineWindow.isVisible)
         cardView.state = s
@@ -1009,6 +1047,7 @@ enum RenderTest {
         let times: [Double?]
         let light: Bool
         let card: Bool
+        var colors: ColorsIn? = nil
     }
 
     static func toneFor(_ pct: Double) -> Tone { pct >= 90 ? .bad : pct >= 70 ? .warn : .ok }
@@ -1031,6 +1070,11 @@ enum RenderTest {
         scenes.append(Scene(name: "line-0-light", pct: 0, estimated: false, times: [nil, 1.5], light: true, card: false))
         scenes.append(Scene(name: "hover-62-estimated", pct: 62, estimated: true, times: [0.5], light: false, card: true))
         scenes.append(Scene(name: "hover-90-light", pct: 90, estimated: false, times: [nil], light: true, card: true))
+        // Colours picked in Settings: green, cyan, purple.
+        let custom = ColorsIn(ok: "#30d158", warn: "#64d2ff", bad: "#bf5af2")
+        for p in [62.0, 80, 95] {
+            scenes.append(Scene(name: "custom-\(Int(p))", pct: p, estimated: false, times: [nil], light: false, card: true, colors: custom))
+        }
 
         var rows: [(String, CGImage)] = []
         for sc in scenes {
@@ -1102,7 +1146,8 @@ enum RenderTest {
                 fiveHour: LimitIn(pct: sc.pct, estimated: sc.estimated, tone: toneFor(sc.pct).rawValue,
                                   resetsAt: Date().timeIntervalSince1970 * 1000 + 8_040_000),
                 weekly: LimitIn(pct: 31, estimated: sc.estimated, tone: "ok", resetsAt: nil),
-                fullAt: Date().timeIntervalSince1970 * 1000 + 5_400_000, reducedMotion: nil, card: nil)
+                fullAt: Date().timeIntervalSince1970 * 1000 + 5_400_000, reducedMotion: nil, card: nil,
+                colors: sc.colors)
             let cardTop = H - menuBar - 4
             NSGraphicsContext.saveGraphicsState()
             let g = NSGraphicsContext(cgContext: ctx, flipped: false)
@@ -1125,7 +1170,8 @@ enum RenderTest {
         let mx = Metrics.marginX, my = Metrics.marginY
         let view = NotchLineView(frame: NSRect(x: 0, y: 0, width: notch.width + 2 * mx, height: notch.height + my))
         view.setGeometry(notch: NSRect(x: mx, y: my, width: notch.width, height: notch.height), radius: r, scale: scale)
-        view.set(LineModel(pct: CGFloat(sc.pct / 100), tone: toneFor(sc.pct), estimated: sc.estimated), animated: false)
+        view.set(LineModel(pct: CGFloat(sc.pct / 100), color: Palette(sc.colors)[toneFor(sc.pct)], estimated: sc.estimated),
+                 animated: false)
         view.pose(at: t)
         ctx.saveGState()
         ctx.translateBy(x: notch.minX - mx, y: notch.minY - my)
