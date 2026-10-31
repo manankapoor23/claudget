@@ -257,6 +257,7 @@ export function createDemoData(): {
       pillLimit,
       miniBar: false,
       notchLine: true,
+      notchCard: true,
       opacity: 1,
       showInTaskbar: true,
       launchOnLogin: false,

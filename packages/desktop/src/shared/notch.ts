@@ -12,6 +12,8 @@ export interface NotchPayload {
   weekly: { pct: number; estimated: boolean } | null;
   /** When the 5-hour limit fills at the current pace, to the minute; null if it won't. */
   fullAt: number | null;
+  /** Hovering the notch shows the card. False: the helper takes no mouse input. */
+  card: boolean;
 }
 
 const MINUTE = 60_000;
@@ -27,9 +29,9 @@ function pctOf(utilization: number): number {
  * new snapshot that changes nothing visible produces an identical payload and
  * is never sent.
  */
-export function notchPayload(snapshot: UsageSnapshot, now: number): NotchPayload {
+export function notchPayload(snapshot: UsageSnapshot, now: number, card = true): NotchPayload {
   const official = snapshot.official;
-  const none: NotchPayload = { fiveHour: null, weekly: null, fullAt: null };
+  const none: NotchPayload = { fiveHour: null, weekly: null, fullAt: null, card };
   if (!official.available) return none;
   const fiveRaw = official.windows.find((w) => w.key === 'five_hour');
   if (!fiveRaw) return none;
@@ -47,5 +49,6 @@ export function notchPayload(snapshot: UsageSnapshot, now: number): NotchPayload
     },
     weekly: week ? { pct: pctOf(week.utilization), estimated: week.estimated } : null,
     fullAt: full === null ? null : Math.round(full / MINUTE) * MINUTE,
+    card,
   };
 }

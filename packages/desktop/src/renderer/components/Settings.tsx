@@ -278,6 +278,20 @@ function General({
             />
           </Row>
         ) : null}
+        {MAC && notch === true ? (
+          <Row
+            label="Notch card"
+            hint="Hovering the notch shows both limits. Turn off if another notch app uses the hover."
+            htmlFor="set-notch-card"
+          >
+            <Toggle
+              id="set-notch-card"
+              on={c.notchCard && c.notchLine && c.enableOfficial}
+              disabled={!c.notchLine || !c.enableOfficial}
+              onChange={(notchCard) => set({ notchCard })}
+            />
+          </Row>
+        ) : null}
         <Row label="Open at login" htmlFor="set-login">
           <Toggle
             id="set-login"

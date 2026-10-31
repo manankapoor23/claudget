@@ -33,10 +33,16 @@ describe('notchPayload', () => {
   });
 
   it('hides the line without plan limits or without a 5-hour window', () => {
-    const none = { fiveHour: null, weekly: null, fullAt: null };
+    const none = { fiveHour: null, weekly: null, fullAt: null, card: true };
     expect(notchPayload(snap([win('five_hour', 0.5, H)], false), NOW)).toEqual(none);
     expect(notchPayload(snap([win('seven_day', 0.5, H)]), NOW)).toEqual(none);
     expect(notchPayload(snap([]), NOW)).toEqual(none);
+  });
+
+  it('passes the card setting through, so turning it off is a new payload', () => {
+    const s = snap([win('five_hour', 0.5, H)]);
+    expect(notchPayload(s, NOW).card).toBe(true);
+    expect(notchPayload(s, NOW, false).card).toBe(false);
   });
 
   it('clamps out-of-range readings', () => {
