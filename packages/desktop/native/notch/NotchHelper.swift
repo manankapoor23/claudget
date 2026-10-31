@@ -76,14 +76,10 @@ func mix(_ a: NSColor, _ b: NSColor, _ t: CGFloat) -> NSColor {
 enum Metrics {
     /// The stroke, in points.
     static let lineWidth: CGFloat = 2.5
-    /// The cutout is smaller than NSScreen reports: `safeAreaInsets.top` is the
-    /// menu bar's height and the auxiliary areas stop short of its sides. This
-    /// much comes off each side and the bottom. In millimetres, because the
-    /// hardware is fixed while points per mm change with display scaling (and
-    /// a MacBook Air is scaled by default). Measured on a 14" MacBook Pro.
-    static let trimMM: CGFloat = 0.5
-    /// Radius of the cutout's bottom corners, in hardware.
-    static let cornerRadiusMM: CGFloat = 1.68
+    /// How far inside NSScreen's notch the real cutout sits, and its corner
+    /// radius, in millimetres (the hardware is fixed while points per mm change
+    /// with display scaling, and a MacBook Air is scaled by default). See
+    /// `NotchFit.forPanel`.
     /// Points per mm on a 14" MacBook Pro at Default scaling, for when a
     /// display reports no physical size.
     static let fallbackPtPerMM: CGFloat = 1512 / 301.8
@@ -109,6 +105,39 @@ struct Notch: Equatable {
     let name: String
     /// The cutout's bottom-corner radius, in points.
     let cornerRadius: CGFloat
+    /// The panel's native width in pixels, which identifies the model.
+    let panelWidth: Int
+}
+
+/// How the line fits a given notch. `safeAreaInsets.top` and the auxiliary
+/// areas describe the notch differently per model: on a 14" MacBook Pro they
+/// overstate it (calibrated by eye on an M4 at 1800x1169, checked at Default),
+/// while on a 13.6" MacBook Air (M2) they match it, and trimming pulled the
+/// line in behind the cutout. Keyed on the panel's native pixel width, which
+/// is fixed per model whatever the "Looks like" setting.
+struct NotchFit {
+    let trimMM: CGFloat
+    let cornerRadiusMM: CGFloat
+
+    /// 14" and 16" MacBook Pro panels: 3024 and 3456 pixels wide.
+    static let pro = NotchFit(trimMM: 0.5, cornerRadiusMM: 1.68)
+    /// MacBook Air and anything unrecognised: NSScreen's rect as is, with the
+    /// 8 pt corner the line was first tuned to on an Air at Default (1.58 mm).
+    static let standard = NotchFit(trimMM: 0, cornerRadiusMM: 1.58)
+
+    static func forPanel(pixelWidth: Int) -> NotchFit {
+        [3024, 3456].contains(pixelWidth) ? .pro : .standard
+    }
+}
+
+/// The panel's native width in pixels: the mode IOKit flags as native
+/// (kDisplayModeNativeFlag). Not the widest mode: scaled "More Space" modes
+/// report bigger backing sizes (3420 on a 2560-pixel MacBook Air).
+func nativePixelWidth(_ id: CGDirectDisplayID) -> Int {
+    let options = [kCGDisplayShowDuplicateLowResolutionModes: kCFBooleanTrue] as CFDictionary
+    let modes = CGDisplayCopyAllDisplayModes(id, options) as? [CGDisplayMode] ?? []
+    let nativeFlag: UInt32 = 0x0200_0000
+    return modes.filter { $0.ioFlags & nativeFlag != 0 }.map(\.pixelWidth).max() ?? 0
 }
 
 /// Calibration knobs for a notch the defaults don't fit, in points:
@@ -142,8 +171,10 @@ func findNotch() -> Notch? {
         let id = s.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? 0
         let mm = CGDisplayScreenSize(id).width
         let ptPerMM = mm > 0 ? f.width / mm : Metrics.fallbackPtPerMM
-        let side = Override.trim?[0] ?? Metrics.trimMM * ptPerMM
-        let bottom = Override.trim?[1] ?? Metrics.trimMM * ptPerMM
+        let panel = nativePixelWidth(id)
+        let fit = NotchFit.forPanel(pixelWidth: panel)
+        let side = Override.trim?[0] ?? fit.trimMM * ptPerMM
+        let bottom = Override.trim?[1] ?? fit.trimMM * ptPerMM
         found.append(Notch(
             rect: NSRect(x: l.maxX + side, y: f.maxY - h + bottom,
                          width: w - 2 * side, height: h - bottom),
@@ -152,7 +183,8 @@ func findNotch() -> Notch? {
             scale: s.backingScaleFactor,
             builtin: CGDisplayIsBuiltin(id) != 0,
             name: s.localizedName,
-            cornerRadius: Override.radius ?? Metrics.cornerRadiusMM * ptPerMM))
+            cornerRadius: Override.radius ?? fit.cornerRadiusMM * ptPerMM,
+            panelWidth: panel))
     }
     return found.first(where: { $0.builtin }) ?? found.first
 }
@@ -164,7 +196,7 @@ func notchInfo(_ n: Notch?) -> [String: Any] {
         "width": n.rect.width, "height": n.rect.height,
         "x": n.rect.minX, "y": n.rect.minY,
         "scale": n.scale, "builtin": n.builtin, "screen": n.name,
-        "radius": n.cornerRadius,
+        "radius": n.cornerRadius, "panel": n.panelWidth,
     ]
 }
 
@@ -988,7 +1020,7 @@ enum RenderTest {
         let real = findNotch()
         let notchSize = real?.rect.size ?? NSSize(width: 185, height: 32)
         let menuBar = real.map { $0.screenFrame.maxY - $0.menuBarBottom } ?? 33
-        let radius = real?.cornerRadius ?? Metrics.cornerRadiusMM * Metrics.fallbackPtPerMM
+        let radius = real?.cornerRadius ?? NotchFit.pro.cornerRadiusMM * Metrics.fallbackPtPerMM
         var scenes: [Scene] = []
         for p in [0.0, 25, 62, 90, 100] {
             scenes.append(Scene(name: "line-\(Int(p))-dark", pct: p, estimated: false, times: [nil, 0, 0.5, 1.0], light: false, card: false))
