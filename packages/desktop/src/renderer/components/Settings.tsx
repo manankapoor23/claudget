@@ -1,12 +1,15 @@
-import { useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ChangeEvent, type JSX, type ReactNode } from 'react';
 import type { NotificationStatus, WidgetConfig } from '@shared/ipc';
 import { notificationStatusLine, settingsAppName } from '../../shared/notifications';
 import { IS_MAC as MAC, PLATFORM } from '../lib/platform';
 import { trayName } from '../../shared/copy';
+import { DEFAULT_NOTCH_COLORS, type NotchColors } from '../../shared/notch';
 import { SHORTCUTS, shortcutLabel } from '../../shared/shortcuts';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
 import { useTheme } from '../lib/theme';
+import { ColorWheel, NotchPreview } from './ColorWheel';
+import { UpdateActions } from './UpdateNotice';
 import { BellIcon, DataIcon, ExternalIcon, InfoIcon, SettingsIcon } from './icons';
 import logoUrl from '../assets/claudget-logo.png';
 
@@ -217,6 +220,95 @@ function MoneyInput({
   );
 }
 
+const NOTCH_LEVELS: Array<{ tone: keyof NotchColors; label: string; hint: string }> = [
+  { tone: 'ok', label: 'Low', hint: 'Under 70%' },
+  { tone: 'warn', label: 'Medium', hint: '70 to 89%' },
+  { tone: 'bad', label: 'High', hint: '90% and up' },
+];
+
+const sameColors = (a: NotchColors, b: NotchColors): boolean =>
+  a.ok === b.ok && a.warn === b.warn && a.bad === b.bad;
+
+/**
+ * The notch line's colour at each level of the 5-hour limit. Clicking a dot
+ * opens a colour wheel under it; the dot and the preview follow the wheel,
+ * and the choice is saved once you pause, so dragging isn't a stream of
+ * config writes.
+ */
+function NotchColorRows({
+  colors,
+  disabled,
+  onChange,
+}: {
+  colors: NotchColors;
+  disabled: boolean;
+  onChange: (colors: NotchColors) => void;
+}): JSX.Element {
+  const [open, setOpen] = useState<keyof NotchColors | null>(null);
+  const [draft, setDraft] = useState(colors);
+  useEffect(() => setDraft(colors), [colors]);
+  useEffect(() => {
+    if (sameColors(draft, colors)) return;
+    const t = setTimeout(() => onChange(draft), 150);
+    return () => clearTimeout(t);
+  }, [draft, colors, onChange]);
+  const custom = !sameColors(draft, DEFAULT_NOTCH_COLORS);
+  return (
+    <>
+      {NOTCH_LEVELS.map((l) => {
+        const isOpen = open === l.tone && !disabled;
+        return (
+          <Fragment key={l.tone}>
+            <Row label={l.label} hint={l.hint}>
+              <button
+                type="button"
+                className={isOpen ? 'cdot cdot--open' : 'cdot'}
+                style={{ ['--swatch' as string]: draft[l.tone] }}
+                aria-label={`${l.label} colour, ${draft[l.tone]}`}
+                aria-expanded={isOpen}
+                disabled={disabled}
+                onClick={() => setOpen(isOpen ? null : l.tone)}
+              />
+            </Row>
+            {isOpen ? (
+              <div className="srow srow--wheel">
+                <ColorWheel
+                  label={`${l.label} colour`}
+                  value={draft[l.tone]}
+                  onChange={(hex) => setDraft((d) => ({ ...d, [l.tone]: hex }))}
+                />
+                <div className="cwheel__side">
+                  <NotchPreview color={draft[l.tone]} />
+                  <code className="cwheel__hex">{draft[l.tone]}</code>
+                </div>
+              </div>
+            ) : null}
+          </Fragment>
+        );
+      })}
+      {custom ? (
+        <Row label="Default colours" hint="Orange, amber and red.">
+          <button
+            type="button"
+            className="chip"
+            disabled={disabled}
+            onClick={() => setDraft(DEFAULT_NOTCH_COLORS)}
+          >
+            Reset
+          </button>
+        </Row>
+      ) : null}
+    </>
+  );
+}
+
+/** What the update check does here: Windows and Linux install it, a Mac says so. */
+function updatesHint(platform: string): string {
+  return platform === 'darwin'
+    ? 'Asks GitHub every 6 hours and tells you when a newer claudget is out.'
+    : 'Asks GitHub every 6 hours and installs a newer claudget when you quit.';
+}
+
 /** The Notch line's hint: what it does, or why it can't. */
 function notchHint(notch: boolean | null, limitsOn: boolean): string {
   if (notch === false) return 'This Mac has no notch.';
@@ -309,6 +401,15 @@ function General({
           </Row>
         )}
       </Group>
+      {MAC && notch === true ? (
+        <Group title="Notch line colours">
+          <NotchColorRows
+            colors={c.notchColors}
+            disabled={!c.notchLine || !c.enableOfficial}
+            onChange={(notchColors) => set({ notchColors })}
+          />
+        </Group>
+      ) : null}
       <Group title="Dashboard window">
         <Row label="Keep on top" hint="Float above other windows." htmlFor="set-top">
           <Toggle
@@ -504,7 +605,7 @@ function Data({
           />
         </Row>
         {c.enableOfficial ? (
-          <Row label="Check for updates" hint={status ?? undefined} htmlFor="set-poll">
+          <Row label="Check limits" hint={status ?? undefined} htmlFor="set-poll">
             <Select
               id="set-poll"
               value={c.officialPollIntervalMs}
@@ -513,6 +614,15 @@ function Data({
             />
           </Row>
         ) : null}
+      </Group>
+      <Group title="Updates">
+        <Row label="Check for new versions" hint={updatesHint(PLATFORM)} htmlFor="set-updates">
+          <Toggle
+            id="set-updates"
+            on={c.checkForUpdates}
+            onChange={(checkForUpdates) => set({ checkForUpdates })}
+          />
+        </Row>
       </Group>
       <Group title="Local usage">
         <Row
@@ -565,6 +675,7 @@ function Data({
 
 function About(): JSX.Element {
   const appInfo = useStore((s) => s.appInfo);
+  const update = useStore((s) => s.update);
   return (
     <div className="about">
       <img className="about__icon" src={logoUrl} alt="" />
@@ -572,9 +683,21 @@ function About(): JSX.Element {
       <p className="about__version">Version {appInfo?.appVersion ?? '—'}</p>
       <p className="about__line">
         Claude Code usage in your {trayName(PLATFORM)}. Reads your local transcripts. The only
-        things it fetches are your plan limits, from Anthropic, and updates, from GitHub on Windows
-        and Linux.
+        things it fetches are your plan limits, from Anthropic, and new versions, from GitHub.
       </p>
+      {update ? (
+        <Group>
+          <div className="srow srow--update">
+            <div className="srow__text">
+              <span className="srow__label">Version {update.version} is out</span>
+              {update.viaHomebrew ? (
+                <span className="srow__hint">Installed with Homebrew. Update from Terminal:</span>
+              ) : null}
+            </div>
+            <UpdateActions update={update} />
+          </div>
+        </Group>
+      ) : null}
       <Group>
         <Row label="Claude Code">
           <span className="srow__static">{appInfo?.cliVersion ?? 'Not detected'}</span>

@@ -1,8 +1,16 @@
 import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
 import type { LimitHistory } from './history';
 import type { NotificationStatus, NotifyOutcome } from './notifications';
+import type { UpdateInfo } from './update';
 
-export type { LimitHistory, NotificationStatus, NotifyOutcome, UsageSnapshot, WidgetConfig };
+export type {
+  LimitHistory,
+  NotificationStatus,
+  NotifyOutcome,
+  UpdateInfo,
+  UsageSnapshot,
+  WidgetConfig,
+};
 
 /** IPC channel names shared by main, preload and renderer. */
 export const IPC = {
@@ -29,6 +37,11 @@ export const IPC = {
   GetNotificationStatus: 'notify:status',
   /** Opens the OS's notification settings (macOS, Windows). */
   OpenNotificationSettings: 'notify:open-settings',
+  /** macOS: a newer release than this one, or null. */
+  GetUpdate: 'update:get',
+  UpdatePush: 'update:changed',
+  /** macOS: download and open the new installer, or open its release notes. */
+  OpenUpdate: 'update:open',
 } as const;
 
 /**
@@ -111,4 +124,12 @@ export interface WidgetBridge {
   testNotification(): Promise<NotifyOutcome>;
   getNotificationStatus(): Promise<NotificationStatus>;
   openNotificationSettings(): Promise<void>;
+  /** macOS: the newer release, if there is one. Always null elsewhere. */
+  getUpdate(): Promise<UpdateInfo | null>;
+  onUpdate(callback: (update: UpdateInfo | null) => void): () => void;
+  /**
+   * Download: claudget fetches the DMG, checks it and opens it; resolves false
+   * if that failed and it opened the release page instead. Notes: the release page.
+   */
+  openUpdate(what: 'download' | 'notes'): Promise<boolean>;
 }

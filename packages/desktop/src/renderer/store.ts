@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AppInfo, LimitHistory, UsageSnapshot, WidgetConfig } from '@shared/ipc';
+import type { AppInfo, LimitHistory, UpdateInfo, UsageSnapshot, WidgetConfig } from '@shared/ipc';
 import { EMPTY_HISTORY } from '../shared/history';
 import { getBridge } from './lib/api';
 import { createDemoData } from './demo';
@@ -12,6 +12,8 @@ interface WidgetState {
   config: WidgetConfig | null;
   appInfo: AppInfo | null;
   history: LimitHistory;
+  /** macOS: a newer release to offer, or null. */
+  update: UpdateInfo | null;
   loading: boolean;
   error: string | null;
   view: View;
@@ -27,6 +29,7 @@ export const useStore = create<WidgetState>()((set, get) => ({
   config: null,
   appInfo: null,
   history: EMPTY_HISTORY,
+  update: null,
   loading: true,
   error: null,
   view: 'main',
@@ -55,15 +58,17 @@ export const useStore = create<WidgetState>()((set, get) => ({
       if (view !== 'settings') set({ view });
     });
     api.onLimitHistory((history) => set({ history }));
+    api.onUpdate((update) => set({ update }));
 
     try {
-      const [snapshot, config, appInfo, history] = await Promise.all([
+      const [snapshot, config, appInfo, history, update] = await Promise.all([
         api.getSnapshot(),
         api.getConfig(),
         api.getAppInfo(),
         api.getLimitHistory(),
+        api.getUpdate(),
       ]);
-      set({ snapshot, config, appInfo, history, loading: false, error: null });
+      set({ snapshot, config, appInfo, history, update, loading: false, error: null });
     } catch (err) {
       set({ loading: false, error: err instanceof Error ? err.message : String(err) });
     }

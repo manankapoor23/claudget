@@ -1,11 +1,12 @@
-import type { UsageSnapshot } from '@claude-widget/core';
+import type { UsageSnapshot, WidgetConfig } from '@claude-widget/core';
 import { shownWindow, toneOf, type Tone } from './limits';
 import { projectedFullAt } from './pace';
 
 /**
  * What main sends the macOS notch-line helper (native/notch), one JSON line
- * per change. The line's length is the 5-hour %, its colour the same tone the
- * pill and popover use; a null `fiveHour` hides it.
+ * per change. The line's length is the 5-hour %, its tone the same one the
+ * pill and popover use, drawn in the colour the user picked for that tone; a
+ * null `fiveHour` hides it.
  */
 export interface NotchPayload {
   fiveHour: { pct: number; estimated: boolean; tone: Tone; resetsAt: number | null } | null;
@@ -14,7 +15,22 @@ export interface NotchPayload {
   fullAt: number | null;
   /** Hovering the notch shows the card. False: the helper takes no mouse input. */
   card: boolean;
+  /** `#rrggbb` for each tone, from Settings. */
+  colors: NotchColors;
 }
+
+export type NotchColors = WidgetConfig['notchColors'];
+
+/** The settings the payload carries; the whole config fits. */
+export type NotchPrefs = Pick<WidgetConfig, 'notchCard' | 'notchColors'>;
+
+/**
+ * Orange, amber, red: core's defaults, repeated here because the renderer
+ * imports this file and must not pull in core's runtime.
+ */
+export const DEFAULT_NOTCH_COLORS: NotchColors = { ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' };
+
+const DEFAULT_PREFS: NotchPrefs = { notchCard: true, notchColors: DEFAULT_NOTCH_COLORS };
 
 const MINUTE = 60_000;
 
@@ -29,9 +45,15 @@ function pctOf(utilization: number): number {
  * new snapshot that changes nothing visible produces an identical payload and
  * is never sent.
  */
-export function notchPayload(snapshot: UsageSnapshot, now: number, card = true): NotchPayload {
+export function notchPayload(
+  snapshot: UsageSnapshot,
+  now: number,
+  prefs: NotchPrefs = DEFAULT_PREFS,
+): NotchPayload {
   const official = snapshot.official;
-  const none: NotchPayload = { fiveHour: null, weekly: null, fullAt: null, card };
+  const card = prefs.notchCard;
+  const colors = { ...prefs.notchColors };
+  const none: NotchPayload = { fiveHour: null, weekly: null, fullAt: null, card, colors };
   if (!official.available) return none;
   const fiveRaw = official.windows.find((w) => w.key === 'five_hour');
   if (!fiveRaw) return none;
@@ -50,5 +72,6 @@ export function notchPayload(snapshot: UsageSnapshot, now: number, card = true):
     weekly: week ? { pct: pctOf(week.utilization), estimated: week.estimated } : null,
     fullAt: full === null ? null : Math.round(full / MINUTE) * MINUTE,
     card,
+    colors,
   };
 }

@@ -83,3 +83,33 @@ describe('notchLine', () => {
     expect(mergeConfig(DEFAULT_CONFIG, { notchLine: false }).notchLine).toBe(false);
   });
 });
+
+describe('notchColors', () => {
+  const custom = { ok: '#30d158', warn: '#64d2ff', bad: '#bf5af2' };
+  it('defaults to orange, amber and red, including for saved configs from before it existed', () => {
+    expect(DEFAULT_CONFIG.notchColors).toEqual({ ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' });
+    expect(resolveConfig({ theme: 'dark' }).notchColors).toEqual(DEFAULT_CONFIG.notchColors);
+  });
+  it('keeps a saved choice and changes through a patch', () => {
+    expect(resolveConfig({ notchColors: custom }).notchColors).toEqual(custom);
+    expect(mergeConfig(DEFAULT_CONFIG, { notchColors: custom }).notchColors).toEqual(custom);
+  });
+  it('repairs a bad colour to the default, keeping the rest of the config', () => {
+    const c = resolveConfig({ notchColors: { ...custom, bad: 'purple' }, theme: 'dark' });
+    expect(c.notchColors).toEqual(DEFAULT_CONFIG.notchColors);
+    expect(c.theme).toBe('dark');
+    expect(mergeConfig(DEFAULT_CONFIG, { notchColors: { ok: '#fff' } }).notchColors).toEqual(
+      DEFAULT_CONFIG.notchColors,
+    );
+  });
+});
+
+describe('checkForUpdates', () => {
+  it('is on by default, including for saved configs from before it existed', () => {
+    expect(DEFAULT_CONFIG.checkForUpdates).toBe(true);
+    expect(resolveConfig({ theme: 'dark' }).checkForUpdates).toBe(true);
+  });
+  it('turns off through a patch', () => {
+    expect(mergeConfig(DEFAULT_CONFIG, { checkForUpdates: false }).checkForUpdates).toBe(false);
+  });
+});
