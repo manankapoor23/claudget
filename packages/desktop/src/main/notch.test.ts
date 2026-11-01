@@ -223,6 +223,29 @@ describe('NotchLine', () => {
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
+  it('reports a sweep the helper has shown, ignoring a malformed one', async () => {
+    const onSwept = vi.fn();
+    const children: FakeChild[] = [];
+    const line = new NotchLine({
+      helperPath: '/fake/claudget-notch',
+      logger: createNoopLogger(),
+      onOpen: () => {},
+      onSwept,
+      spawnHelper: () => {
+        const c = new FakeChild(100 + children.length);
+        children.push(c);
+        return c as unknown as ChildProcess;
+      },
+      probe: () => Promise.resolve(true),
+    });
+    await line.reprobe();
+    line.setEnabled(true);
+    children[0]!.say({ event: 'sweep', id: 1_790_000_000_000 });
+    children[0]!.say({ event: 'sweep' });
+    await flush();
+    expect(onSwept.mock.calls).toEqual([[1_790_000_000_000]]);
+  });
+
   it('stops when the notch goes away and comes back after a display change', async () => {
     let notch = true;
     const children: FakeChild[] = [];

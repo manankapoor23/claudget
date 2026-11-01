@@ -42,54 +42,85 @@ export function nudgeMessage(w: OfficialWindow, now: number, id: string): AlertM
 
 /** Reset times jitter between readings; a new week resets days later. */
 const SAME_RESET_MS = 5 * 60_000;
-/** A reset noticed later than this (the Mac slept through it) passes quietly. */
-export const LATE_MS = HOUR;
+
+/** What WeekRollover remembers between runs. */
+export interface RolloverState {
+  /** The future weekly reset being waited for. */
+  watching: number | null;
+  /** The latest reset that has passed. */
+  passed: number | null;
+  /** The latest reset whose sweep has been shown (or skipped for reduced motion). */
+  shown: number | null;
+}
+
+export const EMPTY_ROLLOVER: RolloverState = { watching: null, passed: null, shown: null };
+
+/** Accepts only a well-formed saved state; anything else starts empty. */
+export function parseRollover(input: unknown): RolloverState {
+  const r = input as Partial<Record<keyof RolloverState, unknown>> | null;
+  const field = (v: unknown): number | null => (Number.isFinite(v) ? (v as number) : null);
+  if (typeof r !== 'object' || r === null) return { ...EMPTY_ROLLOVER };
+  return { watching: field(r.watching), passed: field(r.passed), shown: field(r.shown) };
+}
 
 /**
- * Notices a new week starting, for the notch line's one-off sweep. It watches
- * the weekly reset time it last saw:
+ * Notices a new week starting, for the notch line's sweep, and keeps that
+ * sweep pending until it has been shown — a week that began while the Mac
+ * slept, or while claudget wasn't running, still gets it, the first time
+ * the user is there to see it. Saved between runs, so a reset that passed
+ * while claudget was quit is noticed at the next launch.
  *
- * - the clock passing it is the week rolling over (celebrated if noticed
- *   within LATE_MS, so a Mac that slept through it doesn't sweep hours late);
- * - a reading with a later reset while the watched one is still ahead is an
- *   early reset (Anthropic resetting limits), also a new week;
- * - a reading with an earlier one just moves the watch.
- *
- * A reset already past when first seen (a stale reading at launch) is never
- * celebrated, and a reading moments after a reset that still carries its
- * time, give or take jitter, isn't watched again.
+ * - The clock passing the watched reset is the week rolling over.
+ * - A reading with a later reset while the watched one is still ahead is an
+ *   early reset (Anthropic resetting limits): also a new week.
+ * - A reading with an earlier one just moves the watch.
+ * - A reset already past when first seen, with nothing watched (a stale
+ *   reading on the first run), isn't a rollover claudget saw happen.
+ * - A reading moments after a reset that still carries its time, give or
+ *   take jitter, isn't watched again.
  */
 export class WeekRollover {
-  /** The future reset being waited for. */
-  private watching: number | null = null;
-  /** The last reset that passed, celebrated or not. */
-  private passed: number | null = null;
-  /** The last reset celebrated: the sweep's id. 0 before any. */
-  private swept = 0;
+  private s: RolloverState;
 
-  /** Feeds the weekly reset time (or null) at `now`; returns the sweep id. */
-  observe(resetsAt: number | null, now: number): number {
-    if (this.watching !== null && now >= this.watching) {
-      if (now - this.watching <= LATE_MS) this.swept = this.watching;
-      this.passed = this.watching;
-      this.watching = null;
+  constructor(state: RolloverState = EMPTY_ROLLOVER) {
+    this.s = { ...state };
+  }
+
+  /** Feeds the weekly reset time (or null) at `now`. */
+  observe(resetsAt: number | null, now: number): void {
+    const s = this.s;
+    if (s.watching !== null && now >= s.watching) {
+      s.passed = s.watching;
+      s.watching = null;
     }
-    if (resetsAt === null || resetsAt <= now) return this.swept;
-    if (this.watching === null) {
-      const again = this.passed !== null && Math.abs(resetsAt - this.passed) < SAME_RESET_MS;
-      if (!again) this.watching = resetsAt;
-    } else if (Math.abs(resetsAt - this.watching) >= SAME_RESET_MS) {
-      if (resetsAt > this.watching) {
-        this.swept = this.watching;
-        this.passed = this.watching;
-      }
-      this.watching = resetsAt;
+    if (resetsAt === null || resetsAt <= now) return;
+    if (s.watching === null) {
+      const again = s.passed !== null && Math.abs(resetsAt - s.passed) < SAME_RESET_MS;
+      if (!again) s.watching = resetsAt;
+    } else if (Math.abs(resetsAt - s.watching) >= SAME_RESET_MS) {
+      if (resetsAt > s.watching) s.passed = s.watching;
+      s.watching = resetsAt;
     }
-    return this.swept;
+  }
+
+  /** The reset whose sweep is still to be shown (its time, epoch ms), or 0. */
+  get pending(): number {
+    const { passed, shown } = this.s;
+    return passed !== null && passed > (shown ?? 0) ? passed : 0;
+  }
+
+  /** The helper has shown (or, with reduced motion, skipped) this sweep. */
+  markShown(id: number): void {
+    if (Number.isFinite(id) && id > 0) this.s.shown = Math.max(this.s.shown ?? 0, id);
   }
 
   /** When the week being watched resets, for a timer; null when none is. */
   get nextAt(): number | null {
-    return this.watching;
+    return this.s.watching;
+  }
+
+  /** A copy of what to save. */
+  get state(): RolloverState {
+    return { ...this.s };
   }
 }

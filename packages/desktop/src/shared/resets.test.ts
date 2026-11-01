@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LATE_MS, NUDGE_WITHIN_MS, WeekRollover, nudgeMessage, weeklyNudge } from './resets';
+import { NUDGE_WITHIN_MS, WeekRollover, nudgeMessage, parseRollover, weeklyNudge } from './resets';
 import { H, NOW, win } from './test-helpers';
 
 describe('weeklyNudge', () => {
@@ -42,50 +42,85 @@ describe('WeekRollover', () => {
   const R = NOW + 3 * 24 * H;
   const NEXT = R + 7 * 24 * H;
 
-  it('sweeps once when the clock passes the reset, not again for the new week', () => {
-    const r = new WeekRollover();
-    expect(r.observe(R, NOW)).toBe(0);
-    expect(r.nextAt).toBe(R);
-    expect(r.observe(R + 300, R - 1)).toBe(0); // jitter, before the reset
-    expect(r.observe(R, R + 1000)).toBe(R); // the stale reading lingers: still one sweep
-    expect(r.observe(R + 400, R + 2000)).toBe(R); // a reading moments later, with jitter
-    expect(r.nextAt).toBeNull();
-    expect(r.observe(NEXT, R + 60_000)).toBe(R); // the new week is watched, no new sweep
-    expect(r.nextAt).toBe(NEXT);
-    expect(r.observe(NEXT, NEXT + 5)).toBe(NEXT); // ...and swept when it resets
-  });
-
-  it('never celebrates a reset already past when first seen', () => {
-    const r = new WeekRollover();
-    expect(r.observe(NOW - H, NOW)).toBe(0);
-    expect(r.observe(R, NOW + 1)).toBe(0);
-  });
-
-  it('lets a reset noticed hours late pass quietly', () => {
+  it('has a sweep pending once the reset passes, until it has been shown', () => {
     const r = new WeekRollover();
     r.observe(R, NOW);
-    expect(r.observe(NEXT, R + LATE_MS + 1)).toBe(0);
+    expect(r.pending).toBe(0);
+    expect(r.nextAt).toBe(R);
+    r.observe(R + 300, R - 1); // jitter, before the reset
+    expect(r.pending).toBe(0);
+    r.observe(R, R + 1000); // the stale reading lingers
+    expect(r.pending).toBe(R);
+    r.observe(R + 400, R + 2000); // a reading moments later, with jitter
+    expect(r.nextAt).toBeNull();
+    r.markShown(R);
+    expect(r.pending).toBe(0);
+    r.observe(NEXT, R + 60_000); // the new week is watched, nothing pending
+    expect([r.pending, r.nextAt]).toEqual([0, NEXT]);
+    r.observe(NEXT, NEXT + 5);
+    expect(r.pending).toBe(NEXT);
+  });
+
+  it('keeps a missed sweep for whenever the user is back, however late', () => {
+    const r = new WeekRollover();
+    r.observe(R, NOW);
+    r.observe(NEXT, R + 30 * H); // woke the next day, with the new week's reading
+    expect(r.pending).toBe(R);
     expect(r.nextAt).toBe(NEXT);
-    expect(r.observe(NEXT, NEXT + 1)).toBe(NEXT);
+  });
+
+  it('notices a reset that passed while claudget was quit', () => {
+    const before = new WeekRollover();
+    before.observe(R, NOW);
+    const saved = parseRollover(JSON.parse(JSON.stringify(before.state)));
+    const after = new WeekRollover(saved);
+    after.observe(R, R + 2 * H); // the launch reading is still the old week
+    expect(after.pending).toBe(R);
+  });
+
+  it('never celebrates a reset already past on the very first run', () => {
+    const r = new WeekRollover();
+    r.observe(NOW - H, NOW);
+    r.observe(R, NOW + 1);
+    expect(r.pending).toBe(0);
   });
 
   it('treats a later reset arriving before the watched one as an early reset', () => {
     const r = new WeekRollover();
     r.observe(R, NOW);
-    expect(r.observe(R + 2 * 24 * H, NOW + H)).toBe(R);
-    expect(r.nextAt).toBe(R + 2 * 24 * H);
+    r.observe(R + 2 * 24 * H, NOW + H);
+    expect([r.pending, r.nextAt]).toEqual([R, R + 2 * 24 * H]);
   });
 
   it('moves the watch quietly when the reset comes earlier', () => {
     const r = new WeekRollover();
     r.observe(R, NOW);
-    expect(r.observe(R - 24 * H, NOW + H)).toBe(0);
-    expect(r.nextAt).toBe(R - 24 * H);
+    r.observe(R - 24 * H, NOW + H);
+    expect([r.pending, r.nextAt]).toEqual([0, R - 24 * H]);
   });
 
-  it('ignores missing readings', () => {
+  it('never goes back to an older sweep once a newer one is shown', () => {
+    const r = new WeekRollover({ watching: null, passed: R, shown: NEXT });
+    expect(r.pending).toBe(0);
+    r.markShown(R);
+    expect(r.state.shown).toBe(NEXT);
+  });
+
+  it('ignores missing readings and bad ids', () => {
     const r = new WeekRollover();
-    expect(r.observe(null, NOW)).toBe(0);
-    expect(r.nextAt).toBeNull();
+    r.observe(null, NOW);
+    r.markShown(Number.NaN);
+    expect(r.state).toEqual({ watching: null, passed: null, shown: null });
+  });
+});
+
+describe('parseRollover', () => {
+  it('keeps numbers and drops anything else', () => {
+    expect(parseRollover({ watching: 5, passed: 'x', shown: null })).toEqual({
+      watching: 5,
+      passed: null,
+      shown: null,
+    });
+    expect(parseRollover('nope')).toEqual({ watching: null, passed: null, shown: null });
   });
 });

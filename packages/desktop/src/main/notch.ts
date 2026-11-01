@@ -105,6 +105,8 @@ export interface NotchLineDeps {
   logger: Logger;
   /** Clicked the card or the notch: show the popover. */
   onOpen: () => void;
+  /** The helper showed (or, with reduced motion, skipped) the new-week sweep with this id. */
+  onSwept?: (id: number) => void;
   spawnHelper?: (file: string) => ChildProcess;
   probe?: (file: string) => Promise<boolean | null>;
   now?: () => number;
@@ -331,6 +333,11 @@ export class NotchLine {
       case 'open':
         this.deps.onOpen();
         break;
+      case 'sweep': {
+        const id = Number(msg['id']);
+        if (Number.isFinite(id) && id > 0) this.deps.onSwept?.(id);
+        break;
+      }
       case 'applied':
         this.deps.logger.debug('Notch helper applied', msg);
         break;

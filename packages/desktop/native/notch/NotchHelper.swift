@@ -41,8 +41,8 @@ struct StateIn: Decodable, Equatable {
     let card: Bool?
     /// The user's colour for each tone, `#rrggbb`. Absent or unreadable: the defaults.
     let colors: ColorsIn?
-    /// The latest weekly reset to celebrate (epoch ms), 0 before any: one sweep
-    /// round the notch when it changes, never for the value the helper starts with.
+    /// A new week's sweep still to be shown (the reset's time, epoch ms), or 0:
+    /// played the first moment the user can see it, then reported shown.
     let sweep: Double?
 }
 
@@ -899,8 +899,12 @@ final class Controller: NSObject {
     var cardTimer: Timer?
     var screensAsleep = false
     var lastNotchReport: [String: Any]?
-    /// The sweep id last applied; nil until the first payload, which never plays.
-    var lastSweep: Double?
+    /// The new-week sweep waiting for the user to be here to see it.
+    var pendingSweep: Double?
+    /// The sweep already played in this run, so a payload still carrying it
+    /// (claudget hasn't heard back yet) doesn't play it twice.
+    var playedSweep: Double?
+    var screenLocked = false
 
     override init() {
         super.init()
@@ -927,6 +931,12 @@ final class Controller: NSObject {
                        name: NSWorkspace.screensDidSleepNotification, object: nil)
         ws.addObserver(self, selector: #selector(screensWoke),
                        name: NSWorkspace.screensDidWakeNotification, object: nil)
+        let dnc = DistributedNotificationCenter.default()
+        dnc.addObserver(self, selector: #selector(screenLockedNow),
+                        name: NSNotification.Name("com.apple.screenIsLocked"), object: nil)
+        dnc.addObserver(self, selector: #selector(screenUnlockedNow),
+                        name: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil)
+        screenLocked = (CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"] as? Bool ?? false
         nc.addObserver(self, selector: #selector(occlusionChanged),
                        name: NSWindow.didChangeOcclusionStateNotification, object: lineWindow)
 
@@ -955,8 +965,7 @@ final class Controller: NSObject {
         let first = state == nil
         state = s
         let sweepID = s.sweep ?? 0
-        let newWeek = lastSweep != nil && sweepID != lastSweep && sweepID > 0
-        lastSweep = sweepID
+        pendingSweep = sweepID > 0 && sweepID != playedSweep ? sweepID : nil
         Out.emit(["event": "applied", "pct": s.fiveHour?.pct ?? NSNull(), "shown": s.fiveHour != nil && notch != nil])
         guard let five = s.fiveHour, notch != nil else { return hideAll() }
         let m = LineModel(pct: CGFloat(max(0, min(100, five.pct)) / 100),
@@ -965,10 +974,8 @@ final class Controller: NSObject {
         lineView.set(m, animated: !first && lineWindow.isVisible)
         cardView.state = s
         if !lineWindow.isVisible { lineWindow.orderFrontRegardless() }
-        if newWeek && !reduceMotion && !screensAsleep {
-            lineView.sweep(color: Palette(s.colors).ok)
-            Out.emit(["event": "sweep"])
-        }
+        // Let the line paint first, so the sweep isn't lost in it appearing.
+        playPendingSweep(after: 0.6)
         if s.card == false {
             zoneWindow.orderOut(nil)
             hideCard(animated: false)
@@ -976,6 +983,26 @@ final class Controller: NSObject {
             zoneWindow.orderFrontRegardless()
         }
         syncTravel()
+    }
+
+    /// Plays the waiting sweep once the user can see it: screens awake, the
+    /// Mac unlocked, the line on screen. With reduced motion it isn't played,
+    /// only reported, so it doesn't wait forever.
+    func playPendingSweep(after delay: Double) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, let id = self.pendingSweep else { return }
+            // On screen and not covered (a full-screen app hides the menu bar).
+            guard !self.screensAsleep, !self.screenLocked, self.lineWindow.isVisible,
+                  self.lineWindow.occlusionState.contains(.visible) else { return }
+            self.pendingSweep = nil
+            self.playedSweep = id
+            if self.reduceMotion {
+                Out.emit(["event": "sweep", "id": id, "skipped": true])
+                return
+            }
+            self.lineView.sweep(color: Palette(self.state?.colors).ok)
+            Out.emit(["event": "sweep", "id": id])
+        }
     }
 
     func hideAll() {
@@ -1100,8 +1127,21 @@ final class Controller: NSObject {
 
     @objc func motionChanged() { syncTravel() }
     @objc func screensSlept() { screensAsleep = true; syncTravel() }
-    @objc func screensWoke() { screensAsleep = false; syncTravel() }
-    @objc func occlusionChanged() { syncTravel() }
+    @objc func screensWoke() {
+        screensAsleep = false
+        syncTravel()
+        // Give the display a moment to light up before the sweep.
+        playPendingSweep(after: 1.5)
+    }
+    @objc func screenLockedNow() { screenLocked = true }
+    @objc func screenUnlockedNow() {
+        screenLocked = false
+        playPendingSweep(after: 0.8)
+    }
+    @objc func occlusionChanged() {
+        syncTravel()
+        playPendingSweep(after: 0.6)
+    }
 }
 
 // MARK: - stdin

@@ -18,9 +18,10 @@ export interface NotchPayload {
   /** `#rrggbb` for each tone, from Settings. */
   colors: NotchColors;
   /**
-   * The latest weekly reset to celebrate with one sweep round the notch (its
-   * reset time, epoch ms), 0 before any. The helper plays it when this
-   * changes, never for the value it starts with (see WeekRollover).
+   * A new week's sweep round the notch still to be shown (the reset's time,
+   * epoch ms), or 0. The helper plays it the first moment the user can see
+   * it, then reports it shown; until then it stays in every payload (see
+   * WeekRollover).
    */
   sweep: number;
 }
