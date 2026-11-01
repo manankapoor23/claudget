@@ -98,7 +98,11 @@ function pickReset(obj: Record<string, unknown>, now: number): number | null {
 }
 
 function toWindow(key: string, obj: Record<string, unknown>, now: number): OfficialWindow | null {
-  let utilization = pickNumber(obj, [
+  // Anthropic's usage endpoint sends a percentage, 0–100: the number Claude
+  // Code's /usage and status line show. It used to be read as a fraction
+  // whenever it was 1 or less, so a fresh 5-hour window at 1% showed as 100%
+  // (and fired the 95% alert). Only a used/limit pair is a fraction.
+  const percent = pickNumber(obj, [
     'utilization',
     'utilization_pct',
     'percent_used',
@@ -110,9 +114,10 @@ function toWindow(key: string, obj: Record<string, unknown>, now: number): Offic
   const used = pickNumber(obj, ['used', 'used_tokens', 'consumed', 'count']);
   const limit = pickNumber(obj, ['limit', 'max', 'quota', 'cap', 'total']);
 
-  if (utilization == null && used != null && limit && limit > 0) utilization = used / limit;
+  let utilization: number | null = null;
+  if (percent != null) utilization = percent / 100;
+  else if (used != null && limit && limit > 0) utilization = used / limit;
   if (utilization == null) return null;
-  if (utilization > 1.0001) utilization = utilization / 100; // percent → fraction
   utilization = Math.max(0, Math.min(1, utilization));
 
   const usedPct = utilization * 100;
