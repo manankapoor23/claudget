@@ -5,6 +5,16 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.8] — 2026-11-01
+
+### Fixed
+
+- **A fresh 5-hour window no longer shows as 100%.** Right after a reset,
+  Anthropic reports usage under 1% as a number like `1` (meaning 1%), and
+  claudget read it as a fraction: 1% showed as 100% "At limit" and could fire
+  the 95% alert, until usage passed 1%. Usage is now always read as the
+  percentage it is, matching Claude Code's `/usage`.
+
 ## [0.3.7] — 2026-11-01
 
 ### Added
@@ -327,6 +337,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.8]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.8
 [0.3.7]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.7
 [0.3.6]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.6
 [0.3.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.5
