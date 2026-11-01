@@ -44,6 +44,8 @@ export {
   type LookupOptions,
   type RedactedCredentials,
 } from './credentials';
+// What to do without a login: is the `claude` command or the Claude app here?
+export { detectClaudeSetup, installCommandFor, type ClaudeSetup } from './official';
 
 // Pricing
 export {

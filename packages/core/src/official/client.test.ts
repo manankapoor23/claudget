@@ -148,17 +148,20 @@ describe('OfficialUsageClient', () => {
  * — that mapping is the whole feature, so it gets asserted rather than assumed.
  */
 describe('OfficialUsageClient credential problems', () => {
+  // Claude Code installed, no Claude app: never what this machine happens to have.
   const base = {
     cliVersion: null,
     pollIntervalMs: 300_000,
     logger: createNoopLogger(),
     now: () => 1,
+    detectSetup: () => ({ cli: true, app: false }),
   };
 
   const cases = [
     { problem: 'signed-out', status: 'signed-out', fix: 'claude' },
     { problem: 'no-token', status: 'signed-out', fix: 'claude' },
-    { problem: 'not-installed', status: 'not-installed', fix: null },
+    // Installed but never run: there's no folder yet, and signing in makes it.
+    { problem: 'not-installed', status: 'signed-out', fix: 'claude' },
     { problem: 'keychain-denied', status: 'keychain-denied', fix: null },
     { problem: 'malformed', status: 'credentials-malformed', fix: 'claude' },
   ] as const;
@@ -187,6 +190,52 @@ describe('OfficialUsageClient credential problems', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     });
   }
+
+  const install =
+    process.platform === 'win32'
+      ? 'irm https://claude.ai/install.ps1 | iex'
+      : 'curl -fsSL https://claude.ai/install.sh | bash';
+  const signedOut = (
+    setup: { cli: boolean; app: boolean },
+    problem: 'signed-out' | 'not-installed' = 'signed-out',
+  ) =>
+    new OfficialUsageClient({
+      ...base,
+      credentialsPath: '/nowhere/.credentials.json',
+      fetchImpl: vi.fn() as unknown as typeof fetch,
+      lookupImpl: () => Promise.resolve({ credentials: null, problem, source: null, detail: null }),
+      detectSetup: () => setup,
+    }).getUsage({ force: true });
+
+  it('says to install Claude Code first when the claude command is missing', async () => {
+    const appOnly = await signedOut({ cli: false, app: true });
+    expect(appOnly.status).toBe('signed-out');
+    expect(appOnly.fix).toBe(install);
+    expect(appOnly.message).toContain('Claude app keeps its login to itself');
+    expect(appOnly.setup).toEqual({ cli: false, app: true });
+
+    const nothing = await signedOut({ cli: false, app: false }, 'not-installed');
+    expect(nothing.status).toBe('not-installed');
+    expect(nothing.fix).toBe(install);
+    expect(nothing.message).toContain('isn’t installed');
+  });
+
+  it('keeps the Keychain and unreadable-login advice even without the command', async () => {
+    const denied = await new OfficialUsageClient({
+      ...base,
+      credentialsPath: '/nowhere/.credentials.json',
+      fetchImpl: vi.fn() as unknown as typeof fetch,
+      lookupImpl: () =>
+        Promise.resolve({
+          credentials: null,
+          problem: 'keychain-denied',
+          source: null,
+          detail: null,
+        }),
+      detectSetup: () => ({ cli: false, app: true }),
+    }).getUsage({ force: true });
+    expect([denied.status, denied.fix]).toEqual(['keychain-denied', null]);
+  });
 
   it('distinguishes an expired token that can refresh itself', async () => {
     const withRefresh = (refreshToken: string | null) =>

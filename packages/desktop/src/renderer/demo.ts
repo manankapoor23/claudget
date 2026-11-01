@@ -202,7 +202,7 @@ export function createDemoData(): {
       localUpdatedAt: now - 12_000,
       schemaVersion: 2,
       local,
-      official: {
+      official: demoSignedOut(params.get('signin'), params.get('platform')) ?? {
         status: 'ok',
         available: true,
         stale: false,
@@ -336,4 +336,35 @@ function demoHistory(now: number): LimitHistory {
     };
   });
   return { version: 1, cycles: [...weeks, ...fives] };
+}
+
+/**
+ * `?signin=app` (only the Claude app), `?signin=none` (neither) or
+ * `?signin=cli` (Claude Code installed, signed out): the limits notice for
+ * each, for screenshots.
+ */
+function demoSignedOut(
+  kind: string | null,
+  platform: string | null,
+): UsageSnapshot['official'] | null {
+  if (kind !== 'app' && kind !== 'none' && kind !== 'cli') return null;
+  const cli = kind === 'cli';
+  return {
+    status: 'signed-out',
+    available: false,
+    stale: false,
+    fetchedAt: null,
+    nextFetchAt: null,
+    windows: [],
+    message: cli
+      ? 'Claude Code is signed out, so its plan limits aren’t available.'
+      : 'Claude Code isn’t installed, so there’s no login to read plan limits with.',
+    fix: cli
+      ? 'claude'
+      : platform === 'win32'
+        ? 'irm https://claude.ai/install.ps1 | iex'
+        : 'curl -fsSL https://claude.ai/install.sh | bash',
+    detail: null,
+    setup: { cli, app: kind !== 'none' },
+  };
 }

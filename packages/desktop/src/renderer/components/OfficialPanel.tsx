@@ -1,6 +1,7 @@
 import { useState, type JSX } from 'react';
 import type { OfficialStatus, OfficialUsage, OfficialWindow } from '@claude-widget/core';
 import { formatCompact, formatPct } from '../lib/format';
+import { PLATFORM } from '../lib/platform';
 import { RadialGauge } from './RadialGauge';
 import { Countdown } from './Countdown';
 
@@ -133,6 +134,36 @@ export function FixCommand({ command }: { command: string }): JSX.Element {
   );
 }
 
+/** No `claude` command to run: installing Claude Code comes first. */
+export function needsInstall(official: OfficialUsage): boolean {
+  const s = official.status;
+  return (s === 'signed-out' || s === 'not-installed') && official.setup?.cli === false;
+}
+
+/**
+ * The fix as steps: install Claude Code and sign in when the command is
+ * missing, otherwise the one command. The install line is the platform's
+ * official installer (PowerShell on Windows).
+ */
+export function SignInSteps({ official }: { official: OfficialUsage }): JSX.Element | null {
+  if (!official.fix) return null;
+  if (!needsInstall(official)) return <FixCommand command={official.fix} />;
+  return (
+    <ol className="steps">
+      <li>
+        <span className="steps__label">
+          Paste this into {PLATFORM === 'win32' ? 'PowerShell' : 'Terminal'} to install Claude Code
+        </span>
+        <FixCommand command={official.fix} />
+      </li>
+      <li>
+        <span className="steps__label">Then start it and sign in</span>
+        <FixCommand command="claude" />
+      </li>
+    </ol>
+  );
+}
+
 /**
  * Explains why plan limits aren't showing, in the order that matters: what
  * happened, what fixes it, and what still works regardless.
@@ -151,7 +182,7 @@ function Explain({ official }: { official: OfficialUsage }): JSX.Element {
         {official.message ?? meta.hint ?? 'Plan limits are unavailable.'}
       </p>
 
-      {official.fix ? <FixCommand command={official.fix} /> : null}
+      <SignInSteps official={official} />
       {!official.fix && meta.hint ? <p className="explain__hint">{meta.hint}</p> : null}
 
       {meta.localFine ? (
