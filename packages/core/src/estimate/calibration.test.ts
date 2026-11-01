@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CALIBRATION_WINDOWS,
   EMPTY_CALIBRATION,
+  MIN_CAPACITY_SAMPLES,
+  capacityFor,
   ingestReading,
   parseCalibration,
   rateFor,
@@ -178,7 +180,7 @@ describe('rateFor', () => {
         })),
       ].map((r) => ({ ...r, frozen: false })),
     };
-    expect(rateFor({ version: 1, limits: records }, 'seven_day')!.k).toBeCloseTo(0.0004, 6);
+    expect(rateFor({ version: 2, limits: records }, 'seven_day')!.k).toBeCloseTo(0.0004, 6);
   });
 
   it('keeps only the most recent windows', () => {
@@ -196,6 +198,49 @@ describe('rateFor', () => {
   });
 });
 
+describe('capacityFor', () => {
+  /** One record per 5-hour window: `points` moved on `usd` of use. */
+  const record = (i: number, points: number, usd: number) => ({
+    resetsAt: RESET + i * 5 * H,
+    fromAt: T0 + i * 5 * H,
+    fromU: 0,
+    toAt: T0 + i * 5 * H + H,
+    toU: points / 100,
+    weight: usd,
+    frozen: false,
+  });
+  const state = (...records: ReturnType<typeof record>[]): CalibrationState => ({
+    version: 2,
+    limits: { five_hour: records },
+  });
+
+  it('says nothing until enough windows have been learned', () => {
+    expect(capacityFor(EMPTY_CALIBRATION, 'five_hour')).toBeNull();
+    const two = state(record(0, 40, 40), record(1, 50, 50));
+    expect(MIN_CAPACITY_SAMPLES).toBe(3);
+    expect(capacityFor(two, 'five_hour')).toBeNull();
+  });
+
+  it('is what fills the window from 0 to 100%: 1 / the learned rate', () => {
+    // Every window filled 1 point per $: a full window holds $100.
+    const s = state(record(0, 40, 40), record(1, 50, 50), record(2, 30, 30));
+    expect(capacityFor(s, 'five_hour')).toEqual({ fullUSD: 100, samples: 3 });
+  });
+
+  it('is not dragged down by one window where use elsewhere moved the limit', () => {
+    // A window that moved 54 points on $3 of local use (the rest was on
+    // claude.ai) would say a full window holds $6; the median ignores it.
+    const s = state(record(0, 40, 40), record(1, 54, 3.24), record(2, 50, 50), record(3, 30, 30));
+    expect(capacityFor(s, 'five_hour')?.fullUSD).toBeCloseTo(100, 6);
+  });
+
+  it('skips records too small to measure, and other limits', () => {
+    const s = state(record(0, 40, 40), record(1, 2, 2), record(2, 50, 50), record(3, 30, 30));
+    expect(capacityFor(s, 'five_hour')?.samples).toBe(3);
+    expect(capacityFor(s, 'seven_day')).toBeNull();
+  });
+});
+
 describe('parseCalibration', () => {
   it('round-trips through JSON (what persistence relies on)', () => {
     const s = feed([
@@ -207,10 +252,17 @@ describe('parseCalibration', () => {
     expect(rateFor(back, 'five_hour')?.k).toBeCloseTo(0.005, 6);
   });
 
+  it('drops a calibration learned before prices changed, to learn afresh', () => {
+    const s = feed([{ at: T0 + 60 * MIN, u: 0.3 }]);
+    const old = { ...JSON.parse(JSON.stringify(s)), version: 1 };
+    expect(parseCalibration(old)).toEqual(EMPTY_CALIBRATION);
+    expect(parseCalibration({ limits: s.limits })).toEqual(EMPTY_CALIBRATION);
+  });
+
   it('drops anything malformed instead of throwing', () => {
     expect(parseCalibration(null)).toEqual(EMPTY_CALIBRATION);
-    expect(parseCalibration({ limits: 'x' })).toEqual(EMPTY_CALIBRATION);
-    expect(parseCalibration({ limits: { five_hour: [{ resetsAt: 'soon' }] } })).toEqual(
+    expect(parseCalibration({ version: 2, limits: 'x' })).toEqual(EMPTY_CALIBRATION);
+    expect(parseCalibration({ version: 2, limits: { five_hour: [{ resetsAt: 'soon' }] } })).toEqual(
       EMPTY_CALIBRATION,
     );
   });

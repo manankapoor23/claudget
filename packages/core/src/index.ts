@@ -48,6 +48,7 @@ export {
 // Pricing
 export {
   estimateCost,
+  promptCost,
   lookupPricing,
   modelLabel,
   normalizeModelId,
@@ -56,6 +57,7 @@ export {
   type PricingTable,
   type ModelPricing,
   type CostResult,
+  type PromptCost,
 } from './pricing';
 
 // Lower-level building blocks (handy for tests and future surfaces)
@@ -85,6 +87,8 @@ export {
   FileCalibrationStore,
   MAX_ESTIMATE_GAIN,
   MAX_RECORD_MS,
+  MIN_CAPACITY_SAMPLES,
+  capacityFor,
   estimateWindow,
   ingestReading,
   memoryCalibrationStore,

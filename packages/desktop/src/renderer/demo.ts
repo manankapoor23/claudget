@@ -171,6 +171,13 @@ export function createDemoData(): {
       { source: 'vscode', ...aggregate(126_000_000, 301.6, 433) },
       { source: 'desktop', ...aggregate(38_000_000, 88.9, 121) },
     ],
+    // 376M tokens over 30 days, ~94% of the prompt read from the cache.
+    cache: {
+      promptTokens: 360_000_000,
+      cacheReadTokens: 338_400_000,
+      promptUSD: 412.6,
+      uncachedPromptUSD: 2_310.4,
+    },
     sessions,
     blocks: [activeBlock],
     activeBlock,
@@ -211,6 +218,7 @@ export function createDemoData(): {
             used: 62,
             limit: 100,
             estimate,
+            capacity: { fullUSD: 131.6, samples: 8 },
           },
           {
             key: 'seven_day',
@@ -221,6 +229,7 @@ export function createDemoData(): {
             resetsAt: now + 3 * 24 * 60 * 60_000,
             used: 31,
             limit: 100,
+            capacity: { fullUSD: 1184, samples: 7 },
           },
         ],
         message: null,

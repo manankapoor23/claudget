@@ -1,6 +1,13 @@
 import type { JSX } from 'react';
 import type { LocalUsage } from '@claude-widget/core';
 import { formatUSD, formatPct } from '../lib/format';
+import { cacheSummary } from '../../shared/insights';
+
+/** What the cache rows mean, on hover. */
+const CACHE_HINT =
+  'Last 30 days. Claude Code re-sends the conversation with every request; the prompt cache ' +
+  'serves the repeated part at a tenth of the input price. Saved: what those prompts would ' +
+  'have cost without it, at API prices.';
 
 interface InsightsProps {
   local: LocalUsage;
@@ -29,7 +36,8 @@ export function Insights({ local, currency }: InsightsProps): JSX.Element | null
     if (!peak || b.tokens.total > peak.tokens.total) peak = b;
   }
 
-  if (!top && models.length === 0) return null;
+  const cache = cacheSummary(local.cache);
+  if (!top && models.length === 0 && !cache) return null;
 
   return (
     <div className="panel">
@@ -52,6 +60,18 @@ export function Insights({ local, currency }: InsightsProps): JSX.Element | null
               .map((m) => `${m.label} ${formatPct((m.costUSD / totalCost) * 100)}`)
               .join(' · ')}
           </b>
+        </div>
+      ) : null}
+      {cache ? (
+        <div className="kv" title={CACHE_HINT}>
+          <span>From cache · 30 days</span>
+          <b>{formatPct(cache.hitRate * 100)} of prompt tokens</b>
+        </div>
+      ) : null}
+      {cache?.savedUSD != null && cache.savedUSD > 0 ? (
+        <div className="kv" title={CACHE_HINT}>
+          <span>Cache saved · 30 days</span>
+          <b>{formatUSD(cache.savedUSD, currency)}</b>
         </div>
       ) : null}
       {peak && peak.tokens.total > 0 ? (

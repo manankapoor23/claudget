@@ -1,9 +1,12 @@
 export {
+  CALIBRATION_VERSION,
   CALIBRATION_WINDOWS,
   MAX_RECORD_MS,
   EMPTY_CALIBRATION,
   MIN_CALIBRATION_DELTA,
   MIN_CALIBRATION_WEIGHT,
+  MIN_CAPACITY_SAMPLES,
+  capacityFor,
   ingestReading,
   parseCalibration,
   rateFor,

@@ -10,6 +10,7 @@ import { claudePaths, prettifyProjectSlug, type ClaudePaths } from './paths';
 import { DEFAULT_PRICING, type PricingTable } from './pricing';
 import {
   EMPTY_CALIBRATION,
+  capacityFor,
   estimateWindow,
   ingestReading,
   rateFor,
@@ -442,7 +443,7 @@ export class UsageEngine extends EventEmitter {
     }
   }
 
-  /** Attaches a live estimate to each window that has one (see estimate.ts). */
+  /** Attaches the live estimate and the learned capacity to each window that has them (see estimate/). */
   private withEstimates(
     windows: OfficialWindow[],
     readingAt: number,
@@ -470,7 +471,8 @@ export class UsageEngine extends EventEmitter {
       } else {
         this.lastEstimates.delete(w.key);
       }
-      return estimate ? { ...w, estimate } : w;
+      const capacity = capacityFor(this.calibration, w.key);
+      return { ...w, ...(estimate ? { estimate } : {}), ...(capacity ? { capacity } : {}) };
     });
   }
 

@@ -5,6 +5,8 @@ interface RawUsage {
   output_tokens?: unknown;
   cache_creation_input_tokens?: unknown;
   cache_read_input_tokens?: unknown;
+  /** The cache writes split by how long they're kept. */
+  cache_creation?: { ephemeral_1h_input_tokens?: unknown } | null;
 }
 
 interface RawLine {
@@ -126,7 +128,15 @@ function entryFromRaw(
   const total = input + output + cacheCreation + cacheRead;
   if (total === 0) return null;
 
-  const tokens: TokenCounts = { input, output, cacheCreation, cacheRead, total };
+  const hour = Math.min(cacheCreation, num(usage.cache_creation?.ephemeral_1h_input_tokens));
+  const tokens: TokenCounts = {
+    input,
+    output,
+    cacheCreation,
+    cacheRead,
+    total,
+    ...(hour > 0 ? { cacheCreation1h: hour } : {}),
+  };
 
   const parsedTs = typeof obj.timestamp === 'string' ? Date.parse(obj.timestamp) : NaN;
   const timestamp = Number.isFinite(parsedTs) ? parsedTs : Date.now();
