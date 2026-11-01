@@ -1,4 +1,5 @@
-import type { TokenCounts, UsageEntry, UsageSource } from './types';
+import { contextWindowFor } from './context';
+import type { SessionContext, TokenCounts, UsageEntry, UsageSource } from './types';
 
 interface RawUsage {
   input_tokens?: unknown;
@@ -11,6 +12,7 @@ interface RawUsage {
 
 interface RawLine {
   type?: unknown;
+  subtype?: unknown;
   timestamp?: unknown;
   uuid?: unknown;
   requestId?: unknown;
@@ -185,6 +187,12 @@ export interface TranscriptParser {
    * be a usage entry, without parsing it — see {@link skimHead}.
    */
   skim(text: string): void;
+  /**
+   * The file's session and how full its context is after the lines so far:
+   * the latest main-thread response, or null before one and after a /compact
+   * until the next.
+   */
+  context(): { sessionId: string; context: SessionContext } | null;
 }
 
 const CWD_RE = /"cwd":"((?:[^"\\]|\\.)*)"/;
@@ -217,8 +225,23 @@ export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
   let sessionTitle: string | null = null;
   let gitBranch: string | null = null;
   let source: UsageSource | null = null;
+  let latest: { entry: UsageEntry; prompt: number } | null = null;
+  let largestPrompt = 0;
   return {
     wantsTitle: () => sessionTitle === null,
+    context() {
+      if (!latest) return null;
+      const { entry, prompt } = latest;
+      return {
+        sessionId: entry.sessionId,
+        context: {
+          usedTokens: prompt,
+          windowTokens: contextWindowFor(entry.model, largestPrompt),
+          at: entry.timestamp,
+          model: entry.model,
+        },
+      };
+    },
     skim(head) {
       const meta = skimHead(head);
       if (meta.cwd) projectPath = meta.cwd;
@@ -235,7 +258,17 @@ export function createTranscriptParser(ctx: ParseContext): TranscriptParser {
       }
       source = sourceFromEntrypoint(raw.entrypoint) ?? source;
       sessionTitle ??= sessionTitleFromRaw(raw);
-      return entryFromRaw(raw, { ...ctx, projectPath }, { sessionTitle, gitBranch, source });
+      // A /compact (manual or automatic) empties the context; it's unknown
+      // again until the next response says how big the new one is.
+      if (raw.type === 'system' && raw.subtype === 'compact_boundary') latest = null;
+      const entry = entryFromRaw(raw, { ...ctx, projectPath }, { sessionTitle, gitBranch, source });
+      if (entry && !entry.isSidechain) {
+        const t = entry.tokens;
+        const prompt = t.input + t.cacheCreation + t.cacheRead;
+        largestPrompt = Math.max(largestPrompt, prompt);
+        if (!latest || entry.timestamp >= latest.entry.timestamp) latest = { entry, prompt };
+      }
+      return entry;
     },
   };
 }

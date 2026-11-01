@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseTranscriptContent, parseTranscriptLine, sourceFromEntrypoint } from './parse';
+import {
+  createTranscriptParser,
+  parseTranscriptContent,
+  parseTranscriptLine,
+  sourceFromEntrypoint,
+} from './parse';
 
 const ctx = { projectSlug: 'c--Dev-x', projectPath: 'x' };
 
@@ -177,5 +182,92 @@ describe('where a request was made (entrypoint)', () => {
   it('leaves older transcripts without an entrypoint unknown', () => {
     const e = parseTranscriptLine(assistant({ input_tokens: 1, output_tokens: 1 }), ctx);
     expect(e?.source).toBeNull();
+  });
+});
+
+describe('session context', () => {
+  const reply = (
+    id: string,
+    at: string,
+    usage: Record<string, number>,
+    extra: Record<string, unknown> = {},
+  ): string =>
+    JSON.stringify({
+      type: 'assistant',
+      timestamp: at,
+      requestId: id,
+      sessionId: 'sess_1',
+      message: { id, model: 'claude-opus-4-8', usage },
+      ...extra,
+    });
+  const compact = JSON.stringify({
+    type: 'system',
+    subtype: 'compact_boundary',
+    timestamp: '2026-06-08T10:03:00.000Z',
+    compactMetadata: { trigger: 'auto', preTokens: 900_000 },
+  });
+
+  it('is the prompt of the latest response, as Claude Code counts it: no output', () => {
+    const p = createTranscriptParser(ctx);
+    expect(p.context()).toBeNull();
+    p.line(reply('a', '2026-06-08T10:00:00.000Z', { input_tokens: 5, output_tokens: 99 }));
+    p.line(
+      reply('b', '2026-06-08T10:01:00.000Z', {
+        input_tokens: 10,
+        output_tokens: 500,
+        cache_creation_input_tokens: 2_000,
+        cache_read_input_tokens: 300_000,
+      }),
+    );
+    expect(p.context()).toEqual({
+      sessionId: 'sess_1',
+      context: {
+        usedTokens: 302_010,
+        windowTokens: 1_000_000,
+        at: Date.parse('2026-06-08T10:01:00.000Z'),
+        model: 'claude-opus-4-8',
+      },
+    });
+  });
+
+  it('is unknown after a /compact until the next response', () => {
+    const p = createTranscriptParser(ctx);
+    p.line(
+      reply('a', '2026-06-08T10:00:00.000Z', { input_tokens: 1, cache_read_input_tokens: 900_000 }),
+    );
+    p.line(compact);
+    expect(p.context()).toBeNull();
+    p.line(
+      reply('b', '2026-06-08T10:04:00.000Z', {
+        input_tokens: 1,
+        cache_creation_input_tokens: 15_000,
+      }),
+    );
+    expect(p.context()?.context.usedTokens).toBe(15_001);
+  });
+
+  it('ignores subagent turns, which run in a context of their own', () => {
+    const p = createTranscriptParser(ctx);
+    p.line(reply('a', '2026-06-08T10:00:00.000Z', { input_tokens: 40_000 }));
+    p.line(reply('b', '2026-06-08T10:01:00.000Z', { input_tokens: 3 }, { isSidechain: true }));
+    expect(p.context()?.context.usedTokens).toBe(40_000);
+  });
+
+  it('switches to the 1M window once a prompt has gone past 200K', () => {
+    const p = createTranscriptParser(ctx);
+    const sonnet = (id: string, at: string, n: number): string =>
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: at,
+        requestId: id,
+        sessionId: 'sess_1',
+        message: { id, model: 'claude-sonnet-4-6', usage: { input_tokens: n } },
+      });
+    p.line(sonnet('a', '2026-06-08T10:00:00.000Z', 150_000));
+    expect(p.context()?.context.windowTokens).toBe(200_000);
+    p.line(sonnet('b', '2026-06-08T10:01:00.000Z', 250_000));
+    p.line(compact);
+    p.line(sonnet('c', '2026-06-08T10:04:00.000Z', 20_000));
+    expect(p.context()?.context.windowTokens).toBe(1_000_000);
   });
 });

@@ -113,3 +113,13 @@ describe('checkForUpdates', () => {
     expect(mergeConfig(DEFAULT_CONFIG, { checkForUpdates: false }).checkForUpdates).toBe(false);
   });
 });
+
+describe('resetNudge', () => {
+  it('is on by default, including for saved configs from before it existed', () => {
+    expect(DEFAULT_CONFIG.resetNudge).toBe(true);
+    expect(resolveConfig({ theme: 'dark' }).resetNudge).toBe(true);
+  });
+  it('turns off through a patch', () => {
+    expect(mergeConfig(DEFAULT_CONFIG, { resetNudge: false }).resetNudge).toBe(false);
+  });
+});

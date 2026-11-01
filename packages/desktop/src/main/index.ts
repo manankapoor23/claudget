@@ -38,6 +38,7 @@ import { hasStatusNotifierHost, launchSurface, trayLikelyVisible } from './launc
 import { LazyWindow } from './lazy-window';
 import { createAppLogger } from './logger';
 import { LimitAlerter } from './limit-alerts';
+import { ResetNudger } from './reset-nudge';
 import { LimitHistoryStore } from './limit-history';
 import { MiniBar } from './minibar';
 import { APP_ID, Notifier } from './notifier';
@@ -57,6 +58,7 @@ import { WidgetWindow } from './window';
 import { IPC, type AppInfo, type DashboardView } from '../shared/ipc';
 import { popoverAnchor } from '../shared/placement';
 import { notchPayload } from '../shared/notch';
+import { WeekRollover, parseRollover } from '../shared/resets';
 
 applyUserDataOverride();
 // Windows: toasts are attributed to this ID, which must match the Start-menu
@@ -383,12 +385,63 @@ if (!singleInstanceLock) {
           helperPath: notchHelper,
           logger: logger.child('notch'),
           onOpen: () => togglePopover('other'),
+          // Shown: never again, and the next payload stops carrying it.
+          onSwept: (id) => {
+            rollover.markShown(id);
+            saveRollover();
+            pushNotch(engine.getSnapshot());
+          },
         })
       : null;
     // Plan limits off means there's no 5-hour % to draw: don't run it at all.
     const notchWanted = (cfg: WidgetConfig): boolean => cfg.notchLine && cfg.enableOfficial;
+    // A new week gets one sweep round the notch, even one that began while
+    // the Mac slept or claudget was quit: it stays pending, saved on disk,
+    // until the helper says it showed it. The timer wakes this at the reset
+    // itself, so the sweep comes on time rather than with the next snapshot.
+    const rolloverPath = path.join(userData, 'week-rollover.json');
+    const rollover = new WeekRollover(
+      parseRollover(
+        (() => {
+          try {
+            return JSON.parse(fs.readFileSync(rolloverPath, 'utf8')) as unknown;
+          } catch {
+            return null;
+          }
+        })(),
+      ),
+    );
+    let savedRollover = JSON.stringify(rollover.state);
+    const saveRollover = (): void => {
+      const next = JSON.stringify(rollover.state);
+      if (next === savedRollover) return;
+      savedRollover = next;
+      try {
+        fs.writeFileSync(rolloverPath, next, 'utf8');
+      } catch (err) {
+        logger.warn('Could not save the weekly reset state', { err: String(err) });
+      }
+    };
+    let sweepTimer: ReturnType<typeof setTimeout> | null = null;
+    const pushNotch = (s: UsageSnapshot): void => {
+      if (!notch) return;
+      const now = Date.now();
+      const week = s.official.available
+        ? (s.official.windows.find((w) => w.key === 'seven_day')?.resetsAt ?? null)
+        : null;
+      rollover.observe(week, now);
+      saveRollover();
+      notch.update(notchPayload(s, now, config, rollover.pending));
+      if (sweepTimer) clearTimeout(sweepTimer);
+      const at = rollover.nextAt;
+      // setTimeout tops out at ~24.8 days; a week is well inside it.
+      sweepTimer =
+        at === null
+          ? null
+          : setTimeout(() => pushNotch(engine.getSnapshot()), Math.max(0, at - now) + 1_000);
+    };
     if (notch) {
-      notch.update(notchPayload(engine.getSnapshot(), Date.now(), config));
+      pushNotch(engine.getSnapshot());
       void notch.reprobe().then(() => notch.setEnabled(notchWanted(config)));
       // Lid closed or opened, a display plugged in, scaling changed.
       let displayTimer: ReturnType<typeof setTimeout> | null = null;
@@ -399,7 +452,7 @@ if (!singleInstanceLock) {
       screen.on('display-added', displaysChanged);
       screen.on('display-removed', displaysChanged);
       screen.on('display-metrics-changed', displaysChanged);
-      engine.on('snapshot', (s) => notch.update(notchPayload(s, Date.now(), config)));
+      engine.on('snapshot', pushNotch);
     }
 
     // Updates, from GitHub Releases. Windows and Linux update themselves
@@ -486,11 +539,13 @@ if (!singleInstanceLock) {
       logger,
       notifier,
     );
+    const resetNudger = new ResetNudger(path.join(userData, 'reset-nudges.json'), logger, notifier);
 
     engine.on('snapshot', sendSnapshot);
     engine.on('snapshot', (s) => trayHandle?.setStatus(s));
     engine.on('snapshot', (s) => budgetAlerter.check(s, config));
     engine.on('snapshot', (s) => limitAlerter.check(s, config));
+    engine.on('snapshot', (s) => resetNudger.check(s, config));
     engine.on('snapshot', (s) => {
       const next = history.record(s);
       if (next) broadcast(IPC.LimitHistoryPush, next);
@@ -518,7 +573,7 @@ if (!singleInstanceLock) {
       if (config.logLevel !== prev.logLevel) logger.setLevel(config.logLevel);
       notch?.setEnabled(notchWanted(config));
       if (config.notchCard !== prev.notchCard || config.notchColors !== prev.notchColors) {
-        notch?.update(notchPayload(engine.getSnapshot(), Date.now(), config));
+        pushNotch(engine.getSnapshot());
       }
       if (config.checkForUpdates !== prev.checkForUpdates) {
         if (config.checkForUpdates) checkForUpdates();

@@ -48,6 +48,11 @@ export const WIDGET_CONFIG_SCHEMA = z.object({
   limitAlerts: z.boolean().default(true),
   /** Plan-limit alert thresholds, in percent used. Deduplicated and sorted on use. */
   limitAlertThresholds: z.array(z.number().int().min(10).max(100)).min(1).max(6).default([80, 95]),
+  /**
+   * A day before the weekly limit resets, say so if less than half of it is
+   * used: there's a lot left to use before it goes. Once per week.
+   */
+  resetNudge: z.boolean().default(true),
 
   // ── UI / Window (consumed by the desktop shell) ───────────────────────────
   theme: z.enum(['system', 'dark', 'light']).default('system'),

@@ -62,7 +62,8 @@ I built it because I kept checking my usage again and again. I wanted something 
 
 - **Lives in your menu bar** — both limits as `62% · 31%` next to the clock on macOS (a tray icon on Windows and Linux). Click it for the popover: both limits, today's tokens and rate, the last 24 hours, and your heaviest sessions. The numbers come straight from Anthropic's usage endpoint, using the login Claude Code already stored — you do nothing. Turn off **Track plan limits** in Settings to stay 100% local.
 - **Tells you when you'll run out** — each limit bar has a tick for how much of the window has passed. When your usage is past it, you're ahead of pace, and claudget shows the time you'll hit the limit (**Full by 4:01 PM**), from your average pace so far.
-- **Alerts** — a native notification at 80% and 95% of a limit by default; pick your own thresholds in **Settings → Alerts**, and use **Send test notification** there to check they arrive. On macOS, choose **Allow** when it first asks.
+- **Alerts** — a native notification at 80% and 95% of a limit by default; pick your own thresholds in **Settings → Alerts**, and use **Send test notification** there to check they arrive. On macOS, choose **Allow** when it first asks. A day before your weekly limit resets, it also tells you if more than half of the week is still unused (once a week; switch it off in the same place).
+- **Context window** — each running Claude Code session shows how full its context is, in the popover and the Sessions list, measured the way Claude Code measures it (amber from 75%, red from 90%).
 - **Floating pill &amp; floating bar** — a one-line pill that floats above your windows, its ring turning amber, then red, as you get close; or a resizable strip with both limits and today's activity that stays on top next to your editor.
 - **Dashboard** — Overview, Activity, Sessions and Insights: how close each recent 5-hour and weekly window came to the limit, how often you hit it, sessions by project, and an estimate of what it would cost at API prices (with optional daily / monthly budgets).
 - **Works offline** for everything local — tokens, sessions, per-model breakdown, ~5h blocks, burn rate and hourly activity, all computed from your transcripts.
@@ -142,6 +143,7 @@ Hand-edit and mess up a field? That one field falls back to its default — a ba
 | `enableOfficial`         | boolean                          | `true`       | poll Anthropic for the plan-limit gauges. `false` = fully local. |
 | `limitAlerts`            | boolean                          | `true`       | notify when a plan limit crosses a threshold (once per window)   |
 | `limitAlertThresholds`   | 1–6 ints, 10–100                 | `[80, 95]`   | the % used at which to notify                                    |
+| `resetNudge`             | boolean                          | `true`       | a day before the weekly reset, notify if under half is used      |
 | `dailyBudgetUSD`         | number ≥ 0 \| null               | `null`       | daily spend budget; notifies at 80% &amp; 100%. `null` = off.    |
 | `monthlyBudgetUSD`       | number ≥ 0 \| null               | `null`       | monthly spend budget; notifies at 80% &amp; 100%. `null` = off.  |
 | `officialPollIntervalMs` | int, 180000–3600000              | `300000`     | how often to poll. **Floor is 180s** — the endpoint rate-limits. |

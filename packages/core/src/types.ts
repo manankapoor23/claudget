@@ -126,6 +126,22 @@ export interface ActiveSession {
   updatedAt: number;
   status: string;
   version: string;
+  /** How full its context window is; null until it has a response (or right after /compact). */
+  context?: SessionContext | null;
+}
+
+/**
+ * How full a session's context window is, measured the way Claude Code
+ * measures it: the prompt of its latest response (fresh input, cache writes
+ * and cache reads; output isn't counted) against the model's window.
+ */
+export interface SessionContext {
+  usedTokens: number;
+  /** 200K, or 1M with extended context (see context.ts). */
+  windowTokens: number;
+  /** When that response came back (epoch ms). */
+  at: number;
+  model: ModelId;
 }
 
 /**

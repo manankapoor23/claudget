@@ -17,6 +17,13 @@ export interface NotchPayload {
   card: boolean;
   /** `#rrggbb` for each tone, from Settings. */
   colors: NotchColors;
+  /**
+   * A new week's sweep round the notch still to be shown (the reset's time,
+   * epoch ms), or 0. The helper plays it the first moment the user can see
+   * it, then reports it shown; until then it stays in every payload (see
+   * WeekRollover).
+   */
+  sweep: number;
 }
 
 export type NotchColors = WidgetConfig['notchColors'];
@@ -49,11 +56,12 @@ export function notchPayload(
   snapshot: UsageSnapshot,
   now: number,
   prefs: NotchPrefs = DEFAULT_PREFS,
+  sweep = 0,
 ): NotchPayload {
   const official = snapshot.official;
   const card = prefs.notchCard;
   const colors = { ...prefs.notchColors };
-  const none: NotchPayload = { fiveHour: null, weekly: null, fullAt: null, card, colors };
+  const none: NotchPayload = { fiveHour: null, weekly: null, fullAt: null, card, colors, sweep };
   if (!official.available) return none;
   const fiveRaw = official.windows.find((w) => w.key === 'five_hour');
   if (!fiveRaw) return none;
@@ -73,5 +81,6 @@ export function notchPayload(
     fullAt: full === null ? null : Math.round(full / MINUTE) * MINUTE,
     card,
     colors,
+    sweep,
   };
 }

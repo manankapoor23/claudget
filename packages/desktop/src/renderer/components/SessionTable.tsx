@@ -3,8 +3,19 @@ import type { ActiveSession, SessionStat } from '@claude-widget/core';
 import { getBridge } from '../lib/api';
 import { useCostCopy } from '../lib/billing';
 import { formatCompact, formatRelative, formatUSD } from '../lib/format';
-import { projectName, sourceLabel } from '../lib/sessions';
+import { contextAmount, contextTitle, projectName, sourceLabel } from '../lib/sessions';
+import { contextsById, type ContextView } from '../../shared/context';
 import { CopyIcon, FolderIcon, SortIcon } from './icons';
+
+/** A live session's context window, under its title: "Context 41% · 412K of 1M tokens". */
+function SessionContextLine({ ctx }: { ctx: ContextView | undefined }): JSX.Element | null {
+  if (!ctx) return null;
+  return (
+    <span className="st__ctx" data-tone={ctx.tone} title={contextTitle(ctx)}>
+      Context {ctx.pct}% · {contextAmount(ctx)}
+    </span>
+  );
+}
 
 type SortKey = 'project' | 'tokens' | 'cost' | 'last';
 type Dir = 'asc' | 'desc';
@@ -37,6 +48,7 @@ export function SessionTable({
   const [sort, setSort] = useState<{ key: SortKey; dir: Dir }>({ key: 'last', dir: 'desc' });
   const [copied, setCopied] = useState<string | null>(null);
   const live = useMemo(() => new Set(activeSessions.map((s) => s.sessionId)), [activeSessions]);
+  const contexts = useMemo(() => contextsById(activeSessions), [activeSessions]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -167,6 +179,7 @@ export function SessionTable({
                         <span title={s.sessionTitle || undefined}>
                           {s.sessionTitle || s.gitBranch || 'Untitled session'}
                         </span>
+                        <SessionContextLine ctx={contexts.get(s.sessionId)} />
                       </div>
                     </div>
                   </td>

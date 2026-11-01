@@ -9,7 +9,7 @@
 // Protocol (newline-delimited JSON):
 //   stdin  ← {"fiveHour":{"pct":62,"estimated":true,"tone":"ok","resetsAt":<ms>},
 //             "weekly":{"pct":31,"estimated":false},"fullAt":<ms>|null,"reducedMotion":null,
-//             "colors":{"ok":"#ff6b1f","warn":"#ffb224","bad":"#ff453a"}}
+//             "colors":{"ok":"#ff6b1f","warn":"#ffb224","bad":"#ff453a"},"sweep":<ms>|0}
 //            "fiveHour": null hides everything.
 //   stdout → {"event":"ready"} {"event":"notch",...} {"event":"no-notch"} {"event":"open"}
 //
@@ -41,6 +41,9 @@ struct StateIn: Decodable, Equatable {
     let card: Bool?
     /// The user's colour for each tone, `#rrggbb`. Absent or unreadable: the defaults.
     let colors: ColorsIn?
+    /// A new week's sweep still to be shown (the reset's time, epoch ms), or 0:
+    /// played the first moment the user can see it, then reported shown.
+    let sweep: Double?
 }
 
 struct ColorsIn: Decodable, Equatable {
@@ -391,6 +394,23 @@ struct CometPlan: Equatable {
     }
 }
 
+/// A new week: one bright stroke runs the whole way round the notch and is
+/// gone. The head leads, the tail follows a beat behind and catches up at the
+/// far end, so it never sits still or lingers.
+enum Sweep {
+    static let duration = 1.6
+    /// When the head reaches the far end, and when the tail starts after it.
+    static let headDone = 1.25
+    static let tailStart = 0.35
+
+    /// Head and tail, as fractions of the outline, `t` seconds in.
+    static func span(at t: Double) -> (start: CGFloat, end: CGFloat) {
+        let end = easeInOut(t / headDone)
+        let start = easeInOut((t - tailStart) / (duration - tailStart))
+        return (CGFloat(start), CGFloat(end))
+    }
+}
+
 /// The comet's mask: transparent at the tail, opaque at the head, a soft tip.
 /// Moving it is pure compositing, so the render server never re-rasterises
 /// the line while it travels.
@@ -422,6 +442,8 @@ final class NotchLineView: NSView {
     private let bright = CAShapeLayer()
     private let maskHost = CALayer()
     private let sprite = CALayer()
+    /// The new-week sweep, above everything; hidden at rest.
+    private let sweepLine = CAShapeLayer()
 
     private(set) var outline: Outline?
     private(set) var model: LineModel?
@@ -439,12 +461,13 @@ final class NotchLineView: NSView {
         wantsLayer = true
         layer = CALayer()
         layer!.masksToBounds = false
-        for l in [track, base, bright] {
+        for l in [track, base, bright, sweepLine] {
             l.fillColor = nil
             l.lineCap = .round
             l.lineJoin = .round
             l.lineWidth = Metrics.lineWidth
         }
+        sweepLine.opacity = 0
         track.strokeEnd = 1
         base.strokeEnd = 0
         bright.opacity = 0
@@ -454,6 +477,7 @@ final class NotchLineView: NSView {
         layer!.addSublayer(track)
         layer!.addSublayer(base)
         layer!.addSublayer(bright)
+        layer!.addSublayer(sweepLine)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -467,12 +491,12 @@ final class NotchLineView: NSView {
         self.scale = scale
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        for l in [layer!, track, base, bright, maskHost] {
+        for l in [layer!, track, base, bright, maskHost, sweepLine] {
             l.contentsScale = scale
             l.frame = bounds
         }
         sprite.contentsScale = scale
-        for l in [track, base, bright] { l.path = o.path }
+        for l in [track, base, bright, sweepLine] { l.path = o.path }
         CATransaction.commit()
         if let m = model { model = nil; plan = nil; set(m, animated: false) }
     }
@@ -590,6 +614,61 @@ final class NotchLineView: NSView {
         let w = DispatchWorkItem { [weak self] in self?.runComet() }
         nextRun = w
         DispatchQueue.main.asyncAfter(deadline: .now() + plan.rest, execute: w)
+    }
+
+    /// Plays the new-week sweep once, in `color` lightened, alongside whatever
+    /// the comet is doing.
+    func sweep(color: NSColor) {
+        guard outline != nil else { return }
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        sweepLine.removeAllAnimations()
+        sweepLine.strokeColor = mix(color, .white, 0.35).cgColor
+        sweepLine.strokeStart = 0
+        sweepLine.strokeEnd = 0
+        sweepLine.opacity = 1
+        CATransaction.commit()
+
+        let ease = CAMediaTimingFunction(name: .easeInEaseOut)
+        let head = CAKeyframeAnimation(keyPath: "strokeEnd")
+        head.values = [0, 1, 1]
+        head.keyTimes = [0, NSNumber(value: Sweep.headDone / Sweep.duration), 1]
+        head.timingFunctions = [ease, ease]
+        let tail = CAKeyframeAnimation(keyPath: "strokeStart")
+        tail.values = [0, 0, 1]
+        tail.keyTimes = [0, NSNumber(value: Sweep.tailStart / Sweep.duration), 1]
+        tail.timingFunctions = [ease, ease]
+        let group = CAAnimationGroup()
+        group.animations = [head, tail]
+        group.duration = Sweep.duration
+        group.fillMode = .forwards
+        group.isRemovedOnCompletion = false
+        if #available(macOS 12.0, *) {
+            group.preferredFrameRateRange = CAFrameRateRange(minimum: 30, maximum: 60, preferred: 60)
+        }
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [weak self] in
+            guard let self else { return }
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            self.sweepLine.opacity = 0
+            self.sweepLine.removeAllAnimations()
+            CATransaction.commit()
+        }
+        sweepLine.add(group, forKey: "sweep")
+        CATransaction.commit()
+    }
+
+    /// For the offscreen renders: the sweep `t` seconds in, in `color`.
+    func poseSweep(at t: Double, color: NSColor) {
+        let (start, end) = Sweep.span(at: t)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        sweepLine.strokeColor = mix(color, .white, 0.35).cgColor
+        sweepLine.strokeStart = start
+        sweepLine.strokeEnd = end
+        sweepLine.opacity = end > start ? 1 : 0
+        CATransaction.commit()
     }
 
     /// For the offscreen renders: pose the comet as it is `t` seconds into a
@@ -820,6 +899,12 @@ final class Controller: NSObject {
     var cardTimer: Timer?
     var screensAsleep = false
     var lastNotchReport: [String: Any]?
+    /// The new-week sweep waiting for the user to be here to see it.
+    var pendingSweep: Double?
+    /// The sweep already played in this run, so a payload still carrying it
+    /// (claudget hasn't heard back yet) doesn't play it twice.
+    var playedSweep: Double?
+    var screenLocked = false
 
     override init() {
         super.init()
@@ -846,6 +931,12 @@ final class Controller: NSObject {
                        name: NSWorkspace.screensDidSleepNotification, object: nil)
         ws.addObserver(self, selector: #selector(screensWoke),
                        name: NSWorkspace.screensDidWakeNotification, object: nil)
+        let dnc = DistributedNotificationCenter.default()
+        dnc.addObserver(self, selector: #selector(screenLockedNow),
+                        name: NSNotification.Name("com.apple.screenIsLocked"), object: nil)
+        dnc.addObserver(self, selector: #selector(screenUnlockedNow),
+                        name: NSNotification.Name("com.apple.screenIsUnlocked"), object: nil)
+        screenLocked = (CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"] as? Bool ?? false
         nc.addObserver(self, selector: #selector(occlusionChanged),
                        name: NSWindow.didChangeOcclusionStateNotification, object: lineWindow)
 
@@ -873,6 +964,8 @@ final class Controller: NSObject {
     func apply(_ s: StateIn) {
         let first = state == nil
         state = s
+        let sweepID = s.sweep ?? 0
+        pendingSweep = sweepID > 0 && sweepID != playedSweep ? sweepID : nil
         Out.emit(["event": "applied", "pct": s.fiveHour?.pct ?? NSNull(), "shown": s.fiveHour != nil && notch != nil])
         guard let five = s.fiveHour, notch != nil else { return hideAll() }
         let m = LineModel(pct: CGFloat(max(0, min(100, five.pct)) / 100),
@@ -881,6 +974,8 @@ final class Controller: NSObject {
         lineView.set(m, animated: !first && lineWindow.isVisible)
         cardView.state = s
         if !lineWindow.isVisible { lineWindow.orderFrontRegardless() }
+        // Let the line paint first, so the sweep isn't lost in it appearing.
+        playPendingSweep(after: 0.6)
         if s.card == false {
             zoneWindow.orderOut(nil)
             hideCard(animated: false)
@@ -888,6 +983,26 @@ final class Controller: NSObject {
             zoneWindow.orderFrontRegardless()
         }
         syncTravel()
+    }
+
+    /// Plays the waiting sweep once the user can see it: screens awake, the
+    /// Mac unlocked, the line on screen. With reduced motion it isn't played,
+    /// only reported, so it doesn't wait forever.
+    func playPendingSweep(after delay: Double) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self, let id = self.pendingSweep else { return }
+            // On screen and not covered (a full-screen app hides the menu bar).
+            guard !self.screensAsleep, !self.screenLocked, self.lineWindow.isVisible,
+                  self.lineWindow.occlusionState.contains(.visible) else { return }
+            self.pendingSweep = nil
+            self.playedSweep = id
+            if self.reduceMotion {
+                Out.emit(["event": "sweep", "id": id, "skipped": true])
+                return
+            }
+            self.lineView.sweep(color: Palette(self.state?.colors).ok)
+            Out.emit(["event": "sweep", "id": id])
+        }
     }
 
     func hideAll() {
@@ -1012,8 +1127,21 @@ final class Controller: NSObject {
 
     @objc func motionChanged() { syncTravel() }
     @objc func screensSlept() { screensAsleep = true; syncTravel() }
-    @objc func screensWoke() { screensAsleep = false; syncTravel() }
-    @objc func occlusionChanged() { syncTravel() }
+    @objc func screensWoke() {
+        screensAsleep = false
+        syncTravel()
+        // Give the display a moment to light up before the sweep.
+        playPendingSweep(after: 1.5)
+    }
+    @objc func screenLockedNow() { screenLocked = true }
+    @objc func screenUnlockedNow() {
+        screenLocked = false
+        playPendingSweep(after: 0.8)
+    }
+    @objc func occlusionChanged() {
+        syncTravel()
+        playPendingSweep(after: 0.6)
+    }
 }
 
 // MARK: - stdin
@@ -1048,6 +1176,8 @@ enum RenderTest {
         let light: Bool
         let card: Bool
         var colors: ColorsIn? = nil
+        /// Seconds into the new-week sweep, to pose it; nil for none.
+        var sweepAt: Double? = nil
     }
 
     static func toneFor(_ pct: Double) -> Tone { pct >= 90 ? .bad : pct >= 70 ? .warn : .ok }
@@ -1074,6 +1204,10 @@ enum RenderTest {
         let custom = ColorsIn(ok: "#30d158", warn: "#64d2ff", bad: "#bf5af2")
         for p in [62.0, 80, 95] {
             scenes.append(Scene(name: "custom-\(Int(p))", pct: p, estimated: false, times: [nil], light: false, card: true, colors: custom))
+        }
+        // A new week: the sweep's head leads, its tail follows and catches up.
+        for st in [0.25, 0.7, 1.1, 1.45] {
+            scenes.append(Scene(name: "sweep-\(Int(st * 100))", pct: 12, estimated: false, times: [nil], light: false, card: false, sweepAt: st))
         }
 
         var rows: [(String, CGImage)] = []
@@ -1147,7 +1281,7 @@ enum RenderTest {
                                   resetsAt: Date().timeIntervalSince1970 * 1000 + 8_040_000),
                 weekly: LimitIn(pct: 31, estimated: sc.estimated, tone: "ok", resetsAt: nil),
                 fullAt: Date().timeIntervalSince1970 * 1000 + 5_400_000, reducedMotion: nil, card: nil,
-                colors: sc.colors)
+                colors: sc.colors, sweep: nil)
             let cardTop = H - menuBar - 4
             NSGraphicsContext.saveGraphicsState()
             let g = NSGraphicsContext(cgContext: ctx, flipped: false)
@@ -1173,6 +1307,7 @@ enum RenderTest {
         view.set(LineModel(pct: CGFloat(sc.pct / 100), color: Palette(sc.colors)[toneFor(sc.pct)], estimated: sc.estimated),
                  animated: false)
         view.pose(at: t)
+        if let st = sc.sweepAt { view.poseSweep(at: st, color: Palette(sc.colors).ok) }
         ctx.saveGState()
         ctx.translateBy(x: notch.minX - mx, y: notch.minY - my)
         view.layer!.render(in: ctx)
