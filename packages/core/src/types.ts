@@ -21,6 +21,12 @@ export interface TokenCounts {
   output: number;
   /** Cache-write (a.k.a. cache creation) tokens. */
   cacheCreation: number;
+  /**
+   * Of `cacheCreation`, the writes kept for an hour, which cost 2× the input
+   * price rather than 1.25×. Absent when none were (or the transcript is too
+   * old to say).
+   */
+  cacheCreation1h?: number;
   /** Cache-read (cache hit) tokens. */
   cacheRead: number;
   /** input + output + cacheCreation + cacheRead. */
@@ -122,6 +128,22 @@ export interface ActiveSession {
   version: string;
 }
 
+/**
+ * The prompt cache over the last 30 days. Claude Code re-sends the whole
+ * conversation with every request; the cache serves the unchanged part at a
+ * tenth of the input price.
+ */
+export interface CacheStats {
+  /** Every prompt token: fresh input, cache writes and cache reads. */
+  promptTokens: number;
+  /** Prompt tokens served from the cache. */
+  cacheReadTokens: number;
+  /** What the prompts cost at API prices (priced models only). */
+  promptUSD: number;
+  /** What the same prompts would have cost with no cache (priced models only). */
+  uncachedPromptUSD: number;
+}
+
 /** Everything derived locally from transcripts (works fully offline). */
 export interface LocalUsage {
   allTime: TokenAndCost;
@@ -134,6 +156,8 @@ export interface LocalUsage {
   perProject: ProjectBreakdown[];
   /** Per front end over the last 30 days, most tokens first. */
   perSource: SourceBreakdown[];
+  /** The prompt cache over the last 30 days. */
+  cache: CacheStats;
   sessions: SessionStat[];
   blocks: UsageBlock[];
   activeBlock: ActiveBlockStat | null;
@@ -164,6 +188,21 @@ export interface OfficialWindow {
    * window has reset since). The fields above stay exactly what Anthropic said.
    */
   estimate?: LimitEstimate | null;
+  /** How much a full window of this limit holds; absent until it's been learned. */
+  capacity?: LimitCapacity | null;
+}
+
+/**
+ * How much use fills a limit from 0 to 100%, learned from Anthropic's readings
+ * against this machine's Claude Code use (see estimate/calibration.ts). Use on
+ * claude.ai or other devices moves the limit without showing up locally, so
+ * where that happens this reads low.
+ */
+export interface LimitCapacity {
+  /** API-equivalent USD (list prices) of Claude Code use that fills the window. */
+  fullUSD: number;
+  /** Calibration records it was learned from. */
+  samples: number;
 }
 
 /**

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_CONFIG } from './config';
 import { UsageEngine } from './engine';
-import { ESTIMATE_SAFETY, FileCalibrationStore, rateFor } from './estimate';
+import { ESTIMATE_SAFETY, FileCalibrationStore, memoryCalibrationStore, rateFor } from './estimate';
 import { createLogger, createNoopLogger } from './logger';
 
 // Never consult the host's real macOS Keychain (see official/client.test.ts).
@@ -89,6 +89,7 @@ describe('UsageEngine live limit estimate', () => {
     let w = engine.getSnapshot().official.windows[0]!;
     expect(w.usedPct).toBeCloseTo(30);
     expect(w.estimate ?? null).toBeNull(); // nothing used since the reading
+    expect(w.capacity ?? null).toBeNull(); // one window isn't enough to say
 
     // Three more requests ($2.25) after the reading → ~+2 points, damped.
     now += 2 * MIN;
@@ -121,6 +122,34 @@ describe('UsageEngine live limit estimate', () => {
     });
     const k = rateFor(again.getCalibration(), 'five_hour')!.k;
     expect(k).toBeCloseTo(0.32 / 32.25, 6);
+  });
+
+  it('says how much a full window holds once it has learned from enough windows', async () => {
+    const { claudeDir } = setup();
+    // Three earlier windows that each filled 1 point per $: a full one holds $100.
+    const past = [3, 2, 1].map((n) => ({
+      resetsAt: RESET - n * 5 * H,
+      fromAt: T0 - n * 5 * H,
+      fromU: 0,
+      toAt: T0 - n * 5 * H + H,
+      toU: 0.4,
+      weight: 40,
+      frozen: false,
+    }));
+    const engine = new UsageEngine({
+      config: { ...DEFAULT_CONFIG, claudeDir },
+      logger: createNoopLogger(),
+      fetchImpl: vi.fn().mockResolvedValueOnce(reading(30)) as unknown as typeof fetch,
+      now: () => T0 + 60 * MIN,
+      calibrationStore: memoryCalibrationStore({ version: 2, limits: { five_hour: past } }),
+    });
+    await engine.fullRescan();
+    await engine.refreshOfficial(true, 0);
+    // The current window (30% on $30) agrees: four records, still $100.
+    const w = engine.getSnapshot().official.windows[0]!;
+    expect(w.capacity?.fullUSD).toBeCloseTo(100, 6);
+    expect(w.capacity?.samples).toBe(4);
+    expect(w.usedPct).toBeCloseTo(30); // Anthropic's figures are untouched
   });
 
   it('shows no estimate while plan limits are off', async () => {

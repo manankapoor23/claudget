@@ -26,6 +26,8 @@
  * dominating, and the estimate itself is damped (see ESTIMATE_SAFETY).
  */
 
+import type { LimitCapacity } from '../types';
+
 /** How far each window's reset time may jitter between polls and still be the same window. */
 const SAME_WINDOW_MS = 5 * 60 * 1000;
 /** Records remembered per limit. */
@@ -72,13 +74,21 @@ export interface CalibrationWindow {
   frozen: boolean;
 }
 
+/**
+ * Bumped whenever what a unit of weight means changes, so records learned in
+ * the old unit are dropped rather than mixed with new ones. 2: model prices
+ * per version (Opus 4.5 and later at a third of the Opus 4 price) and 1-hour
+ * cache writes at their own rate.
+ */
+export const CALIBRATION_VERSION = 2;
+
 export interface CalibrationState {
-  version: 1;
+  version: typeof CALIBRATION_VERSION;
   /** Per limit key, oldest record first. */
   limits: Record<string, CalibrationWindow[]>;
 }
 
-export const EMPTY_CALIBRATION: CalibrationState = { version: 1, limits: {} };
+export const EMPTY_CALIBRATION: CalibrationState = { version: CALIBRATION_VERSION, limits: {} };
 
 export interface OfficialReading {
   key: string;
@@ -108,7 +118,7 @@ export function ingestReading(
   const last = list[list.length - 1];
 
   const put = (next: CalibrationWindow[]): CalibrationState => ({
-    version: 1,
+    version: CALIBRATION_VERSION,
     limits: { ...state.limits, [key]: next.slice(-CALIBRATION_WINDOWS) },
   });
 
@@ -212,9 +222,31 @@ export function rateFor(state: CalibrationState, key: string): RateEstimate | nu
   return { k: samples[samples.length - 1]!.k, windows: samples.length };
 }
 
-/** Accepts only a well-formed calibration (from disk); anything else → empty. */
+/**
+ * Records needed before claudget says how much a full window holds. One or two
+ * can be skewed by use elsewhere (see the header); from three, the weighted
+ * median has something to outvote it with.
+ */
+export const MIN_CAPACITY_SAMPLES = 3;
+
+/**
+ * How much API-equivalent use fills this limit from 0 to 100%: 1 / k, from the
+ * same learned rate the live estimate uses, undamped. Null until it has been
+ * learned from enough records.
+ */
+export function capacityFor(state: CalibrationState, key: string): LimitCapacity | null {
+  const rate = rateFor(state, key);
+  if (!rate || rate.windows < MIN_CAPACITY_SAMPLES) return null;
+  return { fullUSD: 1 / rate.k, samples: rate.windows };
+}
+
+/**
+ * Accepts only a well-formed calibration of the current version (from disk);
+ * anything else → empty, to be learned again from the next reading.
+ */
 export function parseCalibration(input: unknown): CalibrationState {
   if (typeof input !== 'object' || input === null) return EMPTY_CALIBRATION;
+  if ((input as { version?: unknown }).version !== CALIBRATION_VERSION) return EMPTY_CALIBRATION;
   const raw = (input as { limits?: unknown }).limits;
   if (typeof raw !== 'object' || raw === null) return EMPTY_CALIBRATION;
   const limits: Record<string, CalibrationWindow[]> = {};
@@ -234,5 +266,5 @@ export function parseCalibration(input: unknown): CalibrationState {
         .slice(-CALIBRATION_WINDOWS);
     }
   }
-  return { version: 1, limits };
+  return { version: CALIBRATION_VERSION, limits };
 }

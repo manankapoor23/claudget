@@ -217,7 +217,7 @@ Contributions are genuinely welcome — this is built in the open and PRs, issue
 A few things on the wishlist that are well-scoped to pick up:
 
 - CSV export of usage history
-- Refresh the bundled price table (`packages/core/src/pricing.data.ts`) and wire up `pricingOverridePath`
+- Wire up `pricingOverridePath`, for your own prices
 - Windows/Linux parity polish for the tray + floating windows
 
 ### Dev setup

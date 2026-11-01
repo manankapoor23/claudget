@@ -8,6 +8,7 @@ import { BudgetPanel } from './components/BudgetPanel';
 import { LocalPanel } from './components/LocalPanel';
 import { Forecast } from './components/Forecast';
 import { Insights } from './components/Insights';
+import { WindowHolds } from './components/WindowHolds';
 import { DashboardNav } from './components/DashboardNav';
 import { WidgetOverview } from './components/WidgetOverview';
 import { ActivityView } from './components/ActivityView';
@@ -100,6 +101,7 @@ export function App(): JSX.Element {
         </div>
         <Forecast local={snapshot.local} currency={config.currency} />
         <Insights local={snapshot.local} currency={config.currency} />
+        <WindowHolds snapshot={snapshot} currency={config.currency} />
         <BudgetPanel
           local={snapshot.local}
           dailyBudgetUSD={config.dailyBudgetUSD}

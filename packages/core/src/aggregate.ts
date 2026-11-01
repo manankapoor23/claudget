@@ -1,7 +1,14 @@
-import { estimateCost, modelLabel, normalizeModelId, type PricingTable } from './pricing';
+import {
+  estimateCost,
+  modelLabel,
+  normalizeModelId,
+  promptCost,
+  type PricingTable,
+} from './pricing';
 import type {
   ActiveBlockStat,
   ActiveSession,
+  CacheStats,
   LocalUsage,
   ModelBreakdown,
   ProjectBreakdown,
@@ -33,6 +40,8 @@ function addTokensInto(target: TokenCounts, src: TokenCounts): void {
   target.input += src.input;
   target.output += src.output;
   target.cacheCreation += src.cacheCreation;
+  if (src.cacheCreation1h)
+    target.cacheCreation1h = (target.cacheCreation1h ?? 0) + src.cacheCreation1h;
   target.cacheRead += src.cacheRead;
   target.total += src.total;
 }
@@ -79,6 +88,12 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
   const perModelMap = new Map<string, ModelBreakdown>();
   const perProjectMap = new Map<string, ProjectBreakdown>();
   const perSourceMap = new Map<UsageSource | null, SourceBreakdown>();
+  const cache: CacheStats = {
+    promptTokens: 0,
+    cacheReadTokens: 0,
+    promptUSD: 0,
+    uncachedPromptUSD: 0,
+  };
   const sessionMap = new Map<string, SessionStat>();
   const hourlyMap = new Map<number, TimeBucket>();
 
@@ -96,6 +111,15 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
         perSourceMap.set(source, sb);
       }
       accumulate(sb, e, pricing);
+
+      const t = e.tokens;
+      cache.promptTokens += t.input + t.cacheCreation + t.cacheRead;
+      cache.cacheReadTokens += t.cacheRead;
+      const prompt = promptCost(t, e.model, pricing);
+      if (prompt) {
+        cache.promptUSD += prompt.actualUSD;
+        cache.uncachedPromptUSD += prompt.uncachedUSD;
+      }
     }
 
     let pb = perProjectMap.get(e.projectSlug);
@@ -174,6 +198,7 @@ export function buildLocalUsage(entries: UsageEntry[], opts: AggregateOptions): 
     perModel,
     perProject,
     perSource,
+    cache,
     sessions,
     blocks: [...blocks].reverse(),
     activeBlock,

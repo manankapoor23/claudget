@@ -15,9 +15,14 @@ export function formatInt(n: number): string {
   return new Intl.NumberFormat().format(Math.round(n));
 }
 
-export function formatUSD(n: number, currency = 'USD'): string {
-  // Cents or nothing: "$61.7" reads as a typo, not a price.
-  const maximumFractionDigits = Math.abs(n) < 1000 ? 2 : 0;
+export function formatUSD(
+  n: number,
+  currency = 'USD',
+  { whole = false }: { whole?: boolean } = {},
+): string {
+  // Cents or nothing: "$61.7" reads as a typo, not a price. `whole` drops the
+  // cents for figures that are estimates, where they'd be false precision.
+  const maximumFractionDigits = whole || Math.abs(n) >= 1000 ? 0 : 2;
   try {
     return new Intl.NumberFormat(undefined, {
       style: 'currency',

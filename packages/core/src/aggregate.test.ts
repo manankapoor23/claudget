@@ -160,3 +160,49 @@ describe('buildLocalUsage', () => {
     ]);
   });
 });
+
+describe('buildLocalUsage cache', () => {
+  const t = (input: number, cacheCreation: number, cacheRead: number) => ({
+    input,
+    output: 100,
+    cacheCreation,
+    cacheRead,
+    total: input + 100 + cacheCreation + cacheRead,
+  });
+
+  it('adds up the prompt cache over the last 30 days', () => {
+    const u = buildLocalUsage(
+      [
+        entry({ timestamp: NOW - HOUR, tokens: t(1_000, 9_000, 90_000) }),
+        entry({ timestamp: NOW - 2 * HOUR, tokens: t(0, 0, 100_000) }),
+        // Older than 30 days: not counted.
+        entry({ timestamp: NOW - 31 * 24 * HOUR, tokens: t(5_000_000, 0, 0) }),
+      ],
+      opts,
+    );
+    expect(u.cache.promptTokens).toBe(200_000);
+    expect(u.cache.cacheReadTokens).toBe(190_000);
+    // Sonnet: $3 input, $3.75 cache write, $0.30 cache read per million.
+    expect(u.cache.promptUSD).toBeCloseTo((1_000 * 3 + 9_000 * 3.75 + 190_000 * 0.3) / 1e6, 9);
+    expect(u.cache.uncachedPromptUSD).toBeCloseTo((200_000 * 3) / 1e6, 9);
+  });
+
+  it('counts tokens of unpriced models but leaves them out of the dollars', () => {
+    const u = buildLocalUsage(
+      [entry({ timestamp: NOW - HOUR, model: 'mystery-1', tokens: t(0, 0, 50_000) })],
+      opts,
+    );
+    expect(u.cache.cacheReadTokens).toBe(50_000);
+    expect(u.cache.promptUSD).toBe(0);
+    expect(u.cache.uncachedPromptUSD).toBe(0);
+  });
+
+  it('is all zeros with no usage', () => {
+    expect(buildLocalUsage([], opts).cache).toEqual({
+      promptTokens: 0,
+      cacheReadTokens: 0,
+      promptUSD: 0,
+      uncachedPromptUSD: 0,
+    });
+  });
+});

@@ -673,6 +673,16 @@ body {
   font-weight: 500;
   color: var(--ink);
 }
+.kv__sub {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.panel__note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
 .bar__row,
 .bar__meta {
   font-size: 12px;

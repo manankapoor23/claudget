@@ -88,6 +88,49 @@ describe('parseTranscriptLine', () => {
   });
 });
 
+describe('cache writes kept for an hour', () => {
+  it('records how many of the cache writes were 1-hour ones', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      timestamp: '2026-06-08T10:06:23.933Z',
+      requestId: 'req_1',
+      message: {
+        id: 'msg_1',
+        model: 'claude-opus-4-8',
+        usage: {
+          input_tokens: 2,
+          output_tokens: 10,
+          cache_creation_input_tokens: 900,
+          cache_read_input_tokens: 0,
+          cache_creation: { ephemeral_5m_input_tokens: 300, ephemeral_1h_input_tokens: 600 },
+        },
+      },
+    });
+    expect(parseTranscriptLine(line, ctx)?.tokens.cacheCreation1h).toBe(600);
+  });
+
+  it('leaves it out for older transcripts, and never counts more than were written', () => {
+    expect(
+      parseTranscriptLine(assistant({ output_tokens: 1, cache_creation_input_tokens: 50 }), ctx)
+        ?.tokens,
+    ).not.toHaveProperty('cacheCreation1h');
+    const odd = JSON.stringify({
+      type: 'assistant',
+      requestId: 'r',
+      message: {
+        id: 'm',
+        model: 'claude-opus-4-8',
+        usage: {
+          output_tokens: 1,
+          cache_creation_input_tokens: 10,
+          cache_creation: { ephemeral_1h_input_tokens: 99 },
+        },
+      },
+    });
+    expect(parseTranscriptLine(odd, ctx)?.tokens.cacheCreation1h).toBe(10);
+  });
+});
+
 describe('parseTranscriptContent', () => {
   it('parses multiple lines and ignores blanks', () => {
     const content = [
