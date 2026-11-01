@@ -97,6 +97,7 @@ interface ApiRelease {
  * the fallback when GitHub can't be read. Newer releases need nothing here.
  */
 const CURATED: Record<string, { title: string; date: string }> = {
+  "0.3.7": { title: "Context, resets, and honest prices", date: "Nov 2026" },
   "0.3.6": { title: "Your colours round the notch", date: "Oct 2026" },
   "0.3.5": { title: "A closer fit round the notch", date: "Oct 2026" },
   "0.3.4": { title: "Refresh, and where you used it", date: "Oct 2026" },
@@ -118,7 +119,7 @@ const tagUrl = (version: string) => `${REPO_URL}/releases/tag/v${version}`;
  * at build/revalidate time — every link still points at the releases page, which
  * always resolves to something downloadable.
  */
-const FALLBACK_VERSION = "0.3.6";
+const FALLBACK_VERSION = "0.3.7";
 const FALLBACK: Release = {
   version: FALLBACK_VERSION,
   published: CURATED[FALLBACK_VERSION]?.date ?? null,

@@ -5,6 +5,37 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.7] — 2026-11-01
+
+### Added
+
+- **Context window, per session.** Every running Claude Code session shows how
+  full its context is: "41% context" in the menu-bar dropdown, and "Context 41%
+  · 412k of 1M tokens" in the Sessions list. Measured the way Claude Code
+  measures it, against a 200K or 1M window; amber from 75%, red from 90%.
+- **What a full limit holds.** Insights shows what fills a 5-hour and a weekly
+  window, in API value and in tokens, learned from Anthropic's readings. It
+  appears after a few windows.
+- **The prompt cache.** Insights shows how much of your prompt was served from
+  the cache over 30 days, and what that saved at API prices.
+- **Before your week resets.** A day before your weekly limit resets, one
+  notification if less than half of it is used. Settings → Alerts.
+- **A sweep for a new week.** When your weekly limit resets, the notch line
+  sweeps once round the notch, even if the week began while your Mac slept.
+
+### Changed
+
+- **Prices are per model version.** Every Opus was priced at the Opus 4 rate,
+  three times what Opus 4.5 and later cost; Opus 5.5, Sonnet 5.x and Fable
+  were off too, and 1-hour cache writes were priced as 5-minute ones. Every
+  "API value" figure is now correct, and much lower for Opus users. The live
+  limit estimate re-learns from your next reading.
+- **Claude app users get the right steps.** If you only use the Claude app,
+  claudget no longer tells you to run a `claude` command you don't have: it
+  explains that the app keeps its login to itself, and shows how to install
+  Claude Code and sign in once.
+- Model names like Opus 5 and Fable 5 now show their version.
+
 ## [0.3.6] — 2026-10-31
 
 ### Added
@@ -296,6 +327,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.7]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.7
 [0.3.6]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.6
 [0.3.5]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.5
 [0.3.4]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.4
