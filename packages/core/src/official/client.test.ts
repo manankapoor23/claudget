@@ -35,7 +35,7 @@ describe('OfficialUsageClient', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ five_hour: { utilization: 0.4 } }), { status: 200 }),
+        new Response(JSON.stringify({ five_hour: { utilization: 40 } }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response('', { status: 429 }));
 
@@ -117,7 +117,7 @@ describe('OfficialUsageClient', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ five_hour: { utilization: 0.4 } }), { status: 200 }),
+        new Response(JSON.stringify({ five_hour: { utilization: 40 } }), { status: 200 }),
       )
       .mockResolvedValueOnce(new Response('', { status: 429, headers: { 'retry-after': '1200' } }));
     const client = new OfficialUsageClient({
