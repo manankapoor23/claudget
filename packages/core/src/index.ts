@@ -58,6 +58,9 @@ export {
   type CostResult,
 } from './pricing';
 
+// Claude Code setup (what to do without a login)
+export { detectClaudeSetup, installCommandFor, type ClaudeSetup } from './official';
+
 // Lower-level building blocks (handy for tests and future surfaces)
 export {
   parseTranscriptLine,

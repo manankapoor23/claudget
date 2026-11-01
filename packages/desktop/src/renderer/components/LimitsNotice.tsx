@@ -2,7 +2,7 @@ import type { JSX } from 'react';
 import type { OfficialStatus, OfficialUsage } from '@claude-widget/core';
 import { useStore } from '../store';
 import { getBridge } from '../lib/api';
-import { FixCommand } from './OfficialPanel';
+import { SignInSteps, needsInstall } from './OfficialPanel';
 import { LimitsSkeleton } from './States';
 
 type Action = 'enable' | 'retry' | 'settings';
@@ -74,6 +74,35 @@ const ACTION_LABEL: Record<Action, string> = {
 };
 
 /**
+ * The copy for this state. Without the `claude` command, "run claude" is a
+ * dead end — the Claude app writes ~/.claude too, so an app-only user looked
+ * signed out and was told to run a command they didn't have.
+ */
+function copyFor(official: OfficialUsage): Copy {
+  const app = official.setup?.app === true;
+  if (needsInstall(official)) {
+    return app
+      ? {
+          title: 'Connect your Claude plan',
+          body: 'claudget reads your limits through Claude Code’s login; the Claude app keeps its own to itself. Install Claude Code and sign in once. You won’t need to use it after that.',
+          action: 'retry',
+        }
+      : {
+          title: 'Install Claude Code',
+          body: 'claudget reads your plan limits through Claude Code’s login. Install it and sign in once.',
+          action: 'retry',
+        };
+  }
+  if (official.status === 'signed-out' && app) {
+    return {
+      ...COPY['signed-out'],
+      body: 'claudget reads your limits through Claude Code’s login, which is separate from the Claude app’s. Run this and sign in once.',
+    };
+  }
+  return COPY[official.status as keyof typeof COPY];
+}
+
+/**
  * Stands in for the limits when there aren't any to show: one headline for
  * why, one line of what to do, and a button that does it. Local tokens keep
  * updating either way, and it says so.
@@ -81,7 +110,7 @@ const ACTION_LABEL: Record<Action, string> = {
 export function LimitsNotice({ official }: { official: OfficialUsage }): JSX.Element {
   const updateConfig = useStore((s) => s.updateConfig);
   if (official.status === 'ok' || official.status === 'never-fetched') return <LimitsSkeleton />;
-  const copy = COPY[official.status];
+  const copy = copyFor(official);
   const bridge = getBridge();
 
   const act = (): void => {
@@ -95,7 +124,12 @@ export function LimitsNotice({ official }: { official: OfficialUsage }): JSX.Ele
       <div className="notice2__text">
         <h3>{copy.title}</h3>
         <p>{copy.body}</p>
-        {official.fix ? <FixCommand command={official.fix} /> : null}
+        <SignInSteps official={official} />
+        {needsInstall(official) ? (
+          <p className="notice2__small">
+            Claude Code comes with Pro, Max, Team and Enterprise plans.
+          </p>
+        ) : null}
       </div>
       <div className="notice2__foot">
         <button type="button" className="btn2 btn2--primary" onClick={act}>

@@ -7,3 +7,4 @@ export {
   type PollSchedulerOptions,
 } from './schedule';
 export { normalizeOfficialPayload } from './normalize';
+export { detectClaudeSetup, installCommandFor, type ClaudeSetup, type SetupProbe } from './setup';

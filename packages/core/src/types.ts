@@ -1,3 +1,4 @@
+import type { ClaudeSetup } from './official/setup';
 /**
  * Shared domain types for the Claude usage widget.
  *
@@ -226,6 +227,12 @@ export interface OfficialUsage {
    * contains a token.
    */
   detail: string | null;
+  /**
+   * With no Claude Code login to read: whether the `claude` command and the
+   * Claude app are installed, so the UI can give the right steps. Absent
+   * otherwise.
+   */
+  setup?: ClaudeSetup | null;
   /** Raw payload, included only when debug logging is enabled. */
   raw?: unknown;
 }

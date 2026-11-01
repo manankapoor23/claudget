@@ -7,6 +7,7 @@ import {
 import type { Logger } from '../logger';
 import type { OfficialStatus, OfficialUsage, OfficialWindow } from '../types';
 import { normalizeOfficialPayload } from './normalize';
+import { detectClaudeSetup, installCommandFor, type ClaudeSetup } from './setup';
 
 const DEFAULT_ENDPOINT = 'https://api.anthropic.com/api/oauth/usage';
 const REQUEST_TIMEOUT_MS = 10_000;
@@ -30,6 +31,8 @@ export interface OfficialClientOptions {
    * they never depend on the developer's own Keychain.
    */
   lookupImpl?: (credentialsPath: string) => Promise<CredentialsLookup>;
+  /** Looks for the `claude` command and the Claude app (tests stub it). */
+  detectSetup?: () => ClaudeSetup;
 }
 
 /**
@@ -39,11 +42,24 @@ export interface OfficialClientOptions {
  * `fix` is null where no command helps — a denied Keychain prompt is resolved in
  * System Settings, not the terminal, and a bad `claudeDir` is a settings change.
  */
-function describeCredentialsProblem(problem: CredentialsProblem | null): {
+function describeCredentialsProblem(
+  problem: CredentialsProblem | null,
+  setup: ClaudeSetup | null,
+): {
   status: OfficialStatus;
   message: string;
   fix: string | null;
 } {
+  // No `claude` command to run: installing it comes first, whatever the cause.
+  if (setup && !setup.cli && problem !== 'keychain-denied' && problem !== 'malformed') {
+    return {
+      status: problem === 'not-installed' ? 'not-installed' : 'signed-out',
+      message: setup.app
+        ? 'Claude Code isn’t installed. The Claude app keeps its login to itself, so plan limits come from Claude Code’s.'
+        : 'Claude Code isn’t installed, so there’s no login to read plan limits with.',
+      fix: installCommandFor(),
+    };
+  }
   switch (problem) {
     case 'signed-out':
     case 'no-token':
@@ -53,6 +69,14 @@ function describeCredentialsProblem(problem: CredentialsProblem | null): {
         fix: 'claude',
       };
     case 'not-installed':
+      // Installed but never run: there's no folder or login yet.
+      if (setup?.cli) {
+        return {
+          status: 'signed-out',
+          message: 'Claude Code hasn’t been signed in yet, so its plan limits aren’t available.',
+          fix: 'claude',
+        };
+      }
       return {
         status: 'not-installed',
         message: 'No Claude Code directory here, so there is no login to read.',
@@ -95,6 +119,7 @@ export class OfficialUsageClient {
   private readonly endpoint: string;
   private readonly includeRaw: boolean;
   private readonly lookup: (credentialsPath: string) => Promise<CredentialsLookup>;
+  private readonly detectSetup: () => ClaudeSetup;
 
   private credentialsPath: string;
   private cliVersion: string | null;
@@ -123,6 +148,7 @@ export class OfficialUsageClient {
     this.endpoint = opts.endpoint ?? DEFAULT_ENDPOINT;
     this.includeRaw = opts.includeRaw ?? false;
     this.lookup = opts.lookupImpl ?? ((p) => lookupCredentials(p));
+    this.detectSetup = opts.detectSetup ?? (() => detectClaudeSetup());
     this.credentialsPath = opts.credentialsPath;
     this.cliVersion = opts.cliVersion;
     this.pollIntervalMs = opts.pollIntervalMs;
@@ -204,8 +230,14 @@ export class OfficialUsageClient {
     const creds = lookup.credentials;
 
     if (!creds) {
-      const { status, message, fix } = describeCredentialsProblem(lookup.problem);
-      return this.fail(status, message, now, false, undefined, { fix, detail: lookup.detail });
+      // Only checked when there's no login: a few existsSync calls per poll.
+      const setup = this.detectSetup();
+      const { status, message, fix } = describeCredentialsProblem(lookup.problem, setup);
+      return this.fail(status, message, now, false, undefined, {
+        fix,
+        detail: lookup.detail,
+        setup,
+      });
     }
 
     if (creds.expiresAt > 0 && creds.expiresAt <= now) {
@@ -355,7 +387,7 @@ export class OfficialUsageClient {
     now: number,
     keepWindows: boolean,
     raw?: unknown,
-    extra?: { fix?: string | null; detail?: string | null },
+    extra?: { fix?: string | null; detail?: string | null; setup?: ClaudeSetup | null },
   ): OfficialUsage {
     const windows = keepWindows ? this.lastWindows : [];
     const available = windows.length > 0;
@@ -369,6 +401,7 @@ export class OfficialUsageClient {
       message,
       fix: extra?.fix ?? null,
       detail: extra?.detail ?? null,
+      ...(extra?.setup ? { setup: extra.setup } : {}),
       ...(this.includeRaw && raw !== undefined ? { raw } : {}),
     };
     this.last = result;
