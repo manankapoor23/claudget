@@ -39,6 +39,7 @@ describe('notchPayload', () => {
       fullAt: null,
       card: true,
       colors: DEFAULT_CONFIG.notchColors,
+      sweep: 0,
     };
     expect(notchPayload(snap([win('five_hour', 0.5, H)], false), NOW)).toEqual(none);
     expect(notchPayload(snap([win('seven_day', 0.5, H)]), NOW)).toEqual(none);
@@ -62,6 +63,13 @@ describe('notchPayload', () => {
 
   it("matches core's default colours", () => {
     expect(DEFAULT_NOTCH_COLORS).toEqual(DEFAULT_CONFIG.notchColors);
+  });
+
+  it('carries the weekly reset to sweep for, so a new one is a new payload', () => {
+    const s = snap([win('five_hour', 0.5, H)]);
+    expect(notchPayload(s, NOW).sweep).toBe(0);
+    expect(notchPayload(s, NOW, DEFAULT_CONFIG, 1234).sweep).toBe(1234);
+    expect(notchPayload(snap([]), NOW, DEFAULT_CONFIG, 1234).sweep).toBe(1234);
   });
 
   it('clamps out-of-range readings', () => {

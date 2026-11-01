@@ -139,6 +139,32 @@ describe('TranscriptStore', () => {
     expect(store.entryLists()[0]?.[1]?.gitBranch).toBe('late-branch');
   });
 
+  it('reads a huge /compact line back, so the session context resets', async () => {
+    const prompt = (id: string, n: number): string =>
+      JSON.stringify({
+        ...JSON.parse(assistant(id)),
+        message: { id, model: 'claude-opus-4-8', usage: { input_tokens: n, output_tokens: 1 } },
+      });
+    // Long sessions write compact markers listing thousands of message ids.
+    const ids = Array.from(
+      { length: 3000 },
+      (_, i) => `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`,
+    );
+    const compact = JSON.stringify({
+      type: 'system',
+      subtype: 'compact_boundary',
+      compactMetadata: { trigger: 'auto', preservedMessages: { allUuids: ids } },
+    });
+    expect(compact.length).toBeGreaterThan(64 * 1024);
+    fs.writeFileSync(ref.path, prompt('a', 900_000) + '\n' + compact + '\n');
+    const store = new TranscriptStore();
+    await store.update(ref);
+    expect(store.contexts().size).toBe(0);
+    fs.appendFileSync(ref.path, prompt('b', 12_000) + '\n');
+    await store.update(ref);
+    expect(store.contexts().get('s1')?.usedTokens).toBe(12_000);
+  });
+
   it('waits for a huge half-written line, then takes it whole', async () => {
     const big = assistant('big', { pad: 'y'.repeat(300_000) });
     fs.writeFileSync(ref.path, big.slice(0, 200_000));

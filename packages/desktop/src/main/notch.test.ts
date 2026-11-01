@@ -19,6 +19,7 @@ const pay = (pct: number): NotchPayload => ({
   fullAt: null,
   card: true,
   colors: { ok: '#ff6b1f', warn: '#ffb224', bad: '#ff453a' },
+  sweep: 0,
 });
 
 beforeEach(() => {

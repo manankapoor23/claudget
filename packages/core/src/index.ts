@@ -58,6 +58,9 @@ export {
   type CostResult,
 } from './pricing';
 
+// Context windows
+export { contextWindowFor, EXTENDED_CONTEXT, STANDARD_CONTEXT } from './context';
+
 // Lower-level building blocks (handy for tests and future surfaces)
 export {
   parseTranscriptLine,

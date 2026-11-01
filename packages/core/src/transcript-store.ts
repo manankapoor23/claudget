@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import { createTranscriptParser, type ParseContext, type TranscriptParser } from './parse';
-import type { UsageEntry } from './types';
+import type { SessionContext, UsageEntry } from './types';
 
 /** Bytes read per chunk (pooled). Longer lines are stitched across chunks. */
 const CHUNK_BYTES = 256 * 1024;
@@ -56,6 +56,18 @@ export class TranscriptStore {
   /** Number of transcripts currently tracked. */
   get size(): number {
     return this.files.size;
+  }
+
+  /** Each session's context window, by session id, from the transcripts read so far. */
+  contexts(): Map<string, SessionContext> {
+    const out = new Map<string, SessionContext>();
+    for (const f of this.files.values()) {
+      const c = f.parser.context();
+      if (!c) continue;
+      const prev = out.get(c.sessionId);
+      if (!prev || c.context.at > prev.at) out.set(c.sessionId, c.context);
+    }
+    return out;
   }
 
   /** Every file's entries, in no particular order. */
@@ -186,7 +198,7 @@ async function readNewLines(
   let long: LongLine | null = null;
 
   const finishLong = async (line: LongLine, end: number): Promise<void> => {
-    if (line.usage || (line.user && state.parser.wantsTitle())) {
+    if (line.usage || line.compact || (line.user && state.parser.wantsTitle())) {
       push((await readRange(state.offset, end)).toString('utf8'));
     } else {
       const head = await readRange(state.offset, state.offset + SKIM_BYTES);
@@ -206,7 +218,7 @@ async function readNewLines(
         const nl = chunk.indexOf(NEWLINE, start);
         const piece = chunk.subarray(start, nl === -1 ? chunk.length : nl);
         if (!long && carryLen + piece.length > BIG_LINE_BYTES) {
-          long = { usage: false, user: false, edge: Buffer.alloc(0) };
+          long = { usage: false, user: false, compact: false, edge: Buffer.alloc(0) };
           for (const part of carry) scanLong(long, part);
           carry = [];
           carryLen = 0;
@@ -253,19 +265,23 @@ async function readNewLines(
 interface LongLine {
   usage: boolean;
   user: boolean;
+  /** A /compact marker: it resets the session's context, so it's always read. */
+  compact: boolean;
   /** The last few bytes seen, so a marker split across two chunks is found. */
   edge: Buffer;
 }
 
 const USAGE = Buffer.from('"usage"');
 const USER_TYPE = Buffer.from('"type":"user"');
-const EDGE_BYTES = USER_TYPE.length;
+const COMPACT = Buffer.from('"compact_boundary"');
+const EDGE_BYTES = Math.max(USAGE.length, USER_TYPE.length, COMPACT.length);
 
 function scanLong(line: LongLine, bytes: Buffer): void {
   if (bytes.length === 0) return;
   const seam = Buffer.concat([line.edge, bytes.subarray(0, EDGE_BYTES)]);
   line.usage ||= bytes.indexOf(USAGE) !== -1 || seam.indexOf(USAGE) !== -1;
   line.user ||= bytes.indexOf(USER_TYPE) !== -1 || seam.indexOf(USER_TYPE) !== -1;
+  line.compact ||= bytes.indexOf(COMPACT) !== -1 || seam.indexOf(COMPACT) !== -1;
   const joined = bytes.length >= EDGE_BYTES ? bytes : Buffer.concat([line.edge, bytes]);
   line.edge = Buffer.from(joined.subarray(Math.max(0, joined.length - EDGE_BYTES)));
 }

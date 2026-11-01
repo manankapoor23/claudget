@@ -157,6 +157,7 @@ export function createDemoData(): {
       updatedAt: now,
       status: 'working',
       version: '1.0.0',
+      context: { usedTokens: 412_000, windowTokens: 1_000_000, at: now, model: 'claude-opus-5-5' },
     },
   ];
   const local: LocalUsage = {
@@ -251,6 +252,7 @@ export function createDemoData(): {
       monthlyBudgetUSD: 500,
       limitAlerts: true,
       limitAlertThresholds: [80, 95],
+      resetNudge: true,
       theme: 'dark',
       alwaysOnTop: false,
       clickThrough: false,

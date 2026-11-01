@@ -4,7 +4,8 @@ import { formatClock, formatCompact, formatResetAt } from '../lib/format';
 import { BarChart } from './BarChart';
 import { LimitHistory } from './LimitHistory';
 import { LimitsNotice } from './LimitsNotice';
-import { projectName } from '../lib/sessions';
+import { contextTitle, projectName } from '../lib/sessions';
+import { contextsById, type ContextView } from '../../shared/context';
 import { useBump, useCountUp } from '../lib/motion';
 import {
   ESTIMATE_CAVEAT,
@@ -112,10 +113,12 @@ export function LimitRow({
 function TopSessions({
   sessions,
   live,
+  contexts,
   now,
 }: {
   sessions: SessionStat[];
   live: Set<string>;
+  contexts: Map<string, ContextView>;
   now: number;
 }): JSX.Element | null {
   const recent = sessions
@@ -130,16 +133,26 @@ function TopSessions({
         <p className="sect__empty">No Claude Code sessions in the last day.</p>
       ) : null}
       <ul className="tops">
-        {recent.map((s) => (
-          <li key={s.sessionId} className="top" title={s.sessionTitle || undefined}>
-            <span className={live.has(s.sessionId) ? 'top__dot top__dot--live' : 'top__dot'} />
-            <span className="top__name">{projectName(s)}</span>
-            <span className="top__bar">
-              <span style={{ width: `${(s.tokens.total / max) * 100}%` }} />
-            </span>
-            <span className="top__val">{formatCompact(s.tokens.total)}</span>
-          </li>
-        ))}
+        {recent.map((s) => {
+          const ctx = contexts.get(s.sessionId);
+          return (
+            <li key={s.sessionId} className="top" title={s.sessionTitle || undefined}>
+              <span className={live.has(s.sessionId) ? 'top__dot top__dot--live' : 'top__dot'} />
+              <span className="top__who">
+                <span className="top__name">{projectName(s)}</span>
+                {ctx ? (
+                  <span className="top__ctx" data-tone={ctx.tone} title={contextTitle(ctx)}>
+                    {ctx.pct}% context
+                  </span>
+                ) : null}
+              </span>
+              <span className="top__bar">
+                <span style={{ width: `${(s.tokens.total / max) * 100}%` }} />
+              </span>
+              <span className="top__val">{formatCompact(s.tokens.total)}</span>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -159,6 +172,7 @@ export function WidgetOverview({
   const limits = ranked ? [ranked.primary, ...ranked.others] : [];
   const block = local.activeBlock;
   const live = new Set(local.activeSessions.map((s) => s.sessionId));
+  const contexts = contextsById(local.activeSessions);
 
   return (
     <div className="ov">
@@ -199,7 +213,7 @@ export function WidgetOverview({
         />
       </section>
 
-      <TopSessions sessions={local.sessions} live={live} now={now} />
+      <TopSessions sessions={local.sessions} live={live} contexts={contexts} now={now} />
       {withHistory ? <LimitHistory now={now} embedded /> : null}
     </div>
   );

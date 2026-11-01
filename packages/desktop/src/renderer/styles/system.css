@@ -535,10 +535,32 @@ body {
 .top__dot--live {
   background: var(--c-good);
 }
+.top__who {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
 .top__name {
+  min-width: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* A live session's context window: quiet until it's filling up. */
+.top__ctx {
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+}
+.top__ctx[data-tone='warn'],
+.st__names .st__ctx[data-tone='warn'] {
+  color: var(--c-warn);
+}
+.top__ctx[data-tone='bad'],
+.st__names .st__ctx[data-tone='bad'] {
+  color: var(--c-bad);
 }
 .top__bar {
   height: 4px;
@@ -1816,6 +1838,9 @@ body {
   white-space: nowrap;
   font-size: 12px;
   color: var(--ink-3);
+}
+.st__names .st__ctx {
+  font-variant-numeric: tabular-nums;
 }
 .st__names .st__name {
   display: flex;

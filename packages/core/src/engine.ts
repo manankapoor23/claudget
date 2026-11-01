@@ -353,6 +353,13 @@ export class UsageEngine extends EventEmitter {
     }
   }
 
+  /** Each live session with how full its context window is, where that's known. */
+  private withContexts(sessions: ActiveSession[]): ActiveSession[] {
+    if (sessions.length === 0) return sessions;
+    const contexts = this.transcripts.contexts();
+    return sessions.map((s) => ({ ...s, context: contexts.get(s.sessionId) ?? null }));
+  }
+
   private allEntries(): UsageEntry[] {
     const byKey = new Map<string, UsageEntry>();
     for (const list of this.transcripts.entryLists()) {
@@ -535,7 +542,7 @@ export class UsageEngine extends EventEmitter {
       historyWindowHours: this.config.historyWindowHours,
       blockHours: this.config.blockHours,
       recentSessionLimit: this.config.recentSessionLimit,
-      activeSessions: this.activeSessions,
+      activeSessions: this.withContexts(this.activeSessions),
       stats: this.localScanStats,
     });
     return {

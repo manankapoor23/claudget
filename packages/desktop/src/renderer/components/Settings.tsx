@@ -547,6 +547,13 @@ function Alerts({
             ))}
           </div>
         </Row>
+        <Row
+          label="Before your week resets"
+          hint="A day before your weekly limit resets, if you've used less than half of it."
+          htmlFor="set-nudge"
+        >
+          <Toggle id="set-nudge" on={c.resetNudge} onChange={(resetNudge) => set({ resetNudge })} />
+        </Row>
       </Group>
       <Group title="Budgets">
         <Row

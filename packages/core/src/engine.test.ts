@@ -116,6 +116,52 @@ describe('UsageEngine local freshness', () => {
   });
 });
 
+describe('UsageEngine session context', () => {
+  it('tells each live Claude Code session how full its context window is', async () => {
+    const claudeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudget-context-'));
+    const projectsDir = path.join(claudeDir, 'projects', '-Users-test-project');
+    const sessionsDir = path.join(claudeDir, 'sessions');
+    fs.mkdirSync(projectsDir, { recursive: true });
+    fs.mkdirSync(sessionsDir, { recursive: true });
+    const reply = (session: string, id: string, input: number): string =>
+      JSON.stringify({
+        type: 'assistant',
+        timestamp: '2026-09-09T00:00:00.000Z',
+        requestId: id,
+        sessionId: session,
+        message: { id, model: 'claude-opus-5-5', usage: { input_tokens: input, output_tokens: 9 } },
+      }) + '\n';
+    try {
+      fs.writeFileSync(path.join(projectsDir, 'live.jsonl'), reply('live', 'a', 410_000));
+      fs.writeFileSync(path.join(projectsDir, 'quiet.jsonl'), reply('quiet', 'b', 20_000));
+      // Only `live` has a running Claude Code process; `fresh` hasn't answered yet.
+      for (const [pid, sessionId] of [
+        [101, 'live'],
+        [102, 'fresh'],
+      ] as const) {
+        fs.writeFileSync(
+          path.join(sessionsDir, `${pid}.json`),
+          JSON.stringify({ pid, sessionId, cwd: '/x', startedAt: 1, updatedAt: pid }),
+        );
+      }
+      const engine = new UsageEngine({
+        config: { ...DEFAULT_CONFIG, enableOfficial: false, claudeDir },
+        logger: silent,
+      });
+      await engine.fullRescan();
+      const byId = Object.fromEntries(
+        engine.getSnapshot().local.activeSessions.map((s) => [s.sessionId, s.context]),
+      );
+      expect(byId['live']).toMatchObject({ usedTokens: 410_000, windowTokens: 1_000_000 });
+      expect(byId['fresh']).toBeNull();
+      // Sessions without a running process aren't listed at all.
+      expect(Object.keys(byId).sort()).toEqual(['fresh', 'live']);
+    } finally {
+      fs.rmSync(claudeDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('UsageEngine live updates', () => {
   const line = (id: string, output: number): string =>
     JSON.stringify({
