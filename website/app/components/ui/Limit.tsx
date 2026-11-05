@@ -3,7 +3,7 @@ import { toneOf, type DemoLimit } from "./demo";
 /**
  * Static port of the app's LimitRow (renderer/components/WidgetOverview.tsx):
  * name and %, a bar with a tick where the clock is (fill past the tick = ahead
- * of pace), then time left and — only when it's coming — when it fills. A
+ * of pace), then when it resets and — only when it's coming — when it fills. A
  * live estimate wears its "~" and is dimmed, as in the app.
  */
 export function Limit({ limit, className }: { limit: DemoLimit; className?: string }) {

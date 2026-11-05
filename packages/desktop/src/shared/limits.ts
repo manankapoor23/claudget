@@ -211,3 +211,40 @@ export function verdictFor(view: LimitsView, now: number): Verdict {
   }
   return { tone: 'ok', headline: "You're good", detail: 'Plenty left in every limit' };
 }
+
+const LIST_ORDER = ['five_hour', 'seven_day'];
+
+/**
+ * The order limits are listed in: the 5-hour one, then the weekly one, then
+ * any others as Anthropic sent them. Fixed, so the rows never swap places as
+ * usage moves (#91). Which limit is closest to running out still shows in its
+ * colour and warning, and still drives the pill, the tray and the tone
+ * (rankLimits).
+ */
+export function listOrder<T extends OfficialWindow>(windows: readonly T[]): T[] {
+  const rank = (w: T): number => {
+    const i = LIST_ORDER.indexOf(w.key);
+    return i === -1 ? LIST_ORDER.length : i;
+  };
+  return windows
+    .map((w, i) => ({ w, i }))
+    .sort((a, b) => rank(a.w) - rank(b.w) || a.i - b.i)
+    .map(({ w }) => w);
+}
+
+/**
+ * How many full 5-hour windows the rest of the week holds (#90): the weekly
+ * room left, over the share of the week one full window takes. Both sizes
+ * are what claudget has learned from Anthropic's readings (core capacityFor),
+ * so this is null until it has learned both. Assumes every window is used to
+ * the full, so it's the most the week has left, not a forecast.
+ */
+export function fiveHourWindowsLeft(windows: readonly OfficialWindow[]): number | null {
+  const five = windows.find((w) => w.key === 'five_hour')?.capacity;
+  const week = windows.find((w) => w.key === 'seven_day');
+  if (!five || !week?.capacity) return null;
+  const share = five.fullUSD / week.capacity.fullUSD;
+  if (!(share > 0) || share >= 1) return null;
+  const used = Math.max(0, Math.min(1, week.utilization));
+  return (1 - used) / share;
+}

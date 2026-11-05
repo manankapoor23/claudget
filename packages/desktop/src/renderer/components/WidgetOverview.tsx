@@ -12,6 +12,8 @@ import {
   freshnessLine,
   limitLabel,
   pctSpoken,
+  fiveHourWindowsLeft,
+  listOrder,
   rankLimits,
   shownWindows,
   toneOf,
@@ -28,10 +30,18 @@ interface WidgetOverviewProps {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** "5 more 5-hour windows": the weekly row's room, in whole windows (rounded down). */
+function windowsLeftText(left: number): string {
+  const n = Math.floor(left);
+  if (n <= 0) return 'Under one 5-hour window left';
+  return n === 1 ? '1 more 5-hour window' : `${n} more 5-hour windows`;
+}
+
 /**
  * One limit as data, not prose: name and %, a bar with a tick where the clock
- * is (fill past the tick = ahead of pace), then time left — and, only when the
- * current pace would fill it before reset, when that happens.
+ * is (fill past the tick = ahead of pace), then when it resets — and, only when
+ * the current pace would fill it before then, when that happens. The weekly
+ * row otherwise says how many full 5-hour windows the week still holds.
  *
  * Between Anthropic's checks the % is a live estimate: "~63%", in a dimmer
  * ink, until the next check confirms it. `checkedAt` is that last check.
@@ -40,10 +50,13 @@ export function LimitRow({
   w,
   now,
   checkedAt = null,
+  windowsLeft = null,
 }: {
   w: ShownWindow | OfficialWindow;
   now: number;
   checkedAt?: number | null;
+  /** Weekly row only: full 5-hour windows left this week, once learned (fiveHourWindowsLeft). */
+  windowsLeft?: number | null;
 }): JSX.Element {
   const estimated = 'estimated' in w && w.estimated;
   const used = Math.max(0, Math.min(1, w.utilization));
@@ -88,7 +101,7 @@ export function LimitRow({
       </div>
       <div className="lim__meta">
         <span title={w.resetsAt === null ? undefined : `Resets ${formatResetAt(w.resetsAt, now)}`}>
-          {left === null ? 'No reset' : `${formatDurationShort(left)} left`}
+          {left === null ? 'No reset' : `Resets in ${formatDurationShort(left)}`}
         </span>
         {used >= 1 && !estimated ? (
           <span className="lim__warn">At limit</span>
@@ -102,6 +115,13 @@ export function LimitRow({
             }
           >
             Full by {formatClock(fullAt)}
+          </span>
+        ) : windowsLeft !== null ? (
+          <span
+            className="lim__aside"
+            title="Full 5-hour windows the rest of this week can hold, if you use each one to the limit. Learned from your recent windows."
+          >
+            {windowsLeftText(windowsLeft)}
           </span>
         ) : null}
       </div>
@@ -168,8 +188,11 @@ export function WidgetOverview({
 }: WidgetOverviewProps): JSX.Element {
   const { local, official } = snapshot;
   const now = snapshot.generatedAt;
-  const ranked = official.available ? rankLimits(shownWindows(official.windows)) : null;
-  const limits = ranked ? [ranked.primary, ...ranked.others] : [];
+  const shown = official.available ? shownWindows(official.windows) : [];
+  const ranked = rankLimits(shown);
+  // Fixed order: 5-hour, then weekly (#91). rankLimits still decides which binds.
+  const limits = ranked ? listOrder([ranked.primary, ...ranked.others]) : [];
+  const windowsLeft = fiveHourWindowsLeft(shown);
   const block = local.activeBlock;
   const live = new Set(local.activeSessions.map((s) => s.sessionId));
   const contexts = contextsById(local.activeSessions);
@@ -179,7 +202,13 @@ export function WidgetOverview({
       {limits.length > 0 ? (
         <section className="sect lims ov__lims" aria-label="Plan limits">
           {limits.map((w) => (
-            <LimitRow key={w.key} w={w} now={now} checkedAt={official.fetchedAt} />
+            <LimitRow
+              key={w.key}
+              w={w}
+              now={now}
+              checkedAt={official.fetchedAt}
+              windowsLeft={w.key === 'seven_day' ? windowsLeft : null}
+            />
           ))}
         </section>
       ) : (

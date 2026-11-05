@@ -41,7 +41,7 @@ export const FIVE_HOUR: DemoLimit = {
   label: "5-hour",
   pct: 62,
   tick: 50,
-  left: "2h 30m left",
+  left: "Resets in 2h 30m",
   fullBy: "4:01 PM",
   estimated: true,
 };
@@ -51,7 +51,7 @@ export const WEEKLY: DemoLimit = {
   label: "Weekly",
   pct: 31,
   tick: 55.5,
-  left: "3d 2h left",
+  left: "Resets in 3d 2h",
   fullBy: null,
 };
 
