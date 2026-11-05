@@ -1,6 +1,6 @@
 {
   "name": "@claude-widget/desktop",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "See your Claude Code 5-hour and weekly limits in the menu bar.",
   "license": "MIT",
   "author": "Claude Widget contributors",
