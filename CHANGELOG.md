@@ -5,6 +5,24 @@ All notable changes to claudget. Format loosely follows
 [SemVer](https://semver.org/). Downloads for each release are on the
 [Releases page](https://github.com/manankapoor23/claudget/releases).
 
+## [0.3.9] — 2026-11-05
+
+### Added
+
+- **5-hour windows left.** The weekly limit says how many full 5-hour windows
+  your week still holds ("5 more 5-hour windows"), from the window sizes
+  claudget has learned. "At limit" and "Full by" still show instead when they
+  apply.
+
+### Changed
+
+- **The 5-hour limit is always listed first,** then the weekly one, so the rows
+  no longer swap places as your usage moves. The limit closest to running out
+  still shows in amber or red.
+- **"Resets in 2h 14m"** instead of "2h 14m left", on both limits.
+- Activity → Where you used it says that Chat, Cowork and claude.ai aren't in
+  those numbers, though they still count toward your plan limits.
+
 ## [0.3.8] — 2026-11-01
 
 ### Fixed
@@ -337,6 +355,7 @@ All notable changes to claudget. Format loosely follows
 - Stays on top across **every macOS Space** and over fullscreen apps (runs as a menu-bar accessory).
 - Guard against an IPC send to a disposed renderer frame on reload/close.
 
+[0.3.9]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.9
 [0.3.8]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.8
 [0.3.7]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.7
 [0.3.6]: https://github.com/manankapoor23/claudget/releases/tag/v0.3.6
