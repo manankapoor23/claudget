@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  fiveHourWindowsLeft,
   freshnessLine,
   limitLabel,
+  listOrder,
   pctSpoken,
   pctText,
   pillWindow,
@@ -157,5 +159,61 @@ describe('verdictFor', () => {
       },
     ]);
     expect(verdictFor(rankLimits(live)!, NOW).headline).toBe('5-hour limit almost gone');
+  });
+});
+
+describe('listOrder', () => {
+  it('lists 5-hour, then weekly, then the rest as sent, whatever is most used', () => {
+    const keys = (ws: ReturnType<typeof win>[]) => listOrder(ws).map((w) => w.key);
+    expect(keys([win('seven_day', 0.8, H), win('five_hour', 0.2, H)])).toEqual([
+      'five_hour',
+      'seven_day',
+    ]);
+    expect(
+      keys([
+        win('seven_day_opus', 0.9, H),
+        win('seven_day', 0.5, H),
+        win('nimbus', 0.1, H),
+        win('five_hour', 0.1, H),
+      ]),
+    ).toEqual(['five_hour', 'seven_day', 'seven_day_opus', 'nimbus']);
+  });
+
+  it('leaves which limit binds to rankLimits', () => {
+    const ws = [win('five_hour', 0.2, H), win('seven_day', 0.8, H)];
+    expect(rankLimits(ws)?.primary.key).toBe('seven_day');
+    expect(listOrder(ws)[0]?.key).toBe('five_hour');
+  });
+});
+
+describe('fiveHourWindowsLeft', () => {
+  const learned = (key: string, u: number, fullUSD: number | null) => ({
+    ...win(key, u, H),
+    ...(fullUSD === null ? {} : { capacity: { fullUSD, samples: 4 } }),
+  });
+
+  it('is the room left in the week over what one full window takes', () => {
+    // A window holds $46 and the week $265: one window is ~17.4% of the week.
+    const left = fiveHourWindowsLeft([
+      learned('five_hour', 0.1, 46),
+      learned('seven_day', 0.04, 265),
+    ]);
+    expect(left).toBeCloseTo((0.96 * 265) / 46, 6);
+    expect(fiveHourWindowsLeft([learned('five_hour', 0, 50), learned('seven_day', 1, 250)])).toBe(
+      0,
+    );
+  });
+
+  it('is null until both sizes are learned, or when they make no sense', () => {
+    expect(
+      fiveHourWindowsLeft([learned('five_hour', 0.1, null), learned('seven_day', 0.2, 250)]),
+    ).toBeNull();
+    expect(
+      fiveHourWindowsLeft([learned('five_hour', 0.1, 50), learned('seven_day', 0.2, null)]),
+    ).toBeNull();
+    expect(
+      fiveHourWindowsLeft([learned('five_hour', 0.1, 300), learned('seven_day', 0.2, 250)]),
+    ).toBeNull();
+    expect(fiveHourWindowsLeft([learned('seven_day', 0.2, 250)])).toBeNull();
   });
 });

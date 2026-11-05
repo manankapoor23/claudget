@@ -5,7 +5,14 @@ import { useStore } from '../store';
 import { getBridge } from '../lib/api';
 import { formatCompact } from '../lib/format';
 import { useTheme } from '../lib/theme';
-import { isDormant, rankLimits, shownWindows, verdictFor } from '../../shared/limits';
+import {
+  fiveHourWindowsLeft,
+  isDormant,
+  listOrder,
+  rankLimits,
+  shownWindows,
+  verdictFor,
+} from '../../shared/limits';
 import { BarChart } from './BarChart';
 import { CloseIcon, ExpandIcon } from './icons';
 import { LimitRow } from './WidgetOverview';
@@ -30,7 +37,8 @@ export function MiniBarApp(): JSX.Element {
   const official = snapshot?.official;
   // Display only: the live estimate where there is one (marked "~").
   const windows = official?.available ? shownWindows(official.windows) : [];
-  const limits = windows.filter((w) => !isDormant(w)).slice(0, 2);
+  const limits = listOrder(windows.filter((w) => !isDormant(w))).slice(0, 2);
+  const windowsLeft = fiveHourWindowsLeft(windows);
   const ranked = rankLimits(windows);
   const tone = ranked ? verdictFor(ranked, now).tone : 'ok';
   const local = snapshot?.local;
@@ -41,7 +49,13 @@ export function MiniBarApp(): JSX.Element {
       <div className="mb__grid">
         {limits.length > 0 ? (
           limits.map((w) => (
-            <LimitRow key={w.key} w={w} now={now} checkedAt={official?.fetchedAt ?? null} />
+            <LimitRow
+              key={w.key}
+              w={w}
+              now={now}
+              checkedAt={official?.fetchedAt ?? null}
+              windowsLeft={w.key === 'seven_day' ? windowsLeft : null}
+            />
           ))
         ) : (
           <div className="mb__off">

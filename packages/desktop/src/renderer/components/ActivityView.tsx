@@ -103,6 +103,11 @@ export function ActivityView({
               );
             })}
           </div>
+          {/* #70: Chat and Cowork leave no local record; say so rather than look complete. */}
+          <p className="panel__note">
+            Chat and Cowork in the Claude app, and claude.ai, keep no record on this computer, so
+            they aren&apos;t in these numbers. They still count toward your plan limits.
+          </p>
         </div>
       ) : null}
       <div className="stat-grid stat-grid--three">

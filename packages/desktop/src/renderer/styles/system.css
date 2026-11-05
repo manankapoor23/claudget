@@ -387,6 +387,10 @@ body {
 .lim[data-tone='bad'] .lim__warn {
   color: var(--c-bad);
 }
+/* The weekly row's room in 5-hour windows: information, not a warning. */
+.lim__aside {
+  color: var(--ink-3);
+}
 
 /* Today */
 .figs {
